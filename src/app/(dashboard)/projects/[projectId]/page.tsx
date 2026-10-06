@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ProjectModule } from '@/types/project'
 import ViewAllMembersModal from '@/components/ViewAllMembersModal'
 import ModuleList from '@/components/modules/ModuleList'
+import EditProjectModal from '@/components/projects/EditProjectModal'
 
 export default async function ProjectDetailsPage({ params }: { params: Promise<{ projectId: string }> }) {
   const resolvedParams = await params
@@ -106,9 +107,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
               ← Back to Projects
             </Link>
             {isManager && (
-              <Link href={`/projects/${project.id}/edit`} className="py-2 px-5 bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 rounded-xl font-bold transition-all shadow-sm text-sm">
-                Edit Project
-              </Link>
+              <EditProjectModal project={project} />
             )}
           </div>
         </div>

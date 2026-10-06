@@ -3,6 +3,7 @@ import { hasRole } from '@/lib/auth-utils'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Project } from '@/types/project'
+import CreateProjectModal from '@/components/projects/CreateProjectModal'
 
 export default async function ProjectsPage() {
   const isManager = await hasRole('project_manager')
@@ -40,14 +41,7 @@ export default async function ProjectsPage() {
         <h1 className="text-3xl font-extrabold text-[#2d3748]">
           {isAuditor ? 'Assigned Projects' : 'Projects'}
         </h1>
-        {isManager && (
-          <Link 
-            href="/projects/new" 
-            className="py-2.5 px-6 bg-[#263148] text-white hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg"
-          >
-            + Create Project
-          </Link>
-        )}
+        {isManager && <CreateProjectModal />}
       </div>
 
       <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6">

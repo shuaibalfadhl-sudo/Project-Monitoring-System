@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { ProjectModule } from '@/types/project'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import CreateModuleModal from '@/components/modules/CreateModuleModal'
+import EditModuleModal from '@/components/modules/EditModuleModal'
 
 interface ModuleListProps {
   modules: ProjectModule[]
@@ -157,9 +159,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
           </select>
 
           {isManager && (
-            <Link href={`/projects/${projectId}/modules/new`} className="w-full sm:w-auto py-2 px-5 bg-white border border-gray-200 text-[#2d3748] hover:bg-gray-50 hover:border-gray-300 rounded-xl font-bold transition-all shadow-sm text-sm text-center">
-              + Add
-            </Link>
+            <CreateModuleModal projectId={projectId} />
           )}
         </div>
       </div>
@@ -211,7 +211,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
                     {isManager ? (
                       <td className="py-4 text-right">
                         <div className="flex justify-end gap-4" onClick={(e) => e.stopPropagation()}>
-                          <Link href={`/projects/${projectId}/modules/${module.id}/edit`} className="text-sm font-semibold text-blue-600 hover:text-blue-800">Edit</Link>
+                          <EditModuleModal module={module} />
                           <button className="text-sm font-semibold text-red-500 hover:text-red-700">Delete</button>
                         </div>
                       </td>
