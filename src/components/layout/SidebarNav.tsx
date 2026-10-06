@@ -30,9 +30,6 @@ export default function SidebarNav({ role }: { role: string }) {
           <Link href="/projects" className={getLinkClasses('/projects')}>
             Projects
           </Link>
-          <Link href="#" className={getLinkClasses('/reports')}>
-            Reports
-          </Link>
         </>
       )}
 
@@ -41,14 +38,8 @@ export default function SidebarNav({ role }: { role: string }) {
           <Link href="/projects" className={getLinkClasses('/projects')}>
             Assigned Projects
           </Link>
-          <Link href="#" className={getLinkClasses('/qa-monitoring')}>
+          <Link href="/qa-monitoring" className={getLinkClasses('/qa-monitoring')}>
             QA Monitoring
-          </Link>
-          <Link href="#" className={getLinkClasses('/progress')}>
-            Project Progress
-          </Link>
-          <Link href="#" className={getLinkClasses('/reports')}>
-            Reports
           </Link>
         </>
       )}

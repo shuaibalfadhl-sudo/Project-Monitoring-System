@@ -30,7 +30,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#f4f5f7] flex flex-col md:flex-row">
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-[#263148] text-white p-6 shadow-xl flex flex-col">
+      <aside className="w-full md:w-64 bg-[#263148] text-white p-6 shadow-xl flex flex-col md:sticky md:top-0 md:h-screen z-20">
         <div className="mb-10 text-center md:text-left">
           <h2 className="text-xl font-bold tracking-tight">Project System</h2>
           <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">{profile.role.replace('_', ' ')}</p>

@@ -17,12 +17,16 @@ export default async function DashboardPage() {
   if (profile.role === 'project_manager') title = "Project Manager Dashboard"
   if (profile.role === 'system_auditor') title = "System Auditor Dashboard"
 
-  // Fetch SA specific data
-  let saProjects: any[] = []
+  // Fetch data
+  let displayProjects: any[] = []
+  let totalProjects = 0
+  let totalModules = 0
+  let approvedModules = 0
   let totalForQaModules = 0
 
+  const supabaseServer = await createClient()
+
   if (profile.role === 'system_auditor') {
-    const supabaseServer = await createClient()
     const { data } = await supabaseServer
       .from('project_members')
       .select(`
@@ -40,17 +44,41 @@ export default async function DashboardPage() {
       .eq('user_id', profile.id)
 
     if (data) {
-      saProjects = data.map(d => d.projects).filter(Boolean)
-      saProjects.forEach((p: any) => {
-        if (p.project_modules) {
-          totalForQaModules += p.project_modules.filter((m: any) => m.status === 'for_qa').length
-        }
-      })
+      displayProjects = data.map(d => d.projects).filter(Boolean)
+    }
+  } else if (profile.role === 'project_manager') {
+    const { data } = await supabaseServer
+      .from('projects')
+      .select(`
+        id,
+        name,
+        status,
+        target_date,
+        project_modules (
+          id,
+          status
+        )
+      `)
+      .order('created_at', { ascending: false })
+
+    if (data) {
+      displayProjects = data
     }
   }
 
+  displayProjects.forEach((p: any) => {
+    if (p.project_modules) {
+      totalModules += p.project_modules.length
+      approvedModules += p.project_modules.filter((m: any) => m.status === 'qa_approved').length
+      totalForQaModules += p.project_modules.filter((m: any) => m.status === 'for_qa').length
+    }
+  })
+  
+  totalProjects = displayProjects.length
+  const overallProgress = totalModules === 0 ? 0 : Math.round((approvedModules / totalModules) * 100)
+
   return (
-    <div className={`${profile.role === 'system_auditor' ? 'w-full' : 'max-w-4xl'} bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]`}>
+    <div className="w-full bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
       <h1 className="text-3xl font-extrabold text-[#2d3748] mb-6">{title}</h1>
       
       <div className="p-6 mb-8 bg-blue-50 border border-blue-100 rounded-2xl">
@@ -71,17 +99,32 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {profile.role === 'system_auditor' ? (
+      {(profile.role === 'system_auditor' || profile.role === 'project_manager') ? (
         <div className="space-y-8 mb-10">
           <div className="grid grid-cols-2 gap-6">
-            <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Assigned Projects</h3>
-              <p className="text-4xl font-black text-[#2d3748]">{saProjects.length}</p>
-            </div>
-            <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Modules For QA</h3>
-              <p className="text-4xl font-black text-blue-600">{totalForQaModules}</p>
-            </div>
+            {profile.role === 'project_manager' ? (
+              <>
+                <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Projects Handled</h3>
+                  <p className="text-4xl font-black text-[#2d3748]">{totalProjects}</p>
+                </div>
+                <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Overall Progress</h3>
+                  <p className="text-4xl font-black text-blue-600">{overallProgress}%</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Assigned Projects</h3>
+                  <p className="text-4xl font-black text-[#2d3748]">{totalProjects}</p>
+                </div>
+                <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Modules For QA</h3>
+                  <p className="text-4xl font-black text-blue-600">{totalForQaModules}</p>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
@@ -93,8 +136,8 @@ export default async function DashboardPage() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {saProjects.slice(0, 6).map((project: any) => {
-                const totalModules = project.project_modules?.length || 0;
+              {displayProjects.slice(0, 6).map((project: any) => {
+                const projectTotalModules = project.project_modules?.length || 0;
                 let gradientString = '#f3f4f6 0% 100%';
                 
                 const statusColors: Record<string, string> = {
@@ -113,14 +156,13 @@ export default async function DashboardPage() {
                   return acc;
                 }, {}) || {};
                 
-                // Order statuses logically
                 const order = ['qa_approved', 'auditing', 'for_qa', 'pm_review', 'development', 'rework', 'pending'];
                 const presentStatuses = Object.keys(statusCounts).sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
-                if (totalModules > 0) {
+                if (projectTotalModules > 0) {
                   let currentPercentage = 0;
                   const gradientParts = presentStatuses.map(status => {
-                    const percentage = (statusCounts[status] / totalModules) * 100;
+                    const percentage = (statusCounts[status] / projectTotalModules) * 100;
                     const color = statusColors[status] || '#94a3b8';
                     const part = `${color} ${currentPercentage}% ${currentPercentage + percentage}%`;
                     currentPercentage += percentage;
@@ -131,7 +173,7 @@ export default async function DashboardPage() {
                 }
                 
                 const completedModules = project.project_modules?.filter((m: any) => m.status === 'qa_approved').length || 0;
-                const progressPercentage = totalModules === 0 ? 0 : Math.round((completedModules / totalModules) * 100);
+                const progressPercentage = projectTotalModules === 0 ? 0 : Math.round((completedModules / projectTotalModules) * 100);
                 
                 return (
                   <div key={project.id} className="flex flex-col p-6 bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
@@ -168,9 +210,11 @@ export default async function DashboardPage() {
                   </div>
                 );
               })}
-              {saProjects.length === 0 && (
+              {displayProjects.length === 0 && (
                 <div className="col-span-full">
-                  <p className="text-gray-500 text-sm font-medium text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">You are not assigned to any projects yet.</p>
+                  <p className="text-gray-500 text-sm font-medium text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    {profile.role === 'project_manager' ? 'You have not created any projects yet.' : 'You are not assigned to any projects yet.'}
+                  </p>
                 </div>
               )}
             </div>
