@@ -48,14 +48,42 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
 
   const totalModules = modules ? modules.length : 0
   
-  const stats = {
-    pending: modules ? modules.filter(m => !m.status || m.status === 'pending').length : 0,
-    qa_approved: modules ? modules.filter(m => m.status === 'qa_approved').length : 0,
-    rework: modules ? modules.filter(m => m.status === 'rework').length : 0,
-  }
+  let gradientString = '#f3f4f6 0% 100%';
+  const statusCounts: Record<string, number> = {};
+  const statusColors: Record<string, string> = {
+    pending: '#94a3b8',
+    development: '#3b82f6',
+    pm_review: '#6366f1',
+    for_qa: '#f59e0b',
+    auditing: '#0ea5e9',
+    rework: '#e11d48',
+    qa_approved: '#10b981'
+  };
+  
+  let presentStatuses: string[] = [];
 
-  const p_approved = totalModules > 0 ? (stats.qa_approved / totalModules) * 100 : 0
-  const p_rework = totalModules > 0 ? (stats.rework / totalModules) * 100 : 0
+  if (totalModules > 0) {
+    modules?.forEach(m => {
+      const status = m.status || 'pending';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+    
+    const order = ['qa_approved', 'auditing', 'for_qa', 'pm_review', 'development', 'rework', 'pending'];
+    presentStatuses = Object.keys(statusCounts).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    
+    let currentPercentage = 0;
+    const gradientParts = presentStatuses.map(status => {
+      const percentage = (statusCounts[status] / totalModules) * 100;
+      const color = statusColors[status] || '#94a3b8';
+      const part = `${color} ${currentPercentage}% ${currentPercentage + percentage}%`;
+      currentPercentage += percentage;
+      return part;
+    });
+    
+    gradientString = gradientParts.join(', ');
+  }
+  
+  const p_approved = totalModules > 0 ? ((statusCounts['qa_approved'] || 0) / totalModules) * 100 : 0;
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
@@ -63,10 +91,15 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
       <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-extrabold text-[#2d3748] mb-2">{project.name}</h1>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 capitalize">
-              {project.status.replace('_', ' ')}
-            </span>
+            <h1 className="text-3xl font-extrabold text-[#2d3748] mb-3">{project.name}</h1>
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 capitalize border border-blue-100">
+                {project.status.replace('_', ' ')}
+              </span>
+              <span className="text-xs font-semibold text-gray-500 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                {project.start_date || 'N/A'} — {project.target_date || 'N/A'}
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/projects" className="text-sm font-semibold text-gray-500 hover:text-[#2d3748]">
@@ -86,94 +119,74 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
               <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Description</h3>
               <p className="text-gray-700 font-medium leading-relaxed">{project.description || 'No description provided.'}</p>
             </div>
-            <div className="bg-gray-50 p-6 rounded-2xl space-y-4 border border-gray-100">
-              <div className="flex justify-between">
-                <span className="text-gray-500 font-medium text-sm">Start Date</span>
-                <span className="font-semibold text-[#2d3748] text-sm">{project.start_date || 'Not set'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500 font-medium text-sm">Target Date</span>
-                <span className="font-semibold text-[#2d3748] text-sm">{project.target_date || 'Not set'}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Project Members</h3>
-              <div className="flex gap-4 items-center">
-                <ViewAllMembersModal members={processedMembers} isManager={isManager} />
-                {isManager && (
-                  <Link href={`/projects/${project.id}/members/new`} className="text-xs font-bold text-blue-600 hover:text-blue-800">
-                    + Add Member
-                  </Link>
-                )}
-              </div>
-            </div>
             
-            <div className="space-y-4 flex-1 overflow-y-auto">
-              {processedMembers.slice(0, 3).map((member: any) => {
-                return (
-                <div key={member.user_id || member.id} className={`flex justify-between items-center p-3 rounded-xl border ${member.is_owner ? 'bg-blue-50/50 border-blue-100' : 'bg-gray-50 border-gray-100'}`}>
-                  <div>
+            <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Project Members</h3>
+                <div className="flex gap-3 items-center">
+                  <ViewAllMembersModal members={processedMembers} isManager={isManager} />
+                  {isManager && (
+                    <Link href={`/projects/${project.id}/members/new`} className="text-xs font-bold text-blue-600 hover:text-blue-800">
+                      + Add Member
+                    </Link>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-3 flex-1 overflow-y-auto">
+                {processedMembers.slice(0, 3).map((member: any) => {
+                  return (
+                  <div key={member.user_id || member.id} className={`flex justify-between items-center p-3 rounded-xl border ${member.is_owner ? 'bg-blue-50/50 border-blue-100' : 'bg-gray-50 border-gray-100'}`}>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-bold text-[#2d3748]">{member.full_name || 'Unnamed member'}</p>
                       {member.is_owner && (
                         <span className="bg-blue-100 text-blue-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Owner</span>
                       )}
                     </div>
+                    {isManager && !member.is_owner && (
+                      <button className="text-xs font-bold text-red-500 hover:text-red-700 px-2 py-1">Remove</button>
+                    )}
                   </div>
-                  {isManager && !member.is_owner && (
-                    <button className="text-xs font-bold text-red-500 hover:text-red-700 px-2 py-1">Remove</button>
-                  )}
+                )})}
+                
+                {processedMembers.length > 3 && (
+                  <div className="text-center pt-2 border-t border-gray-100 mt-2">
+                    <p className="text-xs font-bold text-gray-400 mt-2">+{processedMembers.length - 3} more members...</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm flex flex-col justify-center">
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6">Module Status</h3>
+            <div className="w-full space-y-3">
+              {presentStatuses.length > 0 ? presentStatuses.map(status => (
+                <div key={status} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: statusColors[status] }}></div>
+                    <span className="text-sm font-bold text-gray-700 capitalize">{status.replace('_', ' ')}</span>
+                  </div>
+                  <span className="text-base font-black text-[#2d3748]">{statusCounts[status]}</span>
                 </div>
-              )})}
-              
-              {processedMembers.length > 3 && (
-                <div className="text-center pt-2 border-t border-gray-100 mt-2">
-                  <p className="text-xs font-bold text-gray-400 mt-2">+{processedMembers.length - 3} more members...</p>
+              )) : (
+                <div className="text-center py-4">
+                  <span className="text-sm font-semibold text-gray-500">No modules yet</span>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm flex flex-col justify-center">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6">QA Progress</h3>
-            <div className="flex-1 flex flex-col justify-center items-center">
-              
+          <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm flex flex-col justify-center items-center">
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-8 w-full">QA Progress</h3>
+            <div className="flex-1 flex flex-col justify-center items-center py-4">
               <div 
-                className="w-32 h-32 rounded-full relative mb-6 shadow-inner"
-                style={{
-                  background: `conic-gradient(#10b981 0% ${p_approved}%, #ef4444 ${p_approved}% ${p_approved + p_rework}%, #f3f4f6 ${p_approved + p_rework}% 100%)`
-                }}
+                className="w-48 h-48 rounded-full relative shadow-inner"
+                style={{ background: `conic-gradient(${gradientString})` }}
               >
-                <div className="absolute inset-0 m-auto w-[6.5rem] h-[6.5rem] bg-white rounded-full flex flex-col items-center justify-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-                  <span className="text-3xl font-black text-[#2d3748] tracking-tighter">{Math.round(p_approved)}%</span>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Done</span>
-                </div>
-              </div>
-
-              <div className="w-full space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-[#10b981]"></div>
-                    <span className="text-sm font-semibold text-gray-700">QA Approved</span>
-                  </div>
-                  <span className="text-sm font-bold text-[#2d3748]">{stats.qa_approved}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-[#ef4444]"></div>
-                    <span className="text-sm font-semibold text-gray-700">Rework</span>
-                  </div>
-                  <span className="text-sm font-bold text-[#2d3748]">{stats.rework}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gray-100 border border-gray-200"></div>
-                    <span className="text-sm font-semibold text-gray-700">Pending</span>
-                  </div>
-                  <span className="text-sm font-bold text-[#2d3748]">{stats.pending}</span>
+                <div className="absolute inset-5 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
+                  <span className="text-4xl font-black text-[#2d3748] tracking-tighter">{Math.round(p_approved)}%</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1 text-center leading-tight">QA<br/>Apprv</span>
                 </div>
               </div>
             </div>

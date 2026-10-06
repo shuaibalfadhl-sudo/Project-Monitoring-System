@@ -15,12 +15,47 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedModule, setSelectedModule] = useState<ProjectModule | null>(null)
+  
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+
+  const generatePagination = (currentPage: number, totalPages: number) => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 3) {
+      return [1, 2, 3, 4, '...', totalPages];
+    }
+    if (currentPage >= totalPages - 2) {
+      return [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'development': return 'bg-blue-100 text-blue-700';
+      case 'pm_review': return 'bg-indigo-100 text-indigo-700';
+      case 'for_qa': return 'bg-amber-100 text-amber-700';
+      case 'auditing': return 'bg-cyan-100 text-cyan-700';
+      case 'rework': return 'bg-rose-100 text-rose-700';
+      case 'qa_approved': return 'bg-emerald-100 text-emerald-700';
+      case 'pending':
+      default: return 'bg-slate-100 text-slate-700';
+    }
+  };
 
   const filteredModules = modules.filter(module => {
     const matchesSearch = module.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || module.status === statusFilter
     return matchesSearch && matchesStatus
   })
+
+  const totalPages = Math.ceil(filteredModules.length / itemsPerPage)
+  const paginatedModules = filteredModules.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
   return (
     <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
@@ -40,7 +75,10 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white"
               placeholder="Search modules..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                setCurrentPage(1)
+              }}
             />
           </div>
 
@@ -48,7 +86,10 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
           <select
             className="w-full sm:w-40 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              setCurrentPage(1)
+            }}
           >
             <option value="all">All Statuses</option>
             <option value="pending">Pending</option>
@@ -89,7 +130,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredModules.map((module: ProjectModule) => (
+                {paginatedModules.map((module: ProjectModule) => (
                   <tr 
                     key={module.id} 
                     onClick={() => setSelectedModule(module)}
@@ -104,7 +145,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
                       </span>
                     </td>
                     <td className="py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${module.status === 'qa_approved' ? 'bg-green-100 text-green-700' : module.status === 'rework' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${getStatusColor(module.status)}`}>
                         {(module.status || 'pending').replace('_', ' ')}
                       </span>
                     </td>
@@ -122,6 +163,78 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
                 ))}
               </tbody>
             </table>
+            
+            {totalPages > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between border-t border-gray-100 px-6 py-4 gap-4">
+                <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
+                  <p className="text-sm text-gray-700 font-medium">
+                    Showing <span className="font-bold">{(currentPage - 1) * itemsPerPage + (paginatedModules.length > 0 ? 1 : 0)}</span> to <span className="font-bold">{Math.min(currentPage * itemsPerPage, filteredModules.length)}</span> of <span className="font-bold">{filteredModules.length}</span> modules
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500 font-medium">Show</span>
+                    <select 
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value))
+                        setCurrentPage(1)
+                      }}
+                      className="border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white px-2 py-1 cursor-pointer"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    
+                    <div className="flex items-center gap-1">
+                      {generatePagination(currentPage, totalPages).map((page, i) => (
+                        page === '...' ? (
+                          <span key={`ellipsis-${i}`} className="w-8 h-8 flex items-center justify-center text-gray-400 font-bold tracking-widest">
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={`page-${page}`}
+                            onClick={() => setCurrentPage(page as number)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-bold transition-all ${
+                              currentPage === page 
+                                ? 'bg-[#3b82f6] text-white shadow-sm' 
+                                : 'text-gray-500 hover:bg-gray-100'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        )
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="w-8 h-8 flex items-center justify-center rounded-md bg-gray-100 text-gray-400 hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-gray-100 transition-colors"
+                    >
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -164,7 +277,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
                 </div>
                 <div>
                   <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Status</h3>
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold capitalize ${selectedModule.status === 'qa_approved' ? 'bg-green-100 text-green-700' : selectedModule.status === 'rework' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold capitalize ${getStatusColor(selectedModule.status)}`}>
                     {(selectedModule.status || 'pending').replace('_', ' ')}
                   </span>
                 </div>

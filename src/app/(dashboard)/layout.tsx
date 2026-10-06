@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
+import SidebarNav from '@/components/layout/SidebarNav'
 
 export default async function DashboardLayout({
   children,
@@ -35,39 +36,7 @@ export default async function DashboardLayout({
           <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">{profile.role.replace('_', ' ')}</p>
         </div>
         
-        <nav className="flex-1 space-y-2">
-          <Link href="/dashboard" className="block px-4 py-2.5 rounded-lg hover:bg-white/10 transition-colors bg-white/5 font-medium text-sm">
-            Dashboard
-          </Link>
-          
-          {isManager && (
-            <>
-              <Link href="/projects" className="block px-4 py-2.5 rounded-lg hover:bg-white/10 transition-colors font-medium text-sm text-slate-300">
-                Projects
-              </Link>
-              <Link href="#" className="block px-4 py-2.5 rounded-lg hover:bg-white/10 transition-colors font-medium text-sm text-slate-300">
-                Reports
-              </Link>
-            </>
-          )}
-
-          {isAuditor && (
-            <>
-              <Link href="/projects" className="block px-4 py-2.5 rounded-lg hover:bg-white/10 transition-colors font-medium text-sm text-slate-300">
-                Assigned Projects
-              </Link>
-              <Link href="#" className="block px-4 py-2.5 rounded-lg hover:bg-white/10 transition-colors font-medium text-sm text-slate-300">
-                QA Monitoring
-              </Link>
-              <Link href="#" className="block px-4 py-2.5 rounded-lg hover:bg-white/10 transition-colors font-medium text-sm text-slate-300">
-                Project Progress
-              </Link>
-              <Link href="#" className="block px-4 py-2.5 rounded-lg hover:bg-white/10 transition-colors font-medium text-sm text-slate-300">
-                Reports
-              </Link>
-            </>
-          )}
-        </nav>
+        <SidebarNav role={profile.role} />
 
         {/* User Profile & Logout at bottom */}
         <div className="pt-6 mt-6 border-t border-white/10">

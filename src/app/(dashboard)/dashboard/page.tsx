@@ -11,13 +11,7 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  async function signOut() {
-    'use server'
-    const supabaseServer = await createClient()
-    await supabaseServer.auth.signOut()
-    revalidatePath('/')
-    redirect('/login')
-  }
+
 
   let title = "Dashboard"
   if (profile.role === 'project_manager') title = "Project Manager Dashboard"
@@ -56,7 +50,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="max-w-4xl bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+    <div className={`${profile.role === 'system_auditor' ? 'w-full' : 'max-w-4xl'} bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]`}>
       <h1 className="text-3xl font-extrabold text-[#2d3748] mb-6">{title}</h1>
       
       <div className="p-6 mb-8 bg-blue-50 border border-blue-100 rounded-2xl">
@@ -98,25 +92,86 @@ export default async function DashboardPage() {
               </Link>
             </div>
             
-            <div className="space-y-3">
-              {saProjects.slice(0, 5).map((project: any) => (
-                <div key={project.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
-                  <div>
-                    <Link href={`/projects/${project.id}`} className="font-bold text-[#2d3748] hover:text-blue-600 transition-colors">
-                      {project.name}
-                    </Link>
-                    <div className="flex gap-4 mt-1">
-                      <span className="text-xs font-semibold text-gray-500 capitalize">Status: {project.status.replace('_', ' ')}</span>
-                      <span className="text-xs font-semibold text-gray-500">Target: {project.target_date || 'Not set'}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {saProjects.slice(0, 6).map((project: any) => {
+                const totalModules = project.project_modules?.length || 0;
+                let gradientString = '#f3f4f6 0% 100%';
+                
+                const statusColors: Record<string, string> = {
+                  pending: '#94a3b8',      // Slate / Cool Gray
+                  development: '#3b82f6',  // Royal Blue
+                  pm_review: '#6366f1',    // Indigo / Violet
+                  for_qa: '#f59e0b',       // Amber / Warm Yellow
+                  auditing: '#0ea5e9',     // Cyan / Teal
+                  rework: '#e11d48',       // Crimson / Rose Red
+                  qa_approved: '#10b981'   // Emerald Green
+                };
+                
+                const statusCounts = project.project_modules?.reduce((acc: any, m: any) => {
+                  const status = m.status || 'pending';
+                  acc[status] = (acc[status] || 0) + 1;
+                  return acc;
+                }, {}) || {};
+                
+                // Order statuses logically
+                const order = ['qa_approved', 'auditing', 'for_qa', 'pm_review', 'development', 'rework', 'pending'];
+                const presentStatuses = Object.keys(statusCounts).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
+                if (totalModules > 0) {
+                  let currentPercentage = 0;
+                  const gradientParts = presentStatuses.map(status => {
+                    const percentage = (statusCounts[status] / totalModules) * 100;
+                    const color = statusColors[status] || '#94a3b8';
+                    const part = `${color} ${currentPercentage}% ${currentPercentage + percentage}%`;
+                    currentPercentage += percentage;
+                    return part;
+                  });
+                  
+                  gradientString = gradientParts.join(', ');
+                }
+                
+                const completedModules = project.project_modules?.filter((m: any) => m.status === 'qa_approved').length || 0;
+                const progressPercentage = totalModules === 0 ? 0 : Math.round((completedModules / totalModules) * 100);
+                
+                return (
+                  <div key={project.id} className="flex flex-col p-6 bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="w-full">
+                        <div className="flex justify-between items-center gap-2 mb-2">
+                          <h4 className="text-lg font-black text-[#2d3748] line-clamp-1 group-hover:text-blue-600 transition-colors">
+                            {project.name}
+                          </h4>
+                          <span className="text-[10px] text-gray-400 font-semibold bg-gray-50 px-2 py-1 rounded-md border border-gray-100 whitespace-nowrap">
+                            Due {project.target_date || 'Not set'}
+                          </span>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold capitalize ${
+                          project.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700 border border-blue-100'
+                        }`}>
+                          {project.status.replace('_', ' ')}
+                        </span>
+                      </div>
                     </div>
+                    
+                    <div className="flex flex-col items-center justify-center flex-1 py-6">
+                      <div className="relative w-28 h-28 rounded-full flex items-center justify-center bg-gray-50 shadow-inner" style={{ background: `conic-gradient(${gradientString})` }}>
+                        <div className="absolute inset-4 bg-white rounded-full flex items-center justify-center shadow-sm">
+                          <span className="text-xl font-black text-[#2d3748]">{progressPercentage}%</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-400 mt-4 tracking-widest uppercase">PROGRESS</span>
+                    </div>
+                    
+                    <Link href={`/projects/${project.id}`} className="absolute inset-0 z-10">
+                      <span className="sr-only">View Project {project.name}</span>
+                    </Link>
                   </div>
-                  <Link href={`/projects/${project.id}`} className="text-sm font-bold bg-white border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                    Open
-                  </Link>
-                </div>
-              ))}
+                );
+              })}
               {saProjects.length === 0 && (
-                <p className="text-gray-500 text-sm font-medium text-center py-4">You are not assigned to any projects yet.</p>
+                <div className="col-span-full">
+                  <p className="text-gray-500 text-sm font-medium text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">You are not assigned to any projects yet.</p>
+                </div>
               )}
             </div>
           </div>
@@ -127,11 +182,7 @@ export default async function DashboardPage() {
         </p>
       )}
 
-      <form action={signOut}>
-        <button type="submit" className="py-2.5 px-6 bg-white border-2 border-[#2d3748] text-[#2d3748] hover:bg-slate-50 rounded-xl font-bold transition-colors">
-          Logout
-        </button>
-      </form>
+
     </div>
   )
 }
