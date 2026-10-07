@@ -68,7 +68,7 @@ export default function EditModulePage({ params }: { params: Promise<{ projectId
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-      <h1 className="text-3xl font-extrabold text-[#2d3748] mb-8">Edit Module</h1>
+      <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-8">Edit Module</h1>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
@@ -76,7 +76,7 @@ export default function EditModulePage({ params }: { params: Promise<{ projectId
           <input
             type="text"
             required
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
             value={formData.name}
             onChange={(e) => setFormData({...formData, name: e.target.value})}
           />
@@ -86,7 +86,7 @@ export default function EditModulePage({ params }: { params: Promise<{ projectId
           <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
           <textarea
             rows={3}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
             value={formData.description}
             onChange={(e) => setFormData({...formData, description: e.target.value})}
           />
@@ -99,7 +99,7 @@ export default function EditModulePage({ params }: { params: Promise<{ projectId
               type="number"
               min="1"
               required
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
               value={formData.priority}
               onChange={(e) => setFormData({...formData, priority: parseInt(e.target.value) || 1})}
             />
@@ -107,7 +107,7 @@ export default function EditModulePage({ params }: { params: Promise<{ projectId
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
             <select
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
               value={formData.status}
               onChange={(e) => setFormData({...formData, status: e.target.value})}
             >
@@ -133,7 +133,7 @@ export default function EditModulePage({ params }: { params: Promise<{ projectId
           <button
             type="submit"
             disabled={isLoading}
-            className="flex-1 py-3.5 px-4 text-white bg-[#263148] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
+            className="flex-1 py-3.5 px-4 text-white bg-[var(--sys-primary)] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
           >
             {isLoading ? 'Saving...' : 'Save Changes'}
           </button>

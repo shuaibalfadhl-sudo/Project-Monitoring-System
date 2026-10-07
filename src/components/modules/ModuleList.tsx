@@ -13,9 +13,10 @@ interface ModuleListProps {
   projectId: string
   isManager: boolean
   isAuditor: boolean
+  isDeveloper?: boolean
 }
 
-export default function ModuleList({ modules, projectId, isManager, isAuditor }: ModuleListProps) {
+export default function ModuleList({ modules, projectId, isManager, isAuditor, isDeveloper }: ModuleListProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedModule, setSelectedModule] = useState<ProjectModule | null>(null)
@@ -117,7 +118,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
   return (
     <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
       <div className="p-6 sm:p-8 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-xl font-bold text-[#2d3748]">Modules</h2>
+        <h2 className="text-xl font-bold text-[var(--sys-primary)]">Modules</h2>
         
         <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3 items-center">
           {/* Search Bar */}
@@ -195,7 +196,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
                     onClick={() => openModal(module)}
                     className="hover:bg-gray-50/50 transition-colors cursor-pointer"
                   >
-                    <td className="py-4 font-bold text-[#2d3748]">
+                    <td className="py-4 font-bold text-[var(--sys-primary)]">
                       {module.name}
                     </td>
                     <td className="py-4 text-center">
@@ -307,7 +308,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-extrabold text-[#2d3748]">Module Details</h2>
+              <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Module Details</h2>
               <button 
                 onClick={() => setSelectedModule(null)}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
@@ -321,7 +322,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
             <div className="p-6 overflow-y-auto flex-1 space-y-6">
               <div>
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Module Name</h3>
-                <p className="text-lg font-bold text-[#2d3748]">{selectedModule.name}</p>
+                <p className="text-lg font-bold text-[var(--sys-primary)]">{selectedModule.name}</p>
               </div>
               
               <div>
@@ -345,6 +346,46 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
                   </span>
                 </div>
               </div>
+
+              {(selectedModule.qa_acknowledged_at || selectedModule.qa_result_acknowledged_at) && (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Workflow Acknowledgements</h3>
+                  <div className="space-y-3">
+                    {selectedModule.qa_acknowledged_at && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">System Auditor QA</span>
+                        <span className="text-sm font-semibold text-[var(--sys-primary)]">
+                          {selectedModule.qa_acknowledged_by_name || 'Unknown Auditor'} — {new Intl.DateTimeFormat('en-US', {
+                            timeZone: 'Asia/Manila',
+                            year: 'numeric',
+                            month: 'short',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          }).format(new Date(selectedModule.qa_acknowledged_at))}
+                        </span>
+                      </div>
+                    )}
+                    {selectedModule.qa_result_acknowledged_at && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">Project Manager Rework</span>
+                        <span className="text-sm font-semibold text-[var(--sys-primary)]">
+                          {selectedModule.qa_result_acknowledged_by_name || 'Unknown PM'} — {new Intl.DateTimeFormat('en-US', {
+                            timeZone: 'Asia/Manila',
+                            year: 'numeric',
+                            month: 'short',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          }).format(new Date(selectedModule.qa_result_acknowledged_at))}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {isAuditor && selectedModule.status === 'for_qa' && (
                 <div className="border-t border-gray-100 pt-6 mt-6">
@@ -380,7 +421,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
                         value={reworkLink}
                         onChange={(e) => setReworkLink(e.target.value)}
                         placeholder="Enter document link or provide a description of what needs to be fixed..."
-                        className="w-full p-4 rounded-xl border-2 border-rose-100 bg-rose-50/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 outline-none transition-all resize-none h-32 text-[#2d3748] font-medium placeholder:text-rose-300"
+                        className="w-full p-4 rounded-xl border-2 border-rose-100 bg-rose-50/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 outline-none transition-all resize-none h-32 text-[var(--sys-primary)] font-medium placeholder:text-rose-300"
                         required
                       />
                     </div>
@@ -413,6 +454,62 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor }:
                       }`}
                     >
                       {isSubmitting ? 'Saving...' : 'Save Decision'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isDeveloper && ['pending', 'development'].includes(selectedModule.status) && (
+                <div className="border-t border-gray-100 pt-6 mt-6">
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Update Status</h3>
+                  <div className="flex gap-4">
+                    <label className={`flex-1 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${newStatus === 'development' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-[0_4px_12px_rgba(59,130,246,0.15)]' : 'border-gray-200 hover:border-blue-200 text-gray-500 hover:bg-blue-50/50'}`}>
+                      <input type="radio" name="status" value="development" className="hidden" checked={newStatus === 'development'} onChange={(e) => setNewStatus(e.target.value)} />
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${newStatus === 'development' ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                        </svg>
+                      </div>
+                      <span className="font-bold">Development</span>
+                    </label>
+                    
+                    <label className={`flex-1 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${newStatus === 'pm_review' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-[0_4px_12px_rgba(99,102,241,0.15)]' : 'border-gray-200 hover:border-indigo-200 text-gray-500 hover:bg-indigo-50/50'}`}>
+                      <input type="radio" name="status" value="pm_review" className="hidden" checked={newStatus === 'pm_review'} onChange={(e) => setNewStatus(e.target.value)} />
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${newStatus === 'pm_review' ? 'bg-indigo-100' : 'bg-gray-100'}`}>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span className="font-bold">PM Review</span>
+                    </label>
+                  </div>
+
+                  {error && (
+                    <div className="mt-4 p-4 bg-red-50 border border-red-100 text-red-700 rounded-xl font-medium text-sm flex items-start gap-3">
+                      <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      {error}
+                    </div>
+                  )}
+                  
+                  <div className="mt-6 flex justify-end gap-3">
+                    <button
+                      onClick={() => setSelectedModule(null)}
+                      className="px-6 py-2.5 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors"
+                      disabled={isSubmitting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={!newStatus || isSubmitting}
+                      className={`px-8 py-2.5 rounded-xl font-bold text-white transition-all shadow-lg ${
+                        !newStatus ? 'bg-gray-300 cursor-not-allowed shadow-none' : 
+                        'bg-[var(--sys-primary)] hover:bg-[#1a2333] shadow-[var(--sys-primary)]/20'
+                      }`}
+                    >
+                      {isSubmitting ? 'Saving...' : 'Update Status'}
                     </button>
                   </div>
                 </div>

@@ -37,7 +37,7 @@ export default function ViewAllMembersModal({ members, isManager }: { members: M
         {/* Modal Content */}
         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]">
           <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-            <h2 className="text-xl font-extrabold text-[#2d3748]">All Project Members</h2>
+            <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">All Project Members</h2>
             <button 
               onClick={() => setIsOpen(false)}
               className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
@@ -57,7 +57,7 @@ export default function ViewAllMembersModal({ members, isManager }: { members: M
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-[#2d3748]">{member.full_name || 'Unnamed member'}</p>
+                      <p className="text-sm font-bold text-[var(--sys-primary)]">{member.full_name || 'Unnamed member'}</p>
                       {member.is_owner && (
                         <span className="bg-blue-100 text-blue-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Owner</span>
                       )}

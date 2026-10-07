@@ -1,4 +1,4 @@
-export type UserRole = "project_manager" | "system_auditor" | "pending";
+export type UserRole = "project_manager" | "system_auditor" | "developer" | "super_admin" | "pending";
 
 export interface Profile {
   id: string;

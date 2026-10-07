@@ -6,36 +6,66 @@ import QaMonitoringClient from '@/components/modules/QaMonitoringClient'
 export default async function QaMonitoringPage() {
   const profile = await getUserProfile()
 
-  if (!profile || profile.role !== 'system_auditor') {
+  if (!profile || (profile.role !== 'system_auditor' && profile.role !== 'super_admin')) {
     redirect('/dashboard')
   }
 
   const supabaseServer = await createClient()
   
-  const { data } = await supabaseServer
-    .from('project_members')
-    .select(`
-      projects (
+  const isSuperAdmin = profile.role === 'super_admin'
+  let saProjects: any[] = []
+
+  if (isSuperAdmin) {
+    const { data } = await supabaseServer
+      .from('projects')
+      .select(`
         id,
         name,
+        created_by,
         project_modules (
           id,
           name,
           description,
           priority,
-          status
+          status,
+          module_document_url,
+          qa_result_document_url
         )
-      )
-    `)
-    .eq('user_id', profile.id)
+      `)
+    
+    saProjects = data || []
+  } else {
+    const { data } = await supabaseServer
+      .from('project_members')
+      .select(`
+        projects (
+          id,
+          name,
+          created_by,
+          project_modules (
+            id,
+            name,
+            description,
+            priority,
+            status,
+            module_document_url,
+            qa_result_document_url
+          )
+        )
+      `)
+      .eq('user_id', profile.id)
+      
+    if (data) {
+      saProjects = data.map(d => d.projects).filter(Boolean)
+    }
+  }
 
   const allQaModules: any[] = []
 
-  if (data) {
-    const saProjects = data.map(d => d.projects).filter(Boolean)
+  if (saProjects.length > 0) {
     saProjects.forEach((p: any) => {
       if (p.project_modules) {
-        const qaModules = p.project_modules.filter((m: any) => m.status === 'for_qa')
+        const qaModules = p.project_modules.filter((m: any) => m.status === 'for_qa' || m.status === 'auditing')
         qaModules.forEach((m: any) => {
           allQaModules.push({
             id: m.id,
@@ -43,9 +73,12 @@ export default async function QaMonitoringPage() {
             description: m.description,
             priority: m.priority,
             status: m.status,
+            module_document_url: m.module_document_url,
+            qa_result_document_url: m.qa_result_document_url,
             project: {
               id: p.id,
-              name: p.name
+              name: p.name,
+              created_by: p.created_by
             }
           })
         })
@@ -55,6 +88,19 @@ export default async function QaMonitoringPage() {
 
   // Sort by priority (1 is highest, assuming numerical priority)
   allQaModules.sort((a, b) => a.priority - b.priority)
+
+  // Fetch all profiles to map creator names
+  const { data: allProfiles } = await supabaseServer
+    .from('profiles')
+    .select('id, full_name')
+  
+  const profilesMap = new Map(allProfiles?.map(p => [p.id, p.full_name]) || [])
+  
+  allQaModules.forEach((m: any) => {
+    if (m.project && m.project.created_by) {
+      m.project.creator_name = profilesMap.get(m.project.created_by)
+    }
+  })
 
   return <QaMonitoringClient initialModules={allQaModules} />
 }

@@ -21,6 +21,15 @@ export interface ProjectModule {
   priority: number
   status: ModuleStatus
   created_at: string
+  qa_acknowledged_at?: string | null
+  qa_acknowledged_by?: string | null
+  qa_acknowledged_by_name?: string | null
+  qa_result_acknowledged_at?: string | null
+  qa_result_acknowledged_by?: string | null
+  qa_result_acknowledged_by_name?: string | null
+  module_document_url?: string | null
+  qa_result_document_url?: string | null
+  assigned_developer_id?: string | null
 }
 
 export interface ProjectMember {

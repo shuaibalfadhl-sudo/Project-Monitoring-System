@@ -29,12 +29,12 @@ export default function RegisterPage() {
             <div className="absolute left-4 bottom-8 w-12 h-12 bg-blue-900 rounded-full z-0 opacity-10"></div>
           </div>
           
-          <h2 className="text-xl font-bold text-[#2d3748] mb-3">Already Having An Account?</h2>
+          <h2 className="text-xl font-bold text-[var(--sys-primary)] mb-3">Already Having An Account?</h2>
           <p className="text-sm text-gray-400 mb-8 font-medium">We Are Happy To Have You Back</p>
           
           <Link 
             href="/login" 
-            className="w-full max-w-[200px] py-3 px-4 border-2 border-[#2d3748] text-[#2d3748] rounded-xl font-bold hover:bg-slate-50 transition-colors inline-block"
+            className="w-full max-w-[200px] py-3 px-4 border-2 border-[var(--sys-primary)] text-[var(--sys-primary)] rounded-xl font-bold hover:bg-slate-50 transition-colors inline-block"
           >
             Login
           </Link>
@@ -43,7 +43,7 @@ export default function RegisterPage() {
         {/* Right Side - Form */}
         <div className="w-full md:w-[55%] py-8 md:py-12 flex flex-col justify-center">
           <div className="max-w-[420px] mx-auto md:mx-0 w-full">
-            <h1 className="text-[28px] font-extrabold text-[#2d3748] mb-2">Create Account</h1>
+            <h1 className="text-[28px] font-extrabold text-[var(--sys-primary)] mb-2">Create Account</h1>
             <p className="text-sm text-gray-500 mb-8 font-medium">Get started by creating your new account</p>
             
             <RegisterForm />

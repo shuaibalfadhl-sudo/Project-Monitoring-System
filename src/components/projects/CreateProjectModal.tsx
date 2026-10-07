@@ -67,7 +67,7 @@ export default function CreateProjectModal() {
     <>
       <button 
         onClick={() => setIsOpen(true)}
-        className="py-2.5 px-6 bg-[#263148] text-white hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg"
+        className="py-2.5 px-6 bg-[var(--sys-primary)] text-white hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg"
       >
         + Create Project
       </button>
@@ -76,7 +76,7 @@ export default function CreateProjectModal() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-extrabold text-[#2d3748]">Create Project</h2>
+              <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Create Project</h2>
               <button 
                 onClick={() => setIsOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
@@ -94,7 +94,7 @@ export default function CreateProjectModal() {
                   <input
                     type="text"
                     required
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                   />
@@ -104,7 +104,7 @@ export default function CreateProjectModal() {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
                   <textarea
                     rows={3}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                   />
@@ -115,7 +115,7 @@ export default function CreateProjectModal() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
                     <input
                       type="date"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                       value={formData.start_date}
                       onChange={(e) => setFormData({...formData, start_date: e.target.value})}
                     />
@@ -124,7 +124,7 @@ export default function CreateProjectModal() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Target Date</label>
                     <input
                       type="date"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                       value={formData.target_date}
                       onChange={(e) => setFormData({...formData, target_date: e.target.value})}
                     />
@@ -134,7 +134,7 @@ export default function CreateProjectModal() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
                   <select
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.status}
                     onChange={(e) => setFormData({...formData, status: e.target.value})}
                   >
@@ -160,7 +160,7 @@ export default function CreateProjectModal() {
                 form="create-project-form"
                 type="submit"
                 disabled={isLoading}
-                className="px-6 py-2.5 text-white bg-[#263148] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
+                className="px-6 py-2.5 text-white bg-[var(--sys-primary)] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
               >
                 {isLoading ? 'Creating...' : 'Create Project'}
               </button>

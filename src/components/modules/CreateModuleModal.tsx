@@ -15,7 +15,8 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
     name: '',
     description: '',
     priority: 1,
-    status: 'pending'
+    status: 'pending',
+    module_document_url: ''
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -39,7 +40,8 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
         name: '',
         description: '',
         priority: 1,
-        status: 'pending'
+        status: 'pending',
+        module_document_url: ''
       })
       router.refresh()
       setIsLoading(false)
@@ -50,7 +52,7 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
     <>
       <button 
         onClick={() => setIsOpen(true)}
-        className="w-full sm:w-auto py-2 px-5 bg-white border border-gray-200 text-[#2d3748] hover:bg-gray-50 hover:border-gray-300 rounded-xl font-bold transition-all shadow-sm text-sm text-center"
+        className="w-full sm:w-auto py-2 px-5 bg-white border border-gray-200 text-[var(--sys-primary)] hover:bg-gray-50 hover:border-gray-300 rounded-xl font-bold transition-all shadow-sm text-sm text-center"
       >
         + Add
       </button>
@@ -59,7 +61,7 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-extrabold text-[#2d3748]">Add Module</h2>
+              <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Add Module</h2>
               <button 
                 onClick={() => setIsOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
@@ -77,7 +79,7 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
                   <input
                     type="text"
                     required
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                   />
@@ -87,7 +89,7 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
                   <textarea
                     rows={3}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                   />
@@ -100,7 +102,7 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
                       type="number"
                       min="1"
                       required
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                       value={formData.priority}
                       onChange={(e) => setFormData({...formData, priority: parseInt(e.target.value) || 1})}
                     />
@@ -108,7 +110,7 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
                     <select
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                       value={formData.status}
                       onChange={(e) => setFormData({...formData, status: e.target.value})}
                     >
@@ -121,6 +123,18 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
                       <option value="qa_approved">QA Approved</option>
                     </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Module Document Link (Optional)</label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
+                    value={formData.module_document_url}
+                    onChange={(e) => setFormData({...formData, module_document_url: e.target.value})}
+                  />
+                  <p className="text-xs text-gray-500 mt-2">Provide a link to Google Drive, SharePoint, etc.</p>
                 </div>
               </form>
             </div>
@@ -138,7 +152,7 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
                 form="create-module-form"
                 type="submit"
                 disabled={isLoading}
-                className="px-6 py-2.5 text-white bg-[#263148] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
+                className="px-6 py-2.5 text-white bg-[var(--sys-primary)] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
               >
                 {isLoading ? 'Adding...' : 'Add Module'}
               </button>

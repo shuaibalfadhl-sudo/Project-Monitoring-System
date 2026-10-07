@@ -60,7 +60,7 @@ export function RegisterForm() {
     }
   }
 
-  const inputClasses = "w-full px-4 py-3.5 bg-white border-none rounded-xl text-sm shadow-[0_2px_10px_rgb(0,0,0,0.03)] focus:outline-none focus:ring-2 focus:ring-[#2d3748] placeholder-gray-400 font-medium"
+  const inputClasses = "w-full px-4 py-3.5 bg-white border-none rounded-xl text-sm shadow-[0_2px_10px_rgb(0,0,0,0.03)] focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] placeholder-gray-400 font-medium"
 
   return (
     <div className="w-full">
@@ -73,14 +73,18 @@ export function RegisterForm() {
         
         <div className="flex flex-col gap-2">
           <label className="block text-[11px] font-semibold text-gray-500 ml-1 uppercase tracking-wider">Select your role <span className="text-red-500">*</span></label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-sm font-semibold transition-colors ${role === 'project_manager' ? 'border-[#2d3748] bg-[#f4f5f7] text-[#2d3748]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-sm font-semibold transition-colors ${role === 'project_manager' ? 'border-[var(--sys-primary)] bg-[#f4f5f7] text-[var(--sys-primary)]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
               <input type="radio" name="role" value="project_manager" className="sr-only" onChange={(e) => setRole(e.target.value as UserRole)} />
               Project Manager
             </label>
-            <label className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-sm font-semibold transition-colors ${role === 'system_auditor' ? 'border-[#2d3748] bg-[#f4f5f7] text-[#2d3748]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+            <label className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-sm font-semibold transition-colors ${role === 'system_auditor' ? 'border-[var(--sys-primary)] bg-[#f4f5f7] text-[var(--sys-primary)]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
               <input type="radio" name="role" value="system_auditor" className="sr-only" onChange={(e) => setRole(e.target.value as UserRole)} />
               System Auditor
+            </label>
+            <label className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-sm font-semibold transition-colors ${role === 'developer' ? 'border-[var(--sys-primary)] bg-[#f4f5f7] text-[var(--sys-primary)]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+              <input type="radio" name="role" value="developer" className="sr-only" onChange={(e) => setRole(e.target.value as UserRole)} />
+              Developer
             </label>
           </div>
         </div>
@@ -166,7 +170,7 @@ export function RegisterForm() {
             type="checkbox"
             checked={agreeTerms}
             onChange={(e) => setAgreeTerms(e.target.checked)}
-            className="mt-1 w-4 h-4 rounded border-gray-300 text-[#263148] focus:ring-[#263148]"
+            className="mt-1 w-4 h-4 rounded border-gray-300 text-[var(--sys-primary)] focus:ring-[var(--sys-primary)]"
           />
           <label htmlFor="terms" className="text-xs text-gray-500 leading-tight">
             By clicking, you agree to the Findme&apos;s <span className="font-semibold text-gray-700">Terms and Conditions</span>
@@ -177,7 +181,7 @@ export function RegisterForm() {
           type="button"
           onClick={handleRegister}
           disabled={isLoading}
-          className="w-full py-3.5 px-4 text-white bg-[#263148] hover:bg-[#1a2333] rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[#2d3748] focus:ring-offset-2 disabled:opacity-50 transition-colors shadow-lg shadow-[#263148]/20"
+          className="w-full py-3.5 px-4 text-white bg-[var(--sys-primary)] hover:bg-[#1a2333] rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] focus:ring-offset-2 disabled:opacity-50 transition-colors shadow-lg shadow-[var(--sys-primary)]/20"
         >
           {isLoading ? 'Registering...' : 'Register'}
         </button>

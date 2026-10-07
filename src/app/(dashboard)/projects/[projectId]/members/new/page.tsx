@@ -66,13 +66,13 @@ export default function AddMemberPage({ params }: { params: Promise<{ projectId:
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-      <h1 className="text-3xl font-extrabold text-[#2d3748] mb-8">Add Project Member</h1>
+      <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-8">Add Project Member</h1>
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Search for a User (Name or Email)</label>
           <input 
             type="text"
-            className="w-full px-4 py-3 mb-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+            className="w-full px-4 py-3 mb-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
             placeholder="Type at least 2 characters to search..."
             value={searchTerm}
             onChange={(e) => {
@@ -91,7 +91,7 @@ export default function AddMemberPage({ params }: { params: Promise<{ projectId:
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-sm font-bold text-[#2d3748]">{user.full_name}</p>
+                      <p className="text-sm font-bold text-[var(--sys-primary)]">{user.full_name}</p>
                       <p className="text-xs text-gray-500">{user.email}</p>
                     </div>
                     <span className="text-xs font-semibold px-2 py-1 bg-gray-100 rounded text-gray-600 capitalize">
@@ -109,7 +109,7 @@ export default function AddMemberPage({ params }: { params: Promise<{ projectId:
         </div>
         <div className="pt-4 flex gap-4">
           <button type="button" onClick={() => router.back()} className="flex-1 py-3.5 px-4 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-bold transition-colors">Cancel</button>
-          <button type="submit" disabled={isLoading || !selectedUserId} className="flex-1 py-3.5 px-4 text-white bg-[#263148] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50">
+          <button type="submit" disabled={isLoading || !selectedUserId} className="flex-1 py-3.5 px-4 text-white bg-[var(--sys-primary)] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50">
             {isLoading ? 'Adding...' : 'Add Member'}
           </button>
         </div>

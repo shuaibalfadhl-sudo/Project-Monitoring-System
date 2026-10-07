@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { ProjectModule, ModuleStatus } from '@/types/project'
+import { useEffect } from 'react'
 
 export default function EditModuleModal({ module }: { module: ProjectModule }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -12,12 +13,39 @@ export default function EditModuleModal({ module }: { module: ProjectModule }) {
   const supabase = createClient()
   
   const [isLoading, setIsLoading] = useState(false)
+  const [developers, setDevelopers] = useState<{ id: string, full_name: string }[]>([])
+  
   const [formData, setFormData] = useState({
     name: module.name,
     description: module.description || '',
     priority: module.priority,
-    status: module.status || 'pending'
+    status: module.status || 'pending',
+    module_document_url: module.module_document_url || '',
+    assigned_developer_id: module.assigned_developer_id || ''
   })
+
+  useEffect(() => {
+    if (isOpen) {
+      // Fetch developers assigned to this project
+      const fetchDevelopers = async () => {
+        const { data, error } = await supabase
+          .from('project_members')
+          .select('user_id, profiles!inner(id, full_name, role)')
+          .eq('project_id', module.project_id)
+          .eq('profiles.role', 'developer');
+          
+        if (!error && data) {
+          const devs = data.map((d: any) => ({
+            id: d.profiles.id,
+            full_name: d.profiles.full_name || 'Unnamed Developer'
+          }));
+          setDevelopers(devs);
+        }
+      };
+      
+      fetchDevelopers();
+    }
+  }, [isOpen, module.project_id, supabase])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -52,7 +80,7 @@ export default function EditModuleModal({ module }: { module: ProjectModule }) {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-extrabold text-[#2d3748]">Edit Module</h2>
+              <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Edit Module</h2>
               <button 
                 onClick={() => setIsOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
@@ -70,7 +98,7 @@ export default function EditModuleModal({ module }: { module: ProjectModule }) {
                   <input
                     type="text"
                     required
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                   />
@@ -80,7 +108,7 @@ export default function EditModuleModal({ module }: { module: ProjectModule }) {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
                   <textarea
                     rows={3}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                   />
@@ -93,7 +121,7 @@ export default function EditModuleModal({ module }: { module: ProjectModule }) {
                       type="number"
                       min="1"
                       required
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                       value={formData.priority}
                       onChange={(e) => setFormData({...formData, priority: parseInt(e.target.value) || 1})}
                     />
@@ -101,7 +129,7 @@ export default function EditModuleModal({ module }: { module: ProjectModule }) {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
                     <select
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                       value={formData.status}
                       onChange={(e) => setFormData({...formData, status: e.target.value as ModuleStatus})}
                     >
@@ -114,6 +142,35 @@ export default function EditModuleModal({ module }: { module: ProjectModule }) {
                       <option value="qa_approved">QA Approved</option>
                     </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Assign Developer</label>
+                  <select
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
+                    value={formData.assigned_developer_id || ''}
+                    onChange={(e) => setFormData({...formData, assigned_developer_id: e.target.value || ''})}
+                  >
+                    <option value="">Unassigned</option>
+                    {developers.map(dev => (
+                      <option key={dev.id} value={dev.id}>{dev.full_name}</option>
+                    ))}
+                  </select>
+                  {developers.length === 0 && (
+                    <p className="text-xs text-orange-500 mt-2 font-medium">No developers are assigned to this project yet.</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Module Document Link (Optional)</label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
+                    value={formData.module_document_url}
+                    onChange={(e) => setFormData({...formData, module_document_url: e.target.value})}
+                  />
+                  <p className="text-xs text-gray-500 mt-2">Provide a link to Google Drive, SharePoint, etc.</p>
                 </div>
               </form>
             </div>
@@ -131,7 +188,7 @@ export default function EditModuleModal({ module }: { module: ProjectModule }) {
                 form="edit-module-form"
                 type="submit"
                 disabled={isLoading}
-                className="px-6 py-2.5 text-white bg-[#263148] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
+                className="px-6 py-2.5 text-white bg-[var(--sys-primary)] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
               >
                 {isLoading ? 'Saving...' : 'Save Changes'}
               </button>

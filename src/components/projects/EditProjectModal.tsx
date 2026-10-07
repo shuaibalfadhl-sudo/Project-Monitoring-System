@@ -53,7 +53,7 @@ export default function EditProjectModal({ project }: { project: Project }) {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-extrabold text-[#2d3748]">Edit Project</h2>
+              <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Edit Project</h2>
               <button 
                 onClick={() => setIsOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
@@ -71,7 +71,7 @@ export default function EditProjectModal({ project }: { project: Project }) {
                   <input
                     type="text"
                     required
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                   />
@@ -81,7 +81,7 @@ export default function EditProjectModal({ project }: { project: Project }) {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
                   <textarea
                     rows={3}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                   />
@@ -92,7 +92,7 @@ export default function EditProjectModal({ project }: { project: Project }) {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
                     <input
                       type="date"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                       value={formData.start_date}
                       onChange={(e) => setFormData({...formData, start_date: e.target.value})}
                     />
@@ -101,7 +101,7 @@ export default function EditProjectModal({ project }: { project: Project }) {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Target Date</label>
                     <input
                       type="date"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                       value={formData.target_date}
                       onChange={(e) => setFormData({...formData, target_date: e.target.value})}
                     />
@@ -111,7 +111,7 @@ export default function EditProjectModal({ project }: { project: Project }) {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
                   <select
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d3748] font-medium"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.status}
                     onChange={(e) => setFormData({...formData, status: e.target.value as ProjectStatus})}
                   >
@@ -137,7 +137,7 @@ export default function EditProjectModal({ project }: { project: Project }) {
                 form="edit-project-form"
                 type="submit"
                 disabled={isLoading}
-                className="px-6 py-2.5 text-white bg-[#263148] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
+                className="px-6 py-2.5 text-white bg-[var(--sys-primary)] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
               >
                 {isLoading ? 'Saving...' : 'Save Changes'}
               </button>

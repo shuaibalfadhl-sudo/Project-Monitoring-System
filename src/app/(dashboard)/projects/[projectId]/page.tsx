@@ -15,10 +15,12 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const isManager = await hasRole('project_manager')
+  const isSuperAdmin = await hasRole('super_admin')
+  const isManager = (await hasRole('project_manager')) || isSuperAdmin
   const isAuditor = await hasRole('system_auditor')
+  const isDeveloper = await hasRole('developer')
 
-  if (!isManager && !isAuditor) redirect('/dashboard')
+  if (!isManager && !isAuditor && !isDeveloper) redirect('/dashboard')
 
   // RLS ensures only the creator (manager) or assigned member (auditor) can fetch this project
   const { data: project, error: projectError } = await supabase
@@ -47,7 +49,20 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
     .eq('project_id', project.id)
     .order('priority', { ascending: true })
 
-  const totalModules = modules ? modules.length : 0
+  // Fetch all profiles to map auditor/PM names
+  const { data: allProfiles } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+  
+  const profilesMap = new Map(allProfiles?.map(p => [p.id, p.full_name]) || [])
+
+  const mappedModules = modules?.map(m => ({
+    ...m,
+    qa_acknowledged_by_name: m.qa_acknowledged_by ? profilesMap.get(m.qa_acknowledged_by) : null,
+    qa_result_acknowledged_by_name: m.qa_result_acknowledged_by ? profilesMap.get(m.qa_result_acknowledged_by) : null
+  })) || []
+
+  const totalModules = mappedModules.length
   
   let gradientString = '#f3f4f6 0% 100%';
   const statusCounts: Record<string, number> = {};
@@ -64,7 +79,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
   let presentStatuses: string[] = [];
 
   if (totalModules > 0) {
-    modules?.forEach(m => {
+    mappedModules.forEach(m => {
       const status = m.status || 'pending';
       statusCounts[status] = (statusCounts[status] || 0) + 1;
     });
@@ -92,7 +107,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
       <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-extrabold text-[#2d3748] mb-3">{project.name}</h1>
+            <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-3">{project.name}</h1>
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 capitalize border border-blue-100">
                 {project.status.replace('_', ' ')}
@@ -103,7 +118,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/projects" className="text-sm font-semibold text-gray-500 hover:text-[#2d3748]">
+            <Link href="/projects" className="text-sm font-semibold text-gray-500 hover:text-[var(--sys-primary)]">
               ← Back to Projects
             </Link>
             {isManager && (
@@ -137,7 +152,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
                   return (
                   <div key={member.user_id || member.id} className={`flex justify-between items-center p-3 rounded-xl border ${member.is_owner ? 'bg-blue-50/50 border-blue-100' : 'bg-gray-50 border-gray-100'}`}>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-[#2d3748]">{member.full_name || 'Unnamed member'}</p>
+                      <p className="text-sm font-bold text-[var(--sys-primary)]">{member.full_name || 'Unnamed member'}</p>
                       {member.is_owner && (
                         <span className="bg-blue-100 text-blue-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Owner</span>
                       )}
@@ -166,7 +181,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
                     <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: statusColors[status] }}></div>
                     <span className="text-sm font-bold text-gray-700 capitalize">{status.replace('_', ' ')}</span>
                   </div>
-                  <span className="text-base font-black text-[#2d3748]">{statusCounts[status]}</span>
+                  <span className="text-base font-black text-[var(--sys-primary)]">{statusCounts[status]}</span>
                 </div>
               )) : (
                 <div className="text-center py-4">
@@ -184,7 +199,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
                 style={{ background: `conic-gradient(${gradientString})` }}
               >
                 <div className="absolute inset-5 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
-                  <span className="text-4xl font-black text-[#2d3748] tracking-tighter">{Math.round(p_approved)}%</span>
+                  <span className="text-4xl font-black text-[var(--sys-primary)] tracking-tighter">{Math.round(p_approved)}%</span>
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1 text-center leading-tight">QA<br/>Apprv</span>
                 </div>
               </div>
@@ -195,10 +210,11 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
 
       {/* MODULES LIST */}
       <ModuleList 
-        modules={modules || []} 
+        modules={mappedModules} 
         projectId={project.id} 
         isManager={isManager} 
-        isAuditor={isAuditor} 
+        isAuditor={isAuditor}
+        isDeveloper={isDeveloper}
       />
     </div>
   )
