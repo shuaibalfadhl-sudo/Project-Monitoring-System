@@ -279,15 +279,17 @@ export default function AllModulesClient({ initialModules, role }: { initialModu
                 </div>
               </div>
               
-              {selectedModule.module_document_url && (
-                <div>
-                  <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Module Document</h3>
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Module Document</h3>
+                {selectedModule.module_document_url ? (
                   <a href={selectedModule.module_document_url} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">
                     View Document ↗
                   </a>
-                </div>
-              )}
-              
+                ) : (
+                  <p className="text-sm font-semibold text-slate-400 italic">No attached document by PM</p>
+                )}
+              </div>
+
               {selectedModule.qa_result_document_url && (
                 <div>
                   <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">QA Result Document</h3>
@@ -296,6 +298,60 @@ export default function AllModulesClient({ initialModules, role }: { initialModu
                   </a>
                 </div>
               )}
+
+              {/* Workflow Acknowledgements - always visible */}
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Workflow Acknowledgements</h3>
+                <div className="space-y-3">
+                  {/* System Auditor QA Acknowledgement */}
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">System Auditor QA</span>
+                    {selectedModule.qa_acknowledged_at ? (
+                      <span className="text-sm font-semibold text-[var(--sys-primary)]">
+                        {selectedModule.qa_acknowledged_by_name || 'Unknown Auditor'} — {new Intl.DateTimeFormat('en-US', {
+                          timeZone: 'Asia/Manila',
+                          year: 'numeric',
+                          month: 'short',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        }).format(new Date(selectedModule.qa_acknowledged_at))}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 dark:text-slate-500">
+                        <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 inline-block"></span>
+                        Not yet acknowledged
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-100 dark:border-slate-700/50"></div>
+
+                  {/* Project Manager Rework Acknowledgement */}
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Project Manager QA Result</span>
+                    {selectedModule.qa_result_acknowledged_at ? (
+                      <span className="text-sm font-semibold text-[var(--sys-primary)]">
+                        {selectedModule.qa_result_acknowledged_by_name || 'Unknown PM'} — {new Intl.DateTimeFormat('en-US', {
+                          timeZone: 'Asia/Manila',
+                          year: 'numeric',
+                          month: 'short',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        }).format(new Date(selectedModule.qa_result_acknowledged_at))}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 dark:text-slate-500">
+                        <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 inline-block"></span>
+                        Not yet acknowledged
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
             
             <div className="p-6 border-t border-slate-100 dark:border-slate-700 flex justify-end">
