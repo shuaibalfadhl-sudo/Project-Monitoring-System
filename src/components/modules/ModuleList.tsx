@@ -24,6 +24,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor, i
   
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const [newStatus, setNewStatus] = useState<string>('')
   const [reworkLink, setReworkLink] = useState<string>('')
@@ -133,6 +134,18 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor, i
         <h2 className="text-xl font-bold text-[var(--sys-primary)]">Modules</h2>
         
         <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3 items-center">
+          {/* Refresh Button */}
+          <button
+            onClick={() => { setIsRefreshing(true); router.refresh(); setTimeout(() => setIsRefreshing(false), 1000); }}
+            disabled={isRefreshing}
+            title="Refresh table"
+            className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl text-sm font-medium bg-white text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60"
+          >
+            <svg className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
           {/* Search Bar */}
           <div className="relative w-full sm:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
