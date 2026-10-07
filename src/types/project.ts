@@ -11,7 +11,7 @@ export interface Project {
   created_at: string
 }
 
-export type ModuleStatus = 'pending' | 'development' | 'pm_review' | 'for_qa' | 'auditing' | 'rework' | 'qa_approved'
+export type ModuleStatus = 'pending' | 'development' | 'pm_review' | 'for_qa' | 'auditing' | 'revision' | 'revising' | 'qa_approved' | 'deployment' | 'deployed'
 
 export interface ProjectModule {
   id: string
@@ -30,6 +30,8 @@ export interface ProjectModule {
   module_document_url?: string | null
   qa_result_document_url?: string | null
   assigned_developer_id?: string | null
+  category?: string | null
+  revision_count?: number
 }
 
 export interface ProjectMember {

@@ -7,9 +7,14 @@ import ViewAllMembersModal from '@/components/ViewAllMembersModal'
 import ModuleList from '@/components/modules/ModuleList'
 import EditProjectModal from '@/components/projects/EditProjectModal'
 import RemoveMemberButton from '@/components/projects/RemoveMemberButton'
+import StatusFilter from '@/components/dashboard/StatusFilter'
+import ProjectPieChart from '@/components/dashboard/ProjectPieChart'
 
-export default async function ProjectDetailsPage({ params }: { params: Promise<{ projectId: string }> }) {
+export default async function ProjectDetailsPage({ params, searchParams }: { params: Promise<{ projectId: string }>, searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const resolvedParams = await params
+  const paramsSearch = await searchParams;
+  const currentStatus = typeof paramsSearch?.status === 'string' ? paramsSearch.status : 'deployed';
+
   const supabase = await createClient()
 
   // Wait for auth to resolve
@@ -68,16 +73,20 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
   let gradientString = '#f3f4f6 0% 100%';
   const statusCounts: Record<string, number> = {};
   const statusColors: Record<string, string> = {
-    pending: '#94a3b8',
+    pending: '#9ca3af',
     development: '#3b82f6',
-    pm_review: '#6366f1',
-    for_qa: '#f59e0b',
-    auditing: '#0ea5e9',
-    rework: '#e11d48',
-    qa_approved: '#10b981'
+    pm_review: '#a855f7',
+    for_qa: '#f97316',
+    auditing: '#f59e0b',
+    revision: '#ef4444',
+    revising: '#f43f5e',
+    qa_approved: '#22c55e',
+    deployment: '#6366f1',
+    deployed: '#10b981'
   };
   
   let presentStatuses: string[] = [];
+  let pieChartData: any[] = [];
 
   if (totalModules > 0) {
     mappedModules.forEach(m => {
@@ -85,22 +94,17 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
       statusCounts[status] = (statusCounts[status] || 0) + 1;
     });
     
-    const order = ['qa_approved', 'auditing', 'for_qa', 'pm_review', 'development', 'rework', 'pending'];
+    const order = ['deployed', 'deployment', 'qa_approved', 'auditing', 'for_qa', 'revising', 'revision', 'pm_review', 'development', 'pending'];
     presentStatuses = Object.keys(statusCounts).sort((a, b) => order.indexOf(a) - order.indexOf(b));
     
-    let currentPercentage = 0;
-    const gradientParts = presentStatuses.map(status => {
-      const percentage = (statusCounts[status] / totalModules) * 100;
-      const color = statusColors[status] || '#94a3b8';
-      const part = `${color} ${currentPercentage}% ${currentPercentage + percentage}%`;
-      currentPercentage += percentage;
-      return part;
-    });
-    
-    gradientString = gradientParts.join(', ');
+    pieChartData = presentStatuses.map(status => ({
+      id: status,
+      value: statusCounts[status] || 0,
+      color: statusColors[status] || '#94a3b8'
+    }));
   }
   
-  const p_approved = totalModules > 0 ? ((statusCounts['qa_approved'] || 0) / totalModules) * 100 : 0;
+  const p_approved = totalModules > 0 ? (currentStatus === 'all' ? 100 : ((statusCounts[currentStatus] || 0) / totalModules) * 100) : 0;
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
@@ -126,6 +130,10 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
               <EditProjectModal project={project} />
             )}
           </div>
+        </div>
+        
+        <div className="mt-6 border-t border-gray-100 pt-6">
+          <StatusFilter currentStatus={currentStatus} />
         </div>
         
         <div className="grid lg:grid-cols-3 gap-8 mt-8">
@@ -193,15 +201,17 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
           </div>
 
           <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm flex flex-col justify-center items-center">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-8 w-full">QA Progress</h3>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-8 w-full">Project Progress</h3>
             <div className="flex-1 flex flex-col justify-center items-center py-4">
-              <div 
-                className="w-48 h-48 rounded-full relative shadow-inner"
-                style={{ background: `conic-gradient(${gradientString})` }}
-              >
-                <div className="absolute inset-5 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
-                  <span className="text-4xl font-black text-[var(--sys-primary)] tracking-tighter">{Math.round(p_approved)}%</span>
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1 text-center leading-tight">QA<br/>Apprv</span>
+              <div className="w-56 h-56 rounded-full relative shadow-inner bg-gray-50 dark:bg-slate-800">
+                <div className="absolute inset-0 z-0">
+                  <ProjectPieChart data={typeof pieChartData !== 'undefined' ? pieChartData : []} activeId={currentStatus} />
+                </div>
+                <div className="absolute inset-8 bg-white rounded-full flex flex-col items-center justify-center shadow-sm z-10 pointer-events-none">
+                  <span className="text-5xl font-black text-[var(--sys-primary)] tracking-tighter">{Math.round(p_approved)}%</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1 text-center leading-tight break-all px-2">
+                    {currentStatus.replace('_', ' ')}
+                  </span>
                 </div>
               </div>
             </div>

@@ -16,7 +16,8 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
     description: '',
     priority: 'medium',
     status: 'pending',
-    module_document_url: ''
+    module_document_url: '',
+    category: 'new_module'
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -41,7 +42,8 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
         description: '',
         priority: 'medium',
         status: 'pending',
-        module_document_url: ''
+        module_document_url: '',
+        category: 'new_module'
       })
       router.refresh()
       setIsLoading(false)
@@ -110,6 +112,20 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
                     </select>
                   </div>
                   <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                    <select
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
+                      value={formData.category}
+                      onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    >
+                      <option value="new_module">New Module</option>
+                      <option value="revise_module">Revise Module</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 mt-4">
+                  <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
                     <select
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
@@ -121,8 +137,10 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
                       <option value="pm_review">PM Review</option>
                       <option value="for_qa">For QA</option>
                       <option value="auditing">Auditing</option>
-                      <option value="rework">Rework</option>
+                      <option value="revising">Revising</option>
                       <option value="qa_approved">QA Approved</option>
+                      <option value="deployment">Deployment</option>
+                      <option value="deployed">Deployed</option>
                     </select>
                   </div>
                 </div>

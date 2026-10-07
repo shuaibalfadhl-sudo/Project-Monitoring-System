@@ -1,77 +1,92 @@
-'use client'
+"use client";
 
-import { useState, use } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { toast } from 'sonner'
+import { useState, use } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
-export default function CreateModulePage({ params }: { params: Promise<{ projectId: string }> }) {
-  const resolvedParams = use(params)
-  const router = useRouter()
-  const supabase = createClient()
-  
-  const [isLoading, setIsLoading] = useState(false)
+export default function CreateModulePage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
+  const resolvedParams = use(params);
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    priority: 'medium',
-    status: 'pending'
-  })
+    name: "",
+    description: "",
+    priority: "medium",
+    status: "pending",
+    category: "new_module",
+  });
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
-    const { error } = await supabase
-      .from('project_modules')
-      .insert({
-        ...formData,
-        project_id: resolvedParams.projectId
-      })
+    const { error } = await supabase.from("project_modules").insert({
+      ...formData,
+      project_id: resolvedParams.projectId,
+    });
 
     if (error) {
-      toast.error(error.message)
-      setIsLoading(false)
+      toast.error(error.message);
+      setIsLoading(false);
     } else {
-      toast.success('Module added successfully!')
-      router.push(`/projects/${resolvedParams.projectId}`)
-      router.refresh()
+      toast.success("Module added successfully!");
+      router.push(`/projects/${resolvedParams.projectId}`);
+      router.refresh();
     }
   }
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-      <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-8">Add Module</h1>
-      
+      <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-8">
+        Add Module
+      </h1>
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Module Name <span className="text-red-500">*</span></label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Module Name <span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
             required
             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
             value={formData.name}
-            onChange={(e) => setFormData({...formData, name: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Description
+          </label>
           <textarea
             rows={3}
             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
             value={formData.description}
-            onChange={(e) => setFormData({...formData, description: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Priority
+            </label>
             <select
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
               value={formData.priority}
-              onChange={(e) => setFormData({...formData, priority: e.target.value})}
+              onChange={(e) =>
+                setFormData({ ...formData, priority: e.target.value })
+              }
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -80,19 +95,44 @@ export default function CreateModulePage({ params }: { params: Promise<{ project
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Category
+            </label>
+            <select
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
+              value={formData.category}
+              onChange={(e) =>
+                setFormData({ ...formData, category: e.target.value })
+              }
+            >
+              <option value="new_module">New Module</option>
+              <option value="revise_module">Revise Module</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Status
+            </label>
             <select
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
               value={formData.status}
-              onChange={(e) => setFormData({...formData, status: e.target.value})}
+              onChange={(e) =>
+                setFormData({ ...formData, status: e.target.value })
+              }
             >
               <option value="pending">Pending</option>
               <option value="development">Development</option>
               <option value="pm_review">PM Review</option>
               <option value="for_qa">For QA</option>
               <option value="auditing">Auditing</option>
-              <option value="rework">Rework</option>
+              <option value="revision">Revision</option>
+              <option value="revising">Revising</option>
               <option value="qa_approved">QA Approved</option>
+              <option value="deployment">Deployment</option>
+              <option value="deployed">Deployed</option>
             </select>
           </div>
         </div>
@@ -110,10 +150,10 @@ export default function CreateModulePage({ params }: { params: Promise<{ project
             disabled={isLoading}
             className="flex-1 py-3.5 px-4 text-white bg-[var(--sys-primary)] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
           >
-            {isLoading ? 'Adding...' : 'Add Module'}
+            {isLoading ? "Adding..." : "Add Module"}
           </button>
         </div>
       </form>
     </div>
-  )
+  );
 }

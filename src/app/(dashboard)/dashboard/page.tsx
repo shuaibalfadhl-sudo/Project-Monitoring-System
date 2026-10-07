@@ -4,8 +4,13 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 
-export default async function DashboardPage() {
+import StatusFilter from '@/components/dashboard/StatusFilter'
+import ProjectPieChart from '@/components/dashboard/ProjectPieChart'
+
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const profile = await getUserProfile()
+  const params = await searchParams;
+  const currentStatus = typeof params?.status === 'string' ? params.status : 'deployed';
 
   if (!profile) {
     redirect('/login')
@@ -70,7 +75,7 @@ export default async function DashboardPage() {
   displayProjects.forEach((p: any) => {
     if (p.project_modules) {
       totalModules += p.project_modules.length
-      approvedModules += p.project_modules.filter((m: any) => m.status === 'qa_approved').length
+      approvedModules += p.project_modules.filter((m: any) => m.status === currentStatus).length
       totalForQaModules += p.project_modules.filter((m: any) => m.status === 'for_qa').length
     }
   })
@@ -78,28 +83,136 @@ export default async function DashboardPage() {
   totalProjects = displayProjects.length
   const overallProgress = totalModules === 0 ? 0 : Math.round((approvedModules / totalModules) * 100)
 
+  // Fetch leaderboard data for everyone
+  let pmLeaderboard: { pmName: string; deployedPercentage: number; totalModules: number; deployedModules: number; pmId: string }[] = [];
+  
+  // Try to use the RPC which bypasses RLS (if the user has created it)
+  const { data: rpcData, error: rpcError } = await supabaseServer.rpc('get_pm_leaderboard');
+  
+  if (rpcError) {
+    console.error("RPC Error:", rpcError);
+  }
+
+  if (!rpcError && rpcData) {
+    pmLeaderboard = rpcData.map((row: any) => ({
+      pmId: row.pm_id,
+      pmName: row.pm_name,
+      totalModules: Number(row.total_modules),
+      deployedModules: Number(row.deployed_modules),
+      deployedPercentage: Number(row.deployed_percentage)
+    }));
+  } else {
+    // Fallback to manual fetching if RPC doesn't exist (this is subject to RLS for non-admins)
+    const [ { data: allProjectsForLeaderboard }, { data: allProfiles } ] = await Promise.all([
+      supabaseServer
+        .from('projects')
+        .select(`
+          id,
+          created_by,
+          project_modules (id, status)
+        `),
+      supabaseServer
+        .from('profiles')
+        .select('id, full_name')
+    ]);
+
+    const profilesMap = new Map(allProfiles?.map(p => [p.id, p.full_name]) || []);
+
+    if (allProjectsForLeaderboard) {
+      const pmStats: Record<string, { name: string; total: number; deployed: number }> = {};
+      
+      allProjectsForLeaderboard.forEach((p: any) => {
+        const pmId = p.created_by;
+        const pmName = profilesMap.get(pmId) || 'Unknown PM';
+        
+        if (!pmStats[pmId]) {
+          pmStats[pmId] = { name: pmName, total: 0, deployed: 0 };
+        }
+        
+        if (p.project_modules) {
+          pmStats[pmId].total += p.project_modules.length;
+          pmStats[pmId].deployed += p.project_modules.filter((m: any) => m.status === 'deployed').length;
+        }
+      });
+
+      pmLeaderboard = Object.entries(pmStats)
+        .filter(([_, stat]) => stat.total > 0)
+        .map(([id, stat]) => ({
+          pmId: id,
+          pmName: stat.name,
+          totalModules: stat.total,
+          deployedModules: stat.deployed,
+          deployedPercentage: (stat.deployed / stat.total) * 100
+        }))
+        .sort((a, b) => a.deployedPercentage - b.deployedPercentage)
+        .slice(0, 3);
+    }
+  }
+
+  // Fetch Developer Revision Leaderboard
+  let devRevisionLeaderboard: { devId: string; devName: string; totalRevisions: number; totalModules: number }[] = [];
+  
+  const { data: devRpcData, error: devRpcError } = await supabaseServer.rpc('get_dev_revision_leaderboard');
+  
+  if (devRpcError) {
+    console.error("Dev RPC Error:", devRpcError);
+  }
+
+  if (!devRpcError && devRpcData) {
+    devRevisionLeaderboard = devRpcData.map((row: any) => ({
+      devId: row.dev_id,
+      devName: row.dev_name,
+      totalRevisions: Number(row.total_revisions),
+      totalModules: Number(row.total_modules)
+    }));
+  } else {
+    // Fallback logic for Developer Revisions
+    const [ { data: allModulesForLeaderboard }, { data: allProfiles } ] = await Promise.all([
+      supabaseServer
+        .from('project_modules')
+        .select('id, assigned_developer_id, revision_count'),
+      supabaseServer
+        .from('profiles')
+        .select('id, full_name')
+    ]);
+
+    if (allModulesForLeaderboard && allProfiles) {
+      const profilesMap = new Map(allProfiles.map(p => [p.id, p.full_name]));
+      const devStats: Record<string, { name: string; totalRevisions: number; totalModules: number }> = {};
+      
+      allModulesForLeaderboard.forEach((m: any) => {
+        if (m.assigned_developer_id) {
+          const devId = m.assigned_developer_id;
+          const devName = profilesMap.get(devId) || 'Unknown Developer';
+          
+          if (!devStats[devId]) {
+            devStats[devId] = { name: devName, totalRevisions: 0, totalModules: 0 };
+          }
+          
+          devStats[devId].totalModules += 1;
+          devStats[devId].totalRevisions += (m.revision_count || 0);
+        }
+      });
+
+      devRevisionLeaderboard = Object.entries(devStats)
+        .filter(([_, stat]) => stat.totalRevisions > 0)
+        .map(([id, stat]) => ({
+          devId: id,
+          devName: stat.name,
+          totalRevisions: stat.totalRevisions,
+          totalModules: stat.totalModules
+        }))
+        .sort((a, b) => b.totalRevisions - a.totalRevisions)
+        .slice(0, 3);
+    }
+  }
+
   return (
     <div className="w-full bg-white dark:bg-slate-900 dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-800 transition-colors duration-300">
       <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white dark:text-white mb-6">{title}</h1>
       
-      <div className="p-6 mb-8 bg-blue-50 dark:bg-slate-800 border border-blue-100 rounded-2xl">
-        <h2 className="text-lg font-bold text-blue-900 dark:text-blue-400 mb-4">User Profile</h2>
-        <div className="space-y-2">
-          <p className="text-blue-800 dark:text-blue-300 text-sm">
-            <span className="font-semibold w-24 inline-block">Name:</span> {profile.full_name || 'N/A'}
-          </p>
-          <p className="text-blue-800 dark:text-blue-300 text-sm">
-            <span className="font-semibold w-24 inline-block">Email:</span> {profile.email}
-          </p>
-          <p className="text-blue-800 dark:text-blue-300 text-sm">
-            <span className="font-semibold w-24 inline-block">Role:</span> 
-            <span className="ml-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-200 text-blue-800 dark:text-blue-300 capitalize">
-              {profile.role.replace('_', ' ')}
-            </span>
-          </p>
-        </div>
-      </div>
-
+      <StatusFilter currentStatus={currentStatus} />
+      
       {(profile.role === 'system_auditor' || profile.role === 'project_manager' || profile.role === 'super_admin') ? (
         <div className="space-y-8 mb-10">
           <div className="grid grid-cols-2 gap-6">
@@ -142,13 +255,16 @@ export default async function DashboardPage() {
                 let gradientString = '#f3f4f6 0% 100%';
                 
                 const statusColors: Record<string, string> = {
-                  pending: '#94a3b8',      // Slate / Cool Gray
-                  development: '#3b82f6',  // Royal Blue
-                  pm_review: '#6366f1',    // Indigo / Violet
-                  for_qa: '#f59e0b',       // Amber / Warm Yellow
-                  auditing: '#0ea5e9',     // Cyan / Teal
-                  rework: '#e11d48',       // Crimson / Rose Red
-                  qa_approved: '#10b981'   // Emerald Green
+                  pending: '#9ca3af',      // Gray
+                  development: '#3b82f6',  // Blue
+                  pm_review: '#a855f7',    // Purple
+                  for_qa: '#f97316',       // Orange
+                  auditing: '#f59e0b',     // Amber
+                  revision: '#ef4444',     // Red
+                  revising: '#f43f5e',     // Rose
+                  qa_approved: '#22c55e',  // Green
+                  deployment: '#6366f1',   // Indigo
+                  deployed: '#10b981'      // Emerald
                 };
                 
                 const statusCounts = project.project_modules?.reduce((acc: any, m: any) => {
@@ -157,23 +273,16 @@ export default async function DashboardPage() {
                   return acc;
                 }, {}) || {};
                 
-                const order = ['qa_approved', 'auditing', 'for_qa', 'pm_review', 'development', 'rework', 'pending'];
+                const order = ['deployed', 'deployment', 'qa_approved', 'auditing', 'for_qa', 'revising', 'revision', 'pm_review', 'development', 'pending'];
                 const presentStatuses = Object.keys(statusCounts).sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
-                if (projectTotalModules > 0) {
-                  let currentPercentage = 0;
-                  const gradientParts = presentStatuses.map(status => {
-                    const percentage = (statusCounts[status] / projectTotalModules) * 100;
-                    const color = statusColors[status] || '#94a3b8';
-                    const part = `${color} ${currentPercentage}% ${currentPercentage + percentage}%`;
-                    currentPercentage += percentage;
-                    return part;
-                  });
-                  
-                  gradientString = gradientParts.join(', ');
-                }
+                const pieChartData = presentStatuses.map(status => ({
+                  id: status,
+                  value: statusCounts[status] || 0,
+                  color: statusColors[status] || '#94a3b8'
+                }));
                 
-                const completedModules = project.project_modules?.filter((m: any) => m.status === 'qa_approved').length || 0;
+                const completedModules = currentStatus === 'all' ? projectTotalModules : (project.project_modules?.filter((m: any) => m.status === currentStatus).length || 0);
                 const progressPercentage = projectTotalModules === 0 ? 0 : Math.round((completedModules / projectTotalModules) * 100);
                 
                 return (
@@ -197,12 +306,15 @@ export default async function DashboardPage() {
                     </div>
                     
                     <div className="flex flex-col items-center justify-center flex-1 py-6">
-                      <div className="relative w-28 h-28 rounded-full flex items-center justify-center bg-gray-50 dark:bg-slate-800 shadow-inner" style={{ background: `conic-gradient(${gradientString})` }}>
-                        <div className="absolute inset-4 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow-sm">
+                      <div className="relative w-32 h-32 rounded-full flex items-center justify-center bg-gray-50 dark:bg-slate-800 shadow-inner">
+                        <div className="absolute inset-0 z-0">
+                          <ProjectPieChart data={pieChartData} activeId={currentStatus} />
+                        </div>
+                        <div className="absolute inset-6 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow-sm z-10 pointer-events-none">
                           <span className="text-xl font-black text-[var(--sys-primary)]">{progressPercentage}%</span>
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold text-gray-400 dark:text-gray-400 mt-4 tracking-widest uppercase">PROGRESS</span>
+                      <span className="text-[10px] font-bold text-gray-400 dark:text-gray-400 mt-4 tracking-widest uppercase">PROJECT PROGRESS</span>
                     </div>
                     
                     <Link href={`/projects/${project.id}`} className="absolute inset-0 z-10">
@@ -227,6 +339,57 @@ export default async function DashboardPage() {
         </p>
       )}
 
+      {pmLeaderboard.length > 0 && (
+        <div className="mt-12 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-8 rounded-2xl shadow-sm">
+          <h2 className="text-xl font-black text-[var(--sys-primary)] mb-6 flex items-center gap-2">
+            <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+            </svg>
+            Lowest Deployment Rates (Top 3 Project Managers)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {pmLeaderboard.map((pm, idx) => (
+              <div key={pm.pmId} className="bg-gray-50 dark:bg-slate-800 p-6 rounded-xl border border-gray-100 dark:border-slate-700 flex flex-col items-center text-center relative overflow-hidden group">
+                <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-orange-400 to-red-500"></div>
+                <div className="w-16 h-16 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700 dark:text-gray-200 shadow-sm mb-4 border-2 border-gray-100 dark:border-slate-600">
+                  {idx + 1}
+                </div>
+                <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-1">{pm.pmName}</h3>
+                <p className="text-3xl font-black text-red-500 mb-2">{Math.round(pm.deployedPercentage)}%</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {pm.deployedModules} of {pm.totalModules} Deployed
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {devRevisionLeaderboard.length > 0 && (
+        <div className="mt-8 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-8 rounded-2xl shadow-sm">
+          <h2 className="text-xl font-black text-[var(--sys-primary)] mb-6 flex items-center gap-2">
+            <svg className="w-6 h-6 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Highest Revision Counts (Top 3 Developers)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {devRevisionLeaderboard.map((dev, idx) => (
+              <div key={dev.devId} className="bg-gray-50 dark:bg-slate-800 p-6 rounded-xl border border-gray-100 dark:border-slate-700 flex flex-col items-center text-center relative overflow-hidden group">
+                <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-rose-400 to-red-500"></div>
+                <div className="w-16 h-16 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700 dark:text-gray-200 shadow-sm mb-4 border-2 border-gray-100 dark:border-slate-600">
+                  {idx + 1}
+                </div>
+                <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-1">{dev.devName}</h3>
+                <p className="text-3xl font-black text-rose-500 mb-2">{dev.totalRevisions}</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Revisions across {dev.totalModules} Modules
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
     </div>
   )

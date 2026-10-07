@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { getUserProfile } from '@/lib/auth-utils'
 import { redirect } from 'next/navigation'
-import QaReworkClient from '@/components/modules/QaReworkClient'
+import QaRevisionClient from '@/components/modules/QaRevisionClient'
 
-export default async function QaReworkPage() {
+export default async function QaRevisionPage() {
   const profile = await getUserProfile()
 
   if (!profile || (profile.role !== 'project_manager' && profile.role !== 'super_admin')) {
@@ -42,7 +42,7 @@ export default async function QaReworkPage() {
     projects.forEach((p: any) => {
       if (p.project_modules) {
         const mods = p.project_modules.filter((m: any) => 
-          m.status === 'rework' || m.status === 'pm_review'
+          m.status === 'revision' || m.status === 'revising'
         )
         mods.forEach((m: any) => {
           reworkModules.push({
@@ -76,11 +76,11 @@ export default async function QaReworkPage() {
     <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
-          QA Rework
+          QA Revision
         </h1>
       </div>
 
-      <QaReworkClient initialModules={reworkModules} />
+      <QaRevisionClient initialModules={reworkModules} />
     </div>
   )
 }
