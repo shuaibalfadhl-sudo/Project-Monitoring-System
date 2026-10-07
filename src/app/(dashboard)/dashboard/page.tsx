@@ -43,6 +43,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           name,
           status,
           target_date,
+          project_members ( user_id ),
           project_modules (
             id,
             status
@@ -62,6 +63,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         name,
         status,
         target_date,
+        project_members ( user_id ),
         project_modules (
           id,
           status
@@ -285,56 +287,64 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   deployed: '#10b981'      // Emerald
                 };
                 
-                const statusCounts = project.project_modules?.reduce((acc: any, m: any) => {
-                  const status = m.status || 'pending';
-                  acc[status] = (acc[status] || 0) + 1;
-                  return acc;
-                }, {}) || {};
-                
-                const order = ['deployed', 'deployment', 'qa_approved', 'auditing', 'for_qa', 'revising', 'revision', 'pm_review', 'development', 'pending'];
-                const presentStatuses = Object.keys(statusCounts).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-
-                const pieChartData = presentStatuses.map(status => ({
-                  id: status,
-                  value: statusCounts[status] || 0,
-                  color: statusColors[status] || '#94a3b8'
-                }));
-                
-                const completedModules = currentStatus === 'all' ? projectTotalModules : (project.project_modules?.filter((m: any) => m.status === currentStatus).length || 0);
+                const targetStatus = currentStatus === 'all' ? 'deployed' : currentStatus;
+                const completedModules = project.project_modules?.filter((m: any) => m.status === targetStatus).length || 0;
                 const progressPercentage = projectTotalModules === 0 ? 0 : Math.round((completedModules / projectTotalModules) * 100);
+                const remainingModules = projectTotalModules - completedModules;
+                
+                const pieChartData = projectTotalModules === 0 ? [] : [
+                  { id: targetStatus, value: completedModules, color: statusColors[targetStatus] || '#10b981' },
+                  { id: 'remaining', value: remainingModules, color: '#f3f4f6' }
+                ];
+                
+                const teamCount = project.project_members?.length || 0;
                 
                 return (
                   <div key={project.id} className="flex flex-col p-6 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-[0_2px_10px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="w-full">
-                        <div className="flex justify-between items-center gap-2 mb-2">
-                          <h4 className="text-lg font-black text-[var(--sys-primary)] line-clamp-1 group-hover:text-blue-600 transition-colors">
-                            {project.name}
-                          </h4>
-                          <span className="text-[10px] text-gray-400 dark:text-gray-400 font-semibold bg-gray-50 dark:bg-slate-800 px-2 py-1 rounded-md border border-gray-100 dark:border-slate-800 whitespace-nowrap">
-                            Due {project.target_date || 'Not set'}
-                          </span>
-                        </div>
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                          (project.status === 'qa_approved' || project.status === 'for_qa') ? '' : 'capitalize'
-                        } ${
-                          project.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-50 dark:bg-slate-800 text-blue-700 border border-blue-100'
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="flex flex-col items-start gap-2 max-w-[60%]">
+                        <h4 className="text-lg font-black text-indigo-600 line-clamp-1 group-hover:text-indigo-700 transition-colors">
+                          {project.name}
+                        </h4>
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold capitalize ${
+                          project.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                         }`}>
                           {project.status === 'qa_approved' ? 'QA Approved' : project.status === 'for_qa' ? 'For QA' : project.status.replace('_', ' ')}
                         </span>
                       </div>
-                    </div>
-                    
-                    <div className="flex flex-col items-center justify-center flex-1 py-6">
-                      <div className="relative w-32 h-32 rounded-full flex items-center justify-center bg-gray-50 dark:bg-slate-800 shadow-inner">
-                        <div className="absolute inset-0 z-0">
-                          <ProjectPieChart data={pieChartData} activeId={currentStatus} />
-                        </div>
-                        <div className="absolute inset-6 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow-sm z-10 pointer-events-none">
-                          <span className="text-xl font-black text-[var(--sys-primary)]">{progressPercentage}%</span>
+                      
+                      <div className="flex flex-col items-end shrink-0">
+                        <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">DUE DATE</span>
+                        <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-800 px-2.5 py-1 rounded border border-gray-100 dark:border-slate-700">
+                          <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span className="text-xs text-gray-700 dark:text-gray-300 font-bold">{project.target_date || 'Not set'}</span>
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold text-gray-400 dark:text-gray-400 mt-4 tracking-widest uppercase">PROJECT PROGRESS</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center justify-center flex-1 py-8">
+                      <div className="relative w-40 h-40 rounded-full flex items-center justify-center">
+                        <div className="absolute inset-0 z-0 scale-[1.15]">
+                          <ProjectPieChart data={pieChartData} activeId={undefined} />
+                        </div>
+                        <div className="absolute inset-4 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow-[inset_0_2px_10px_rgb(0,0,0,0.02)] z-10 pointer-events-none">
+                          <span className="text-2xl font-black text-slate-800 dark:text-white">{progressPercentage}%</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-6 tracking-widest uppercase">PROJECT PROGRESS</span>
+                    </div>
+                    
+                    <div className="mt-4 border-t border-gray-100 dark:border-slate-800 pt-6 flex">
+                      <div className="flex-1 flex flex-col items-center justify-center border-r border-gray-100 dark:border-slate-800">
+                        <span className="text-xl font-black text-slate-800 dark:text-white leading-none mb-1">{projectTotalModules}</span>
+                        <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">TASKS</span>
+                      </div>
+                      <div className="flex-1 flex flex-col items-center justify-center">
+                        <span className="text-xl font-black text-slate-800 dark:text-white leading-none mb-1">{teamCount}</span>
+                        <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">TEAM</span>
+                      </div>
                     </div>
                     
                     <Link href={`/projects/${project.id}`} className="absolute inset-0 z-10">
