@@ -33,13 +33,21 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row transition-colors duration-300">
       {/* Sidebar Navigation */}
       <aside className="w-full md:w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white p-6 shadow-xl flex flex-col md:sticky md:top-0 md:h-screen z-20 transition-colors duration-300">
-        <div className="mb-10 text-center md:text-left flex flex-col items-center md:items-start">
-          {settings?.system_logo_url && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={settings.system_logo_url} alt="System Logo" className="h-10 mb-3 object-contain" />
-          )}
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{settings?.system_name || 'Project System'}</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">{profile.role.replace('_', ' ')}</p>
+        <div className="mb-10">
+          <div className="flex flex-col md:flex-row items-center md:items-center gap-3 text-center md:text-left">
+            {settings?.system_logo_url && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={settings.system_logo_url} alt="System Logo" className="h-10 w-10 object-contain shrink-0" />
+            )}
+            <div>
+              <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+                {settings?.system_name || 'Project System'}
+              </h2>
+              <p className="text-[11px] font-bold text-[var(--sys-primary)] mt-1 uppercase tracking-wider">
+                {profile.role.replace('_', ' ')}
+              </p>
+            </div>
+          </div>
         </div>
         
         <SidebarNav role={profile.role} />

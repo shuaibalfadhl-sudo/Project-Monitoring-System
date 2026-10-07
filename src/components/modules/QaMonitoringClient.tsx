@@ -9,7 +9,7 @@ interface QaModule {
   id: string
   name: string
   description: string | null
-  priority: number
+  priority: string
   status: string
   module_document_url?: string | null
   qa_result_document_url?: string | null
@@ -30,6 +30,7 @@ export default function QaMonitoringClient({ initialModules }: QaMonitoringClien
   const [selectedModule, setSelectedModule] = useState<QaModule | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [priorityFilter, setPriorityFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
@@ -127,14 +128,24 @@ export default function QaMonitoringClient({ initialModules }: QaMonitoringClien
     }
   }
 
+  const getPriorityColor = (priority?: string) => {
+    switch (priority) {
+      case 'critical': return 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50';
+      case 'high': return 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-400 border-orange-200 dark:border-orange-800/50';
+      case 'medium': return 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50';
+      case 'low': return 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800/50';
+      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+    }
+  };
+
   return (
-    <div className="w-full bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+    <div className="w-full bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
       <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-6">QA Monitoring</h1>
       
       <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="bg-amber-50 border border-amber-100 p-6 rounded-2xl shadow-sm inline-block min-w-64">
-          <h3 className="text-sm font-bold text-amber-700 uppercase tracking-wider mb-2">Total Modules Pending QA</h3>
-          <p className="text-5xl font-black text-amber-600">{modules.length}</p>
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 p-6 rounded-2xl shadow-sm inline-block min-w-64">
+          <h3 className="text-sm font-bold text-amber-700 dark:text-amber-500 uppercase tracking-wider mb-2">Total Modules Pending QA</h3>
+          <p className="text-5xl font-black text-amber-600 dark:text-amber-400">{modules.length}</p>
         </div>
         
         <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3 items-center">
@@ -146,7 +157,7 @@ export default function QaMonitoringClient({ initialModules }: QaMonitoringClien
             </div>
             <input
               type="text"
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
               placeholder="Search modules..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
@@ -154,7 +165,7 @@ export default function QaMonitoringClient({ initialModules }: QaMonitoringClien
           </div>
 
           <select
-            className="w-full sm:w-40 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white"
+            className="w-full sm:w-40 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
           >
@@ -162,16 +173,29 @@ export default function QaMonitoringClient({ initialModules }: QaMonitoringClien
             <option value="for_qa">For QA</option>
             <option value="auditing">Auditing</option>
           </select>
+
+          <select
+            className="w-full sm:w-32 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
+            value={priorityFilter}
+            onChange={(e) => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
+          >
+            <option value="all">All Priorities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden transition-colors duration-300">
         {(() => {
           const filteredModules = modules.filter(m => {
             const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                                   m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus = statusFilter === 'all' || m.status === statusFilter;
-            return matchesSearch && matchesStatus;
+            const matchesPriority = priorityFilter === 'all' || m.priority === priorityFilter;
+            return matchesSearch && matchesStatus && matchesPriority;
           });
           
           const totalPages = Math.ceil(filteredModules.length / itemsPerPage)
@@ -181,42 +205,42 @@ export default function QaMonitoringClient({ initialModules }: QaMonitoringClien
           )
 
           return filteredModules.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 border-t border-dashed border-gray-200">
-              <p className="text-gray-500 font-medium">No modules match your filters.</p>
+            <div className="text-center py-12 bg-gray-50 dark:bg-slate-800/50 border-t border-dashed border-gray-200 dark:border-slate-700">
+              <p className="text-gray-500 dark:text-slate-400 font-medium">No modules match your filters.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 border-b-2 border-gray-100">
-                  <th className="py-4 px-6 font-bold text-sm text-gray-500 uppercase tracking-wider text-center w-24">Priority</th>
-                  <th className="py-4 px-6 font-bold text-sm text-gray-500 uppercase tracking-wider">Module Name</th>
-                  <th className="py-4 px-6 font-bold text-sm text-gray-500 uppercase tracking-wider">Project Name</th>
-                  <th className="py-4 px-6 font-bold text-sm text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="py-4 px-6 font-bold text-sm text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                <tr className="bg-gray-50 dark:bg-slate-800/50 border-b-2 border-gray-100 dark:border-slate-800 transition-colors">
+                  <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider text-center w-24">Priority</th>
+                  <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">Module Name</th>
+                  <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">Project Name</th>
+                  <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                  <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                 {paginatedModules.map((mod) => (
                   <tr 
                     key={mod.id} 
                     onClick={() => handleRowClick(mod)}
-                    className="hover:bg-amber-50/50 transition-colors cursor-pointer group"
+                    className="hover:bg-amber-50/50 dark:hover:bg-slate-800/80 transition-colors cursor-pointer group"
                   >
                     <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-black">
+                      <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full border text-xs font-bold capitalize ${getPriorityColor(mod.priority)}`}>
                         {mod.priority}
                       </span>
                     </td>
-                    <td className="py-4 px-6 font-bold text-[var(--sys-primary)] group-hover:text-amber-700 transition-colors">
+                    <td className="py-4 px-6 font-bold text-[var(--sys-primary)] group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
                       {mod.name}
                     </td>
                     <td className="py-4 px-6">
-                      <span className="font-semibold text-gray-600 block">{mod.project.name}</span>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mt-1">By: {mod.project.creator_name || 'Unknown'}</span>
+                      <span className="font-semibold text-gray-600 dark:text-slate-300 block">{mod.project.name}</span>
+                      <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mt-1">By: {mod.project.creator_name || 'Unknown'}</span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 capitalize border border-amber-200">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 capitalize border border-amber-200 dark:border-amber-800/50">
                         {mod.status.replace('_', ' ')}
                       </span>
                     </td>
@@ -249,17 +273,17 @@ export default function QaMonitoringClient({ initialModules }: QaMonitoringClien
               </tbody>
             </table>
             {totalPages > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between border-t border-gray-100 px-6 py-4 gap-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between border-t border-gray-100 dark:border-slate-800 px-6 py-4 gap-4 transition-colors">
                 <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
-                  <p className="text-sm text-gray-700 font-medium">
+                  <p className="text-sm text-gray-700 dark:text-slate-300 font-medium">
                     Showing <span className="font-bold">{(currentPage - 1) * itemsPerPage + (paginatedModules.length > 0 ? 1 : 0)}</span> to <span className="font-bold">{Math.min(currentPage * itemsPerPage, filteredModules.length)}</span> of <span className="font-bold">{filteredModules.length}</span> modules
                   </p>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500 font-medium">Show</span>
+                    <span className="text-sm text-gray-500 dark:text-slate-400 font-medium">Show</span>
                     <select 
                       value={itemsPerPage}
                       onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                      className="border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white px-2 py-1 cursor-pointer"
+                      className="border border-gray-200 dark:border-slate-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white dark:bg-slate-800 dark:text-white px-2 py-1 cursor-pointer"
                     >
                       <option value={5}>5</option>
                       <option value={10}>10</option>
@@ -274,7 +298,7 @@ export default function QaMonitoringClient({ initialModules }: QaMonitoringClien
                     <button
                       onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                       disabled={currentPage === 1}
-                      className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                      className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 dark:text-slate-500 dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                     >
                       <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -284,12 +308,12 @@ export default function QaMonitoringClient({ initialModules }: QaMonitoringClien
                     <div className="flex items-center gap-1">
                       {generatePagination(currentPage, totalPages).map((page, i) => (
                         page === '...' ? (
-                          <span key={`ellipsis-${i}`} className="w-8 h-8 flex items-center justify-center text-gray-400 font-bold tracking-widest">...</span>
+                          <span key={`ellipsis-${i}`} className="w-8 h-8 flex items-center justify-center text-gray-400 dark:text-slate-500 font-bold tracking-widest">...</span>
                         ) : (
                           <button
                             key={`page-${page}`}
                             onClick={() => setCurrentPage(page as number)}
-                            className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-bold transition-all ${currentPage === page ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100'}`}
+                            className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-bold transition-all ${currentPage === page ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700'}`}
                           >
                             {page}
                           </button>
@@ -300,7 +324,7 @@ export default function QaMonitoringClient({ initialModules }: QaMonitoringClien
                     <button
                       onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                       disabled={currentPage === totalPages}
-                      className="w-8 h-8 flex items-center justify-center rounded-md bg-gray-100 text-gray-400 hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-gray-100 transition-colors"
+                      className="w-8 h-8 flex items-center justify-center rounded-md bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700 disabled:opacity-50 disabled:hover:bg-gray-100 dark:disabled:hover:bg-slate-800 transition-colors"
                     >
                       <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
@@ -340,14 +364,16 @@ export default function QaMonitoringClient({ initialModules }: QaMonitoringClien
                 <p className="text-lg font-bold text-[var(--sys-primary)]">{selectedModule.name}</p>
               </div>
 
-              {selectedModule.module_document_url && (
-                <div>
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Module Document</h3>
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Module Document</h3>
+                {selectedModule.module_document_url ? (
                   <a href={selectedModule.module_document_url} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-600 hover:underline">
                     View Document ↗
                   </a>
-                </div>
-              )}
+                ) : (
+                  <p className="text-sm font-semibold text-gray-400 italic">No attached document by PM</p>
+                )}
+              </div>
 
               {selectedModule.status === 'for_qa' ? (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">

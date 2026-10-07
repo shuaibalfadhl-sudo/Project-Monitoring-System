@@ -7,9 +7,19 @@ import { createClient } from '@/lib/supabase/server'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata: Metadata = {
-  title: 'Project Monitoring System',
-  description: 'Project Monitoring System application',
+export async function generateMetadata(): Promise<Metadata> {
+  const supabase = await createClient()
+  const { data: settings } = await supabase
+    .from('system_details')
+    .select('system_name, system_logo_url')
+    .eq('id', 1)
+    .single()
+    
+  return {
+    title: settings?.system_name || 'Project Monitoring System',
+    description: 'Project Monitoring System application',
+    icons: settings?.system_logo_url ? [{ url: settings.system_logo_url }] : [],
+  }
 }
 
 export default async function RootLayout({
@@ -25,12 +35,10 @@ export default async function RootLayout({
     .single()
     
   const primaryColor = settings?.primary_color || 'var(--sys-primary)'
-  const systemName = settings?.system_name || 'Project Monitoring System'
 
   return (
     <html lang="en" className={settings?.theme === 'dark' ? 'dark' : ''}>
       <head>
-        <title>{systemName}</title>
         <style dangerouslySetInnerHTML={{
           __html: `
             :root {

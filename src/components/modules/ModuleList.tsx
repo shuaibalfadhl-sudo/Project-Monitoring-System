@@ -19,6 +19,7 @@ interface ModuleListProps {
 export default function ModuleList({ modules, projectId, isManager, isAuditor, isDeveloper }: ModuleListProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [priorityFilter, setPriorityFilter] = useState('all')
   const [selectedModule, setSelectedModule] = useState<ProjectModule | null>(null)
   
   const [currentPage, setCurrentPage] = useState(1)
@@ -103,10 +104,21 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor, i
     }
   };
 
+  const getPriorityColor = (priority?: string) => {
+    switch (priority) {
+      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
+      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'low': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-slate-100 text-slate-800 border-slate-200';
+    }
+  };
+
   const filteredModules = modules.filter(module => {
     const matchesSearch = module.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || module.status === statusFilter
-    return matchesSearch && matchesStatus
+    const matchesPriority = priorityFilter === 'all' || module.priority === priorityFilter
+    return matchesSearch && matchesStatus && matchesPriority
   })
 
   const totalPages = Math.ceil(filteredModules.length / itemsPerPage)
@@ -159,6 +171,22 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor, i
             <option value="qa_approved">QA Approved</option>
           </select>
 
+          {/* Priority Filter */}
+          <select
+            className="w-full sm:w-32 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white"
+            value={priorityFilter}
+            onChange={(e) => {
+              setPriorityFilter(e.target.value)
+              setCurrentPage(1)
+            }}
+          >
+            <option value="all">All Priorities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+
           {isManager && (
             <CreateModuleModal projectId={projectId} />
           )}
@@ -200,7 +228,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor, i
                       {module.name}
                     </td>
                     <td className="py-4 text-center">
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                      <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full border text-xs font-bold capitalize ${getPriorityColor(module.priority)}`}>
                         {module.priority}
                       </span>
                     </td>
@@ -335,7 +363,7 @@ export default function ModuleList({ modules, projectId, isManager, isAuditor, i
               <div className="flex gap-4">
                 <div>
                   <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Priority</h3>
-                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full border text-sm font-bold capitalize ${getPriorityColor(selectedModule.priority)}`}>
                     {selectedModule.priority}
                   </span>
                 </div>

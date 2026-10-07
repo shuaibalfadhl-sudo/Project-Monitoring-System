@@ -12,6 +12,7 @@ export default function TopNavbar({ profileName }: { profileName: string }) {
   const supabase = createClient()
   
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [uuidNames, setUuidNames] = useState<Record<string, string>>({})
 
   // Initialize theme from local storage
   useEffect(() => {
@@ -28,10 +29,54 @@ export default function TopNavbar({ profileName }: { profileName: string }) {
 
   // Generate breadcrumbs from pathname
   const pathSegments = pathname.split('/').filter(p => p !== '')
+
+  // Fetch project names if there are UUIDs in the path
+  useEffect(() => {
+    const fetchProjectNames = async () => {
+      const uuids = pathSegments.filter(s => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s))
+      if (uuids.length > 0) {
+        // Find UUIDs that we haven't fetched yet
+        const missingUuids = uuids.filter(uuid => !uuidNames[uuid])
+        if (missingUuids.length > 0) {
+          const newNames = { ...uuidNames }
+          
+          // Check projects
+          const { data: pData } = await supabase
+            .from('projects')
+            .select('id, name')
+            .in('id', missingUuids)
+            
+          if (pData) pData.forEach(p => newNames[p.id] = p.name)
+            
+          // Check modules
+          const { data: mData } = await supabase
+            .from('project_modules')
+            .select('id, name')
+            .in('id', missingUuids)
+            
+          if (mData) mData.forEach(m => newNames[m.id] = m.name)
+          
+          setUuidNames(newNames)
+        }
+      }
+    }
+    
+    fetchProjectNames()
+  }, [pathname])
+
+  // Generate breadcrumbs from pathname
   const breadcrumbs = pathSegments.map((segment, index) => {
     const url = `/${pathSegments.slice(0, index + 1).join('/')}`
     const isLast = index === pathSegments.length - 1
-    const name = segment.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    
+    // Check if segment is a UUID
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(segment)
+    
+    let name = segment.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    if (isUuid) {
+      name = uuidNames[segment] || 'Details'
+    }
+    
     return { name, url, isLast }
   })
 

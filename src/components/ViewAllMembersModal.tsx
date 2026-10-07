@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import RemoveMemberButton from '@/components/projects/RemoveMemberButton'
 
 interface Member {
   user_id: string
@@ -9,7 +10,7 @@ interface Member {
   is_owner: boolean
 }
 
-export default function ViewAllMembersModal({ members, isManager }: { members: Member[], isManager: boolean }) {
+export default function ViewAllMembersModal({ members, isManager, projectId }: { members: Member[], isManager: boolean, projectId: string }) {
   const [isOpen, setIsOpen] = useState(false)
 
   if (!isOpen) {
@@ -65,9 +66,7 @@ export default function ViewAllMembersModal({ members, isManager }: { members: M
                   </div>
                 </div>
                 {isManager && !member.is_owner && (
-                  <button className="text-xs font-bold text-red-500 hover:text-red-700 px-3 py-1.5 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
-                    Remove
-                  </button>
+                  <RemoveMemberButton projectId={projectId} userId={member.user_id || member.id} />
                 )}
               </div>
             ))}

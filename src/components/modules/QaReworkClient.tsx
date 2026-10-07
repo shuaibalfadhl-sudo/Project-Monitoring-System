@@ -10,6 +10,7 @@ export default function QaReworkClient({ initialModules }: { initialModules: any
   const [modules, setModules] = useState(initialModules)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [priorityFilter, setPriorityFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -42,6 +43,16 @@ export default function QaReworkClient({ initialModules }: { initialModules: any
     }
   }
 
+  const getPriorityColor = (priority?: string) => {
+    switch (priority) {
+      case 'critical': return 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50';
+      case 'high': return 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-400 border-orange-200 dark:border-orange-800/50';
+      case 'medium': return 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50';
+      case 'low': return 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800/50';
+      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3 items-center justify-end">
@@ -53,7 +64,7 @@ export default function QaReworkClient({ initialModules }: { initialModules: any
           </div>
           <input
             type="text"
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white"
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
             placeholder="Search modules..."
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
@@ -61,13 +72,25 @@ export default function QaReworkClient({ initialModules }: { initialModules: any
         </div>
 
         <select
-          className="w-full sm:w-40 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white"
+          className="w-full sm:w-40 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
         >
           <option value="all">All Statuses</option>
           <option value="rework">Rework</option>
           <option value="pm_review">PM Review</option>
+        </select>
+
+        <select
+          className="w-full sm:w-32 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
+          value={priorityFilter}
+          onChange={(e) => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
+        >
+          <option value="all">All Priorities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
         </select>
       </div>
 
@@ -77,7 +100,8 @@ export default function QaReworkClient({ initialModules }: { initialModules: any
             const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                                   m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus = statusFilter === 'all' || m.status === statusFilter;
-            return matchesSearch && matchesStatus;
+            const matchesPriority = priorityFilter === 'all' || m.priority === priorityFilter;
+            return matchesSearch && matchesStatus && matchesPriority;
           });
           
           const totalPages = Math.ceil(filteredModules.length / itemsPerPage)
@@ -91,6 +115,7 @@ export default function QaReworkClient({ initialModules }: { initialModules: any
               <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Priority</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Module</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Project</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">QA Auditor</th>
@@ -101,6 +126,11 @@ export default function QaReworkClient({ initialModules }: { initialModules: any
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
             {paginatedModules.map((module: any) => (
               <tr key={module.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <td className="px-6 py-4 text-center">
+                  <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full border text-xs font-bold capitalize ${getPriorityColor(module.priority)}`}>
+                    {module.priority}
+                  </span>
+                </td>
                 <td className="px-6 py-4">
                   <span className="font-bold text-slate-900 dark:text-white block">{module.name}</span>
                   {module.status === 'rework' ? (

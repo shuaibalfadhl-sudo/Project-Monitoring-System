@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 export default function AllModulesClient({ initialModules, role }: { initialModules: any[], role: string }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [priorityFilter, setPriorityFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   
@@ -24,7 +25,8 @@ export default function AllModulesClient({ initialModules, role }: { initialModu
     const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || m.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesPriority = priorityFilter === 'all' || m.priority === priorityFilter;
+    return matchesSearch && matchesStatus && matchesPriority;
   });
 
   const totalPages = Math.ceil(filteredModules.length / itemsPerPage)
@@ -43,6 +45,16 @@ export default function AllModulesClient({ initialModules, role }: { initialModu
       case 'qa_approved': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
       case 'pending':
       default: return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+    }
+  };
+
+  const getPriorityColor = (priority?: string) => {
+    switch (priority) {
+      case 'critical': return 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50';
+      case 'high': return 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-400 border-orange-200 dark:border-orange-800/50';
+      case 'medium': return 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50';
+      case 'low': return 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800/50';
+      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
     }
   };
 
@@ -78,6 +90,18 @@ export default function AllModulesClient({ initialModules, role }: { initialModu
           <option value="rework">Rework</option>
           <option value="qa_approved">QA Approved</option>
         </select>
+
+        <select
+          className="w-full sm:w-32 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+          value={priorityFilter}
+          onChange={(e) => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
+        >
+          <option value="all">All Priorities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-700 overflow-hidden">
@@ -99,7 +123,7 @@ export default function AllModulesClient({ initialModules, role }: { initialModu
                   className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
                 >
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm">
+                    <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full border text-xs font-bold capitalize ${getPriorityColor(mod.priority)}`}>
                       {mod.priority}
                     </span>
                   </td>
@@ -230,7 +254,7 @@ export default function AllModulesClient({ initialModules, role }: { initialModu
               <div className="flex gap-4">
                 <div>
                   <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Priority</h3>
-                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full border text-sm font-bold capitalize ${getPriorityColor(selectedModule.priority)}`}>
                     {selectedModule.priority}
                   </span>
                 </div>

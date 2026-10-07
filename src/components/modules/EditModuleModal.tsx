@@ -14,6 +14,8 @@ export default function EditModuleModal({ module }: { module: ProjectModule }) {
   
   const [isLoading, setIsLoading] = useState(false)
   const [developers, setDevelopers] = useState<{ id: string, full_name: string }[]>([])
+  const [isDevDropdownOpen, setIsDevDropdownOpen] = useState(false)
+  const [devSearch, setDevSearch] = useState('')
   
   const [formData, setFormData] = useState({
     name: module.name,
@@ -117,14 +119,16 @@ export default function EditModuleModal({ module }: { module: ProjectModule }) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
+                    <select
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                       value={formData.priority}
-                      onChange={(e) => setFormData({...formData, priority: parseInt(e.target.value) || 1})}
-                    />
+                      onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
@@ -146,16 +150,55 @@ export default function EditModuleModal({ module }: { module: ProjectModule }) {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Assign Developer</label>
-                  <select
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
-                    value={formData.assigned_developer_id || ''}
-                    onChange={(e) => setFormData({...formData, assigned_developer_id: e.target.value || ''})}
-                  >
-                    <option value="">Unassigned</option>
-                    {developers.map(dev => (
-                      <option key={dev.id} value={dev.id}>{dev.full_name}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <button 
+                      type="button" 
+                      onClick={() => setIsDevDropdownOpen(!isDevDropdownOpen)}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium text-left flex justify-between items-center"
+                    >
+                      {formData.assigned_developer_id 
+                        ? developers.find(d => d.id === formData.assigned_developer_id)?.full_name || 'Unknown' 
+                        : 'Unassigned'}
+                      <svg className={`w-4 h-4 text-gray-500 transition-transform ${isDevDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    {isDevDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 flex flex-col overflow-hidden">
+                        <div className="p-2 border-b border-gray-100 bg-gray-50/50">
+                          <input 
+                            type="text" 
+                            placeholder="Search developer..." 
+                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]"
+                            value={devSearch}
+                            onChange={(e) => setDevSearch(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            autoFocus
+                          />
+                        </div>
+                        <div className="overflow-y-auto flex-1 p-1">
+                          <button 
+                            type="button"
+                            onClick={() => { setFormData({...formData, assigned_developer_id: ''}); setIsDevDropdownOpen(false); setDevSearch(''); }}
+                            className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors ${!formData.assigned_developer_id ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                          >
+                            Unassigned
+                          </button>
+                          {developers.filter(d => d.full_name.toLowerCase().includes(devSearch.toLowerCase())).map(dev => (
+                            <button 
+                              key={dev.id}
+                              type="button"
+                              onClick={() => { setFormData({...formData, assigned_developer_id: dev.id}); setIsDevDropdownOpen(false); setDevSearch(''); }}
+                              className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors ${formData.assigned_developer_id === dev.id ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                            >
+                              {dev.full_name}
+                            </button>
+                          ))}
+                          {developers.length > 0 && developers.filter(d => d.full_name.toLowerCase().includes(devSearch.toLowerCase())).length === 0 && (
+                            <div className="px-3 py-4 text-center text-sm text-gray-500 italic">No developers found.</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   {developers.length === 0 && (
                     <p className="text-xs text-orange-500 mt-2 font-medium">No developers are assigned to this project yet.</p>
                   )}

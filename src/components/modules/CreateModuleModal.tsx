@@ -14,7 +14,7 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    priority: 1,
+    priority: 'medium',
     status: 'pending',
     module_document_url: ''
   })
@@ -39,7 +39,7 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
       setFormData({
         name: '',
         description: '',
-        priority: 1,
+        priority: 'medium',
         status: 'pending',
         module_document_url: ''
       })
@@ -98,14 +98,16 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
+                    <select
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                       value={formData.priority}
-                      onChange={(e) => setFormData({...formData, priority: parseInt(e.target.value) || 1})}
-                    />
+                      onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>

@@ -6,6 +6,7 @@ import { ProjectModule } from '@/types/project'
 import ViewAllMembersModal from '@/components/ViewAllMembersModal'
 import ModuleList from '@/components/modules/ModuleList'
 import EditProjectModal from '@/components/projects/EditProjectModal'
+import RemoveMemberButton from '@/components/projects/RemoveMemberButton'
 
 export default async function ProjectDetailsPage({ params }: { params: Promise<{ projectId: string }> }) {
   const resolvedParams = await params
@@ -138,7 +139,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Project Members</h3>
                 <div className="flex gap-3 items-center">
-                  <ViewAllMembersModal members={processedMembers} isManager={isManager} />
+                  <ViewAllMembersModal members={processedMembers} isManager={isManager} projectId={project.id} />
                   {isManager && (
                     <Link href={`/projects/${project.id}/members/new`} className="text-xs font-bold text-blue-600 hover:text-blue-800">
                       + Add Member
@@ -158,7 +159,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
                       )}
                     </div>
                     {isManager && !member.is_owner && (
-                      <button className="text-xs font-bold text-red-500 hover:text-red-700 px-2 py-1">Remove</button>
+                      <RemoveMemberButton projectId={project.id} userId={member.user_id || member.id} />
                     )}
                   </div>
                 )})}

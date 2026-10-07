@@ -18,7 +18,7 @@ export interface ProjectModule {
   project_id: string
   name: string
   description: string | null
-  priority: number
+  priority: string
   status: ModuleStatus
   created_at: string
   qa_acknowledged_at?: string | null

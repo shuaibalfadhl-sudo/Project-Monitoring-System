@@ -68,7 +68,7 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
         </select>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 transition-colors duration-300">
         {(!filteredProjects || filteredProjects.length === 0) ? (
           <div className="text-center py-12">
             <p className="text-slate-500 dark:text-slate-400 font-medium">
