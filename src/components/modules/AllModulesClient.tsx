@@ -244,9 +244,9 @@ export default function AllModulesClient({
                   </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${getStatusColor(mod.status)}`}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${mod.status === 'qa_approved' || mod.status === 'for_qa' ? '' : 'capitalize'} ${getStatusColor(mod.status)}`}
                     >
-                      {(mod.status || "pending").replace("_", " ")}
+                      {mod.status === 'qa_approved' ? 'QA Approved' : mod.status === 'for_qa' ? 'For QA' : (mod.status || "pending").replace("_", " ")}
                     </span>
                   </td>
                 </tr>

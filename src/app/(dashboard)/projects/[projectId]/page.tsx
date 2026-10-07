@@ -115,7 +115,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
             <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-3">{project.name}</h1>
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 capitalize border border-blue-100">
-                {project.status.replace('_', ' ')}
+                {project.status === 'qa_approved' ? 'QA Approved' : project.status === 'for_qa' ? 'For QA' : project.status.replace('_', ' ')}
               </span>
               <span className="text-xs font-semibold text-gray-500 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
                 {project.start_date || 'N/A'} — {project.target_date || 'N/A'}
@@ -188,7 +188,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
                 <div key={status} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: statusColors[status] }}></div>
-                    <span className="text-sm font-bold text-gray-700 capitalize">{status.replace('_', ' ')}</span>
+                    <span className={`text-sm font-bold text-gray-700 ${status === 'qa_approved' || status === 'for_qa' ? '' : 'capitalize'}`}>{status === 'qa_approved' ? 'QA Approved' : status === 'for_qa' ? 'For QA' : status.replace('_', ' ')}</span>
                   </div>
                   <span className="text-base font-black text-[var(--sys-primary)]">{statusCounts[status]}</span>
                 </div>
@@ -210,7 +210,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
                 <div className="absolute inset-8 bg-white rounded-full flex flex-col items-center justify-center shadow-sm z-10 pointer-events-none">
                   <span className="text-5xl font-black text-[var(--sys-primary)] tracking-tighter">{Math.round(p_approved)}%</span>
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1 text-center leading-tight break-all px-2">
-                    {currentStatus.replace('_', ' ')}
+                    {currentStatus === 'qa_approved' ? 'QA Approved' : currentStatus === 'for_qa' ? 'For QA' : currentStatus.replace('_', ' ')}
                   </span>
                 </div>
               </div>

@@ -348,9 +348,9 @@ export default function ModuleList({
                     </td>
                     <td className="py-4">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${getStatusColor(module.status)}`}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${module.status === 'qa_approved' || module.status === 'for_qa' ? '' : 'capitalize'} ${getStatusColor(module.status)}`}
                       >
-                        {(module.status || "pending").replace("_", " ")}
+                        {module.status === 'qa_approved' ? 'QA Approved' : module.status === 'for_qa' ? 'For QA' : (module.status || "pending").replace("_", " ")}
                       </span>
                     </td>
                     {isManager ? (
@@ -563,9 +563,9 @@ export default function ModuleList({
                     Status
                   </h3>
                   <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold capitalize ${getStatusColor(selectedModule.status)}`}
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${selectedModule.status === 'qa_approved' || selectedModule.status === 'for_qa' ? '' : 'capitalize'} ${getStatusColor(selectedModule.status)}`}
                   >
-                    {(selectedModule.status || "pending").replace("_", " ")}
+                    {selectedModule.status === 'qa_approved' ? 'QA Approved' : selectedModule.status === 'for_qa' ? 'For QA' : (selectedModule.status || "pending").replace("_", " ")}
                   </span>
                 </div>
               </div>

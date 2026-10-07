@@ -103,8 +103,8 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
                     
                     <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 flex-1">{project.description || 'No description'}</p>
                     <div className="flex justify-between items-center mt-auto">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 capitalize">
-                        {project.status.replace('_', ' ')}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 ${project.status === 'qa_approved' || project.status === 'for_qa' ? '' : 'capitalize'}`}>
+                        {project.status === 'qa_approved' ? 'QA Approved' : project.status === 'for_qa' ? 'For QA' : project.status.replace('_', ' ')}
                       </span>
                       <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
                         {new Date(project.created_at).toLocaleDateString()}

@@ -347,8 +347,8 @@ export default function QaMonitoringClient({
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 capitalize border border-amber-200 dark:border-amber-800/50">
-                          {mod.status.replace("_", " ")}
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 ${mod.status === 'qa_approved' || mod.status === 'for_qa' ? '' : 'capitalize'}`}>
+                          {mod.status === 'qa_approved' ? 'QA Approved' : mod.status === 'for_qa' ? 'For QA' : mod.status.replace("_", " ")}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-right">
