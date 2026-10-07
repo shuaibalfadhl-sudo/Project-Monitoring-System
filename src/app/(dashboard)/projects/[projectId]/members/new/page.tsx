@@ -22,15 +22,33 @@ export default function AddMemberPage({ params }: { params: Promise<{ projectId:
         return
       }
 
-      const { data, error } = await supabase.rpc('search_project_member_candidates', {
-        p_project_id: resolvedParams.projectId,
-        p_search: searchTerm
-      })
+      // Fetch existing members to filter them out
+      const { data: members } = await supabase
+        .from('project_members')
+        .select('user_id')
+        .eq('project_id', resolvedParams.projectId)
+      
+      const memberIds = members?.map(m => m.user_id) || []
+
+      // Fetch matching profiles
+      const { data: searchResults, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role')
+        .or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+        .limit(20)
       
       if (error) {
-        console.error('RPC Error:', error)
-      } else if (data) {
-        setCandidates(data)
+        console.error('Fetch Error:', error)
+      } else if (searchResults) {
+        const mappedCandidates = searchResults
+          .filter(user => !memberIds.includes(user.id))
+          .map(user => ({
+            user_id: user.id,
+            full_name: user.full_name,
+            email: user.email,
+            role: user.role
+          }))
+        setCandidates(mappedCandidates)
       }
     }
     
@@ -51,7 +69,8 @@ export default function AddMemberPage({ params }: { params: Promise<{ projectId:
       .from('project_members')
       .insert({
         project_id: resolvedParams.projectId,
-        user_id: selectedUserId
+        user_id: selectedUserId,
+        is_owner: false
       })
 
     if (error) {

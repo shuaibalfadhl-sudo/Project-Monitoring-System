@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
+import DashboardRealtime from '@/components/dashboard/DashboardRealtime'
 
 import StatusFilter from '@/components/dashboard/StatusFilter'
 import ProjectPieChart from '@/components/dashboard/ProjectPieChart'
@@ -209,6 +210,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="w-full bg-white dark:bg-slate-900 dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-800 transition-colors duration-300">
+      <DashboardRealtime />
       <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white dark:text-white mb-6">{title}</h1>
       
       <StatusFilter currentStatus={currentStatus} />
