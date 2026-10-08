@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Project, ProjectStatus } from '@/types/project'
+import SearchableSelect from '@/components/SearchableSelect'
 
 export default function EditProjectModal({ project }: { project: Project }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -17,8 +18,21 @@ export default function EditProjectModal({ project }: { project: Project }) {
     description: project.description || '',
     start_date: project.start_date || '',
     target_date: project.target_date || '',
-    status: project.status
+    status: project.status,
+    company_id: (project as any).company_id || ''
   })
+  
+  const [companies, setCompanies] = useState<any[]>([])
+
+  useEffect(() => {
+    async function fetchCompanies() {
+      const { data } = await supabase.from('companies').select('id, name').order('name')
+      setCompanies(data || [])
+    }
+    if (isOpen) {
+      fetchCompanies()
+    }
+  }, [isOpen, supabase])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -74,6 +88,16 @@ export default function EditProjectModal({ project }: { project: Project }) {
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Company <span className="text-red-500">*</span></label>
+                  <SearchableSelect
+                    options={companies}
+                    value={formData.company_id}
+                    onChange={(val) => setFormData({...formData, company_id: val})}
+                    placeholder="Search and select a company..."
                   />
                 </div>
 

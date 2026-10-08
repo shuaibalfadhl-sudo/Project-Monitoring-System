@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { hasRole } from '@/lib/auth-utils'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { Project } from '@/types/project'
 import ProjectsClient from '@/components/projects/ProjectsClient'
@@ -21,11 +22,20 @@ export default async function ProjectsPage() {
 
   let projects: any[] = []
 
+  const cookieStore = await cookies()
+  const activeCompanyId = cookieStore.get('activeCompanyId')?.value || null;
+
   if (isSuperAdmin) {
-    const { data: allProjects, error } = await supabase
+    let query = supabase
       .from('projects')
       .select('*, project_modules(id, status)')
       .order('created_at', { ascending: false })
+      
+    if (activeCompanyId) {
+      query = query.eq('company_id', activeCompanyId)
+    }
+      
+    const { data: allProjects, error } = await query
       
     if (error) {
       console.error('Error fetching all projects:', error)
@@ -44,17 +54,29 @@ export default async function ProjectsPage() {
     }))
   } else if (isManager) {
     // RLS will enforce that we only see projects created by this user
-    const { data } = await supabase
+    let query = supabase
       .from('projects')
       .select('*')
       .order('created_at', { ascending: false })
+      
+    if (activeCompanyId) {
+      query = query.eq('company_id', activeCompanyId)
+    }
+      
+    const { data } = await query
     projects = data || []
   } else if (isAuditor || isDeveloper) {
     // For auditors and developers, get the projects they are a member of
-    const { data } = await supabase
+    let query = supabase
       .from('project_members')
-      .select('projects(*, project_modules(id, status))')
+      .select('projects!inner(*, project_modules(id, status))')
       .eq('user_id', user.id)
+      
+    if (activeCompanyId) {
+      query = query.eq('projects.company_id', activeCompanyId)
+    }
+      
+    const { data } = await query
     
     let fetchedProjects = data?.map(d => d.projects).filter(Boolean) || []
     

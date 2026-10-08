@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getUserProfile } from '@/lib/auth-utils'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import QaMonitoringClient from '@/components/modules/QaMonitoringClient'
 
 export default async function QaMonitoringPage() {
@@ -15,13 +16,17 @@ export default async function QaMonitoringPage() {
   const isSuperAdmin = profile.role === 'super_admin'
   let saProjects: any[] = []
 
+  const cookieStore = await cookies()
+  const activeCompanyId = cookieStore.get('activeCompanyId')?.value || null;
+
   if (isSuperAdmin) {
-    const { data } = await supabaseServer
+    let query = supabaseServer
       .from('projects')
       .select(`
         id,
         name,
         created_by,
+        company_id,
         project_modules (
           id,
           name,
@@ -32,16 +37,23 @@ export default async function QaMonitoringPage() {
           qa_result_document_url
         )
       `)
+      
+    if (activeCompanyId) {
+      query = query.eq('company_id', activeCompanyId)
+    }
+    
+    const { data } = await query
     
     saProjects = data || []
   } else {
-    const { data } = await supabaseServer
+    let query = supabaseServer
       .from('project_members')
       .select(`
-        projects (
+        projects!inner (
           id,
           name,
           created_by,
+          company_id,
           project_modules (
             id,
             name,
@@ -54,6 +66,12 @@ export default async function QaMonitoringPage() {
         )
       `)
       .eq('user_id', profile.id)
+      
+    if (activeCompanyId) {
+      query = query.eq('projects.company_id', activeCompanyId)
+    }
+      
+    const { data } = await query
       
     if (data) {
       saProjects = data.map(d => d.projects).filter(Boolean)

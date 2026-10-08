@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getUserProfile } from '@/lib/auth-utils'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import QaRevisionClient from '@/components/modules/QaRevisionClient'
 
 export default async function QaRevisionPage() {
@@ -18,6 +19,7 @@ export default async function QaRevisionPage() {
     .select(`
       id,
       name,
+      company_id,
       project_modules (
         id,
         name,
@@ -29,6 +31,13 @@ export default async function QaRevisionPage() {
         qa_acknowledged_by
       )
     `)
+
+  const cookieStore = await cookies()
+  const activeCompanyId = cookieStore.get('activeCompanyId')?.value || null;
+
+  if (activeCompanyId) {
+    projectsQuery = projectsQuery.eq('company_id', activeCompanyId)
+  }
 
   if (profile.role !== 'super_admin') {
     projectsQuery = projectsQuery.eq('created_by', profile.id)

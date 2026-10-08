@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import DashboardRealtime from '@/components/dashboard/DashboardRealtime'
 
 import StatusFilter from '@/components/dashboard/StatusFilter'
@@ -32,17 +33,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   let approvedModules = 0
   let totalForQaModules = 0
 
+  const cookieStore = await cookies()
+  const activeCompanyId = cookieStore.get('activeCompanyId')?.value || null;
+
   const supabaseServer = await createClient()
 
   if (profile.role === 'system_auditor') {
-    const { data } = await supabaseServer
+    let query = supabaseServer
       .from('project_members')
       .select(`
-        projects (
+        projects!inner (
           id,
           name,
           status,
           target_date,
+          company_id,
           project_members ( user_id ),
           project_modules (
             id,
@@ -51,18 +56,25 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )
       `)
       .eq('user_id', profile.id)
+      
+    if (activeCompanyId) {
+      query = query.eq('projects.company_id', activeCompanyId)
+    }
+
+    const { data } = await query
 
     if (data) {
-      displayProjects = data.map(d => d.projects).filter(Boolean)
+      displayProjects = data.map((d: any) => d.projects).filter(Boolean)
     }
   } else if (profile.role === 'project_manager' || profile.role === 'super_admin') {
-    const { data } = await supabaseServer
+    let query = supabaseServer
       .from('projects')
       .select(`
         id,
         name,
         status,
         target_date,
+        company_id,
         project_members ( user_id ),
         project_modules (
           id,
@@ -70,6 +82,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )
       `)
       .order('created_at', { ascending: false })
+
+    if (activeCompanyId) {
+      query = query.eq('company_id', activeCompanyId)
+    }
+    
+    const { data } = await query
 
     if (data) {
       displayProjects = data
@@ -91,9 +109,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   let pmLeaderboard: { pmName: string; deployedPercentage: number; totalModules: number; deployedModules: number; pmId: string }[] = [];
   
   // Try to use the RPC which bypasses RLS (if the user has created it)
-  const { data: rpcData, error: rpcError } = await supabaseServer.rpc('get_pm_leaderboard');
+  const { data: rpcData, error: rpcError } = await supabaseServer.rpc('get_pm_leaderboard', {
+    p_company_id: activeCompanyId
+  });
   
-  if (rpcError) {
+  if (rpcError && rpcError.code !== 'PGRST202') {
     console.error("RPC Error:", rpcError);
   }
 
@@ -113,6 +133,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         .select(`
           id,
           created_by,
+          company_id,
           project_modules (id, status)
         `),
       supabaseServer
@@ -126,6 +147,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       const pmStats: Record<string, { name: string; total: number; deployed: number }> = {};
       
       allProjectsForLeaderboard.forEach((p: any) => {
+        if (activeCompanyId && p.company_id !== activeCompanyId) return;
+        
         const pmId = p.created_by;
         const pmName = profilesMap.get(pmId) || 'Unknown PM';
         
@@ -156,9 +179,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Fetch Developer Revision Leaderboard
   let devRevisionLeaderboard: { devId: string; devName: string; totalRevisions: number; totalModules: number }[] = [];
   
-  const { data: devRpcData, error: devRpcError } = await supabaseServer.rpc('get_dev_revision_leaderboard');
+  const { data: devRpcData, error: devRpcError } = await supabaseServer.rpc('get_dev_revision_leaderboard', {
+    p_company_id: activeCompanyId
+  });
   
-  if (devRpcError) {
+  if (devRpcError && devRpcError.code !== 'PGRST202') {
     console.error("Dev RPC Error:", devRpcError);
   }
 
@@ -174,7 +199,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     const [ { data: allModulesForLeaderboard }, { data: allProfiles } ] = await Promise.all([
       supabaseServer
         .from('project_modules')
-        .select('id, assigned_developer_id, revision_count'),
+        .select('id, assigned_developer_id, revision_count, projects!inner(company_id)'),
       supabaseServer
         .from('profiles')
         .select('id, full_name')
@@ -185,6 +210,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       const devStats: Record<string, { name: string; totalRevisions: number; totalModules: number }> = {};
       
       allModulesForLeaderboard.forEach((m: any) => {
+        if (activeCompanyId && m.projects?.company_id !== activeCompanyId) return;
+
         if (m.assigned_developer_id) {
           const devId = m.assigned_developer_id;
           const devName = profilesMap.get(devId) || 'Unknown Developer';
@@ -212,17 +239,27 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
 
   // Fetch total deployments and revisions across ALL projects for Weekly Activity
-  const { data: allModulesActivity } = await supabaseServer
-    .from('project_modules')
-    .select('status, revision_count');
+  // We use an RPC to bypass RLS so all users can see company-wide progress
+  const { data: rpcActivityData, error: activityError } = await supabaseServer
+    .rpc('get_all_modules_activity', { p_company_id: activeCompanyId });
+
+  let modulesActivity = rpcActivityData || [];
+
+  if (activityError) {
+    // Fallback if the user hasn't created the RPC yet
+    const { data: fallbackActivity } = await supabaseServer
+      .from('project_modules')
+      .select('status, deployment_date:deployed_date, revision_date, projects!inner(company_id)');
+    modulesActivity = fallbackActivity?.filter((m: any) => !activeCompanyId || m.projects?.company_id === activeCompanyId) || [];
+  }
 
   let totalDeployments = 0;
   let totalRevisions = 0;
 
-  if (allModulesActivity) {
-    allModulesActivity.forEach((m: any) => {
+  if (modulesActivity.length > 0) {
+    modulesActivity.forEach((m: any) => {
       if (m.status === 'deployed') totalDeployments++;
-      totalRevisions += (m.revision_count || 0);
+      if (m.status === 'revision') totalRevisions++;
     });
   }
 
@@ -437,7 +474,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
 
           <div className="lg:col-span-2 h-full">
-            <WeeklyActivityChart totalDeployments={totalDeployments} totalRevisions={totalRevisions} />
+            <WeeklyActivityChart 
+              totalDeployments={totalDeployments} 
+              totalRevisions={totalRevisions}
+              modulesActivity={modulesActivity}
+            />
           </div>
 
         </div>

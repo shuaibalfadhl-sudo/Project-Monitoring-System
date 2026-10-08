@@ -272,7 +272,7 @@ export default function ModuleList({
             <option value="low">Low</option>
           </select>
 
-          {isManager && <CreateModuleModal projectId={projectId} />}
+          <CreateModuleModal projectId={projectId} />
         </div>
       </div>
 

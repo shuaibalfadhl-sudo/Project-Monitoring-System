@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import SidebarNav from '@/components/layout/SidebarNav'
 import TopNavbar from '@/components/layout/TopNavbar'
+import { cookies } from 'next/headers'
 
 export default async function DashboardLayout({
   children,
@@ -28,6 +29,20 @@ export default async function DashboardLayout({
     .select('*')
     .eq('id', 1)
     .single()
+  // Fetch user's companies (RLS automatically filters to ones they are a member of)
+  const { data: companies } = await supabaseServer
+    .from('companies')
+    .select('id, name')
+    .order('name')
+    
+  // Get active company from cookie
+  const cookieStore = await cookies()
+  let activeCompanyId = cookieStore.get('activeCompanyId')?.value || null
+  
+  // Auto-select first company if none is selected but user has companies
+  if (!activeCompanyId && companies && companies.length > 0) {
+    activeCompanyId = companies[0].id
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row transition-colors duration-300">
@@ -55,7 +70,11 @@ export default async function DashboardLayout({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-h-screen">
-        <TopNavbar profileName={profile.full_name || 'User'} />
+        <TopNavbar 
+          profileName={profile.full_name || 'User'} 
+          companies={companies || []}
+          initialActiveCompanyId={activeCompanyId}
+        />
         
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
           {children}

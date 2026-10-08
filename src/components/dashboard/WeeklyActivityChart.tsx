@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -11,31 +11,94 @@ import {
   ResponsiveContainer
 } from "recharts";
 
-const mockData = [
-  { name: "Mon", deployments: 4, revisions: 2 },
-  { name: "Tue", deployments: 7, revisions: 3 },
-  { name: "Wed", deployments: 5, revisions: 1 },
-  { name: "Thu", deployments: 12, revisions: 4 },
-  { name: "Fri", deployments: 9, revisions: 2 },
-  { name: "Sat", deployments: 3, revisions: 0 },
-  { name: "Sun", deployments: 2, revisions: 0 },
-];
-
 export default function WeeklyActivityChart({ 
-  totalDeployments = 41, 
-  totalRevisions = 12 
+  totalDeployments = 0, 
+  totalRevisions = 0,
+  modulesActivity = []
 }: { 
   totalDeployments?: number; 
   totalRevisions?: number; 
+  modulesActivity?: any[];
 }) {
   const [timeRange, setTimeRange] = useState("This Week");
+
+  const chartData = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    let startDate = new Date(now);
+    let endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999); // End of the day
+
+    if (timeRange === "This Week") {
+      const day = now.getDay() || 7; 
+      startDate.setDate(now.getDate() - day + 1); 
+      endDate.setDate(startDate.getDate() + 6); 
+    } else if (timeRange === "Last Week") {
+      const day = now.getDay() || 7;
+      startDate.setDate(now.getDate() - day - 6); 
+      endDate.setDate(startDate.getDate() + 6); 
+    } else if (timeRange === "This Month") {
+      startDate.setDate(1); 
+      endDate.setMonth(startDate.getMonth() + 1);
+      endDate.setDate(0); 
+    }
+
+    if (timeRange === "This Month") {
+      const data = [
+        { name: "Week 1", deployments: 0, revisions: 0 },
+        { name: "Week 2", deployments: 0, revisions: 0 },
+        { name: "Week 3", deployments: 0, revisions: 0 },
+        { name: "Week 4", deployments: 0, revisions: 0 },
+      ];
+      
+      modulesActivity.forEach((m) => {
+        if (m.deployment_date) {
+          const dDate = new Date(m.deployment_date);
+          if (dDate >= startDate && dDate <= endDate) {
+            const week = Math.min(Math.floor((dDate.getDate() - 1) / 7), 3);
+            data[week].deployments++;
+          }
+        }
+        if (m.revision_date) {
+          const rDate = new Date(m.revision_date);
+          if (rDate >= startDate && rDate <= endDate) {
+            const week = Math.min(Math.floor((rDate.getDate() - 1) / 7), 3);
+            data[week].revisions++;
+          }
+        }
+      });
+      return data;
+    } else {
+      const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      const data = days.map(d => ({ name: d, deployments: 0, revisions: 0 }));
+      
+      modulesActivity.forEach((m) => {
+        if (m.deployment_date) {
+          const dDate = new Date(m.deployment_date);
+          if (dDate >= startDate && dDate <= endDate) {
+            const dayIdx = dDate.getDay() === 0 ? 6 : dDate.getDay() - 1; 
+            data[dayIdx].deployments++;
+          }
+        }
+        if (m.revision_date) {
+          const rDate = new Date(m.revision_date);
+          if (rDate >= startDate && rDate <= endDate) {
+             const dayIdx = rDate.getDay() === 0 ? 6 : rDate.getDay() - 1;
+             data[dayIdx].revisions++;
+          }
+        }
+      });
+      return data;
+    }
+  }, [timeRange, modulesActivity]);
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-8 rounded-3xl shadow-sm h-full flex flex-col">
       <div className="flex justify-between items-start mb-6">
         <div>
           <h2 className="text-xl font-black text-[var(--sys-primary)] mb-1">Weekly Activity Overview</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Deployments vs Revisions across all projects</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Deployed vs Revision across all projects</p>
         </div>
         <select 
           value={timeRange}
@@ -52,14 +115,14 @@ export default function WeeklyActivityChart({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Deployments</span>
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Deployed</span>
           </div>
           <span className="text-3xl font-black text-[var(--sys-primary)]">{totalDeployments}</span>
         </div>
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Revisions</span>
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Revision</span>
           </div>
           <span className="text-3xl font-black text-[var(--sys-primary)]">{totalRevisions}</span>
         </div>
@@ -67,7 +130,7 @@ export default function WeeklyActivityChart({
 
       <div className="flex-1 w-full min-h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={mockData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="colorDeployments" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
@@ -97,7 +160,8 @@ export default function WeeklyActivityChart({
             />
             <Area 
               type="monotone" 
-              dataKey="deployments" 
+              dataKey="deployments"
+              name="Deployed"
               stroke="#6366f1" 
               strokeWidth={3}
               fillOpacity={1} 
@@ -106,7 +170,8 @@ export default function WeeklyActivityChart({
             />
             <Area 
               type="monotone" 
-              dataKey="revisions" 
+              dataKey="revisions"
+              name="Revision"
               stroke="#f59e0b" 
               strokeWidth={3}
               fillOpacity={1} 

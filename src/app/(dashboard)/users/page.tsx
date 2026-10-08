@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getUserProfile } from '@/lib/auth-utils'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import UsersClient from '@/components/users/UsersClient'
 
 export default async function UsersPage() {
@@ -10,15 +11,30 @@ export default async function UsersPage() {
     redirect('/dashboard')
   }
 
-  const supabase = await createClient()
-  const { data: users, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false })
+  const cookieStore = await cookies()
+  const activeCompanyId = cookieStore.get('activeCompanyId')?.value || null;
 
-  if (error) {
-    console.error('Error fetching users:', error)
+  const supabase = await createClient()
+  let users: any[] = []
+  
+  if (activeCompanyId) {
+    const { data: members, error } = await supabase
+      .from('company_members')
+      .select('profiles!inner(*)')
+      .eq('company_id', activeCompanyId)
+      
+    if (error) console.error('Error fetching company members:', error)
+    if (members) users = members.map((m: any) => m.profiles)
+  } else {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+      
+    if (error) console.error('Error fetching users:', error)
+    if (data) users = data
   }
+
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">

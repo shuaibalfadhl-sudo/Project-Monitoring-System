@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import SearchableSelect from '@/components/SearchableSelect'
 
 export default function EditProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
   const resolvedParams = use(params)
@@ -17,8 +18,11 @@ export default function EditProjectPage({ params }: { params: Promise<{ projectI
     description: '',
     start_date: '',
     target_date: '',
-    status: 'planning'
+    status: 'planning',
+    company_id: ''
   })
+  
+  const [companies, setCompanies] = useState<any[]>([])
 
   useEffect(() => {
     async function fetchProject() {
@@ -34,9 +38,13 @@ export default function EditProjectPage({ params }: { params: Promise<{ projectI
           description: data.description || '',
           start_date: data.start_date || '',
           target_date: data.target_date || '',
-          status: data.status
+          status: data.status,
+          company_id: data.company_id || ''
         })
       }
+      
+      const { data: companiesData } = await supabase.from('companies').select('id, name').order('name')
+      setCompanies(companiesData || [])
       if (error) {
         toast.error('Could not load project')
         router.push('/projects')
@@ -74,6 +82,16 @@ export default function EditProjectPage({ params }: { params: Promise<{ projectI
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Project Name <span className="text-red-500">*</span></label>
           <input type="text" required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Company <span className="text-red-500">*</span></label>
+          <SearchableSelect
+            options={companies}
+            value={formData.company_id}
+            onChange={(val) => setFormData({...formData, company_id: val})}
+            placeholder="Search and select a company..."
+          />
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>

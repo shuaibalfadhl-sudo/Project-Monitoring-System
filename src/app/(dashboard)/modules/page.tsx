@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUserProfile } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import AllModulesClient from "@/components/modules/AllModulesClient";
 
 export default async function AllModulesPage() {
@@ -13,13 +14,23 @@ export default async function AllModulesPage() {
   const supabase = await createClient();
   let allModules: any[] = [];
 
+  const cookieStore = await cookies();
+  const activeCompanyId = cookieStore.get('activeCompanyId')?.value || null;
+
   if (profile.role === "super_admin") {
-    const { data: projects } = await supabase.from("projects").select(`
+    let query = supabase.from("projects").select(`
         id,
         name,
         created_by,
+        company_id,
         project_modules (*)
       `);
+
+    if (activeCompanyId) {
+      query = query.eq('company_id', activeCompanyId);
+    }
+    
+    const { data: projects } = await query;
 
     if (projects) {
       projects.forEach((p) => {
@@ -34,17 +45,24 @@ export default async function AllModulesPage() {
       });
     }
   } else if (profile.role === "project_manager") {
-    const { data: projects } = await supabase
+    let query = supabase
       .from("projects")
       .select(
         `
         id,
         name,
         created_by,
+        company_id,
         project_modules (*)
       `,
       )
       .eq("created_by", profile.id);
+
+    if (activeCompanyId) {
+      query = query.eq('company_id', activeCompanyId);
+    }
+
+    const { data: projects } = await query;
 
     if (projects) {
       projects.forEach((p) => {
@@ -58,20 +76,27 @@ export default async function AllModulesPage() {
         }
       });
     }
-  } else if (profile.role === "system_auditor") {
-    const { data: memberships } = await supabase
+  } else if (profile.role === "system_auditor" || profile.role === "developer") {
+    let query = supabase
       .from("project_members")
       .select(
         `
-        projects (
+        projects!inner (
           id,
           name,
           created_by,
+          company_id,
           project_modules (*)
         )
       `,
       )
       .eq("user_id", profile.id);
+
+    if (activeCompanyId) {
+      query = query.eq('projects.company_id', activeCompanyId);
+    }
+
+    const { data: memberships } = await query;
 
     if (memberships) {
       memberships.forEach((membership) => {

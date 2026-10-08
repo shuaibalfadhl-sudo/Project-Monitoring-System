@@ -6,13 +6,23 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
-export default function TopNavbar({ profileName }: { profileName: string }) {
+export default function TopNavbar({ 
+  profileName,
+  companies = [],
+  initialActiveCompanyId = null
+}: { 
+  profileName: string;
+  companies?: any[];
+  initialActiveCompanyId?: string | null;
+}) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [uuidNames, setUuidNames] = useState<Record<string, string>>({})
+  
+  const activeCompany = companies.find(c => c.id === initialActiveCompanyId) || null
 
   // Initialize theme from local storage
   useEffect(() => {
@@ -101,6 +111,11 @@ export default function TopNavbar({ profileName }: { profileName: string }) {
     router.refresh()
   }
 
+  const handleCompanySelect = (companyId: string) => {
+    document.cookie = `activeCompanyId=${companyId}; path=/; max-age=31536000` // 1 year expiry
+    router.refresh()
+  }
+
   return (
     <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-16 flex items-center justify-between px-6 sticky top-0 z-40 shadow-sm transition-colors duration-300">
       {/* Breadcrumbs */}
@@ -132,7 +147,54 @@ export default function TopNavbar({ profileName }: { profileName: string }) {
         </ol>
       </nav>
 
-      {/* User Dropdown */}
+      <div className="flex items-center gap-4">
+        {/* Company Dropdown */}
+        <div className="relative group/company">
+          <button 
+            className="flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 px-3 py-1.5 rounded-lg transition-colors focus:outline-none border border-slate-200 dark:border-slate-700"
+          >
+            <div className="w-5 h-5 rounded-md bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
+              {activeCompany ? activeCompany.name.charAt(0).toUpperCase() : '?'}
+            </div>
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate max-w-[120px]">
+              {activeCompany ? activeCompany.name : 'No Company'}
+            </span>
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 py-1 z-50 opacity-0 invisible group-hover/company:opacity-100 group-hover/company:visible transition-all duration-200 transform origin-top-right">
+            <div className="px-3 py-2 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              Your Companies
+            </div>
+            <div className="max-h-60 overflow-y-auto">
+              {companies.map(company => (
+                <button 
+                  key={company.id}
+                  onClick={() => handleCompanySelect(company.id)}
+                  className={`w-full text-left flex items-center gap-2 px-4 py-2 text-sm font-medium ${
+                    company.id === initialActiveCompanyId 
+                      ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400' 
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <div className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-xs shrink-0">
+                    {company.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="truncate">{company.name}</span>
+                  {company.id === initialActiveCompanyId && (
+                    <svg className="w-4 h-4 ml-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* User Dropdown */}
       <div className="relative group">
         <button 
           className="flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 p-2 rounded-xl transition-colors focus:outline-none cursor-pointer"
@@ -153,6 +215,12 @@ export default function TopNavbar({ profileName }: { profileName: string }) {
           >
             Profile
           </Link>
+          <Link 
+            href="/companies" 
+            className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary)] font-medium"
+          >
+            Companies
+          </Link>
           <button 
             onClick={toggleTheme}
             className="w-full text-left block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary)] font-medium"
@@ -167,6 +235,7 @@ export default function TopNavbar({ profileName }: { profileName: string }) {
             Logout
           </button>
         </div>
+      </div>
       </div>
     </header>
   )

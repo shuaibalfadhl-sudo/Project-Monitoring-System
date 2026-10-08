@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getUserProfile } from '@/lib/auth-utils'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import DeploymentClient from '@/components/modules/DeploymentClient'
 
 export default async function DeploymentPage() {
@@ -17,6 +18,7 @@ export default async function DeploymentPage() {
     .select(`
       id,
       name,
+      company_id,
       project_modules (
         id,
         name,
@@ -28,6 +30,13 @@ export default async function DeploymentPage() {
         qa_acknowledged_by
       )
     `)
+
+  const cookieStore = await cookies()
+  const activeCompanyId = cookieStore.get('activeCompanyId')?.value || null;
+
+  if (activeCompanyId) {
+    projectsQuery = projectsQuery.eq('company_id', activeCompanyId)
+  }
 
   if (profile.role !== 'super_admin') {
     projectsQuery = projectsQuery.eq('created_by', profile.id)

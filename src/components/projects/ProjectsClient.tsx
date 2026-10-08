@@ -36,7 +36,7 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
           {isAuditor ? 'Assigned Projects' : isSuperAdmin ? 'All Projects' : 'Projects'}
         </h1>
-        {isManager && <CreateProjectModal />}
+        <CreateProjectModal />
       </div>
 
       <div className="mb-6 flex flex-col sm:flex-row w-full gap-4 items-center justify-end">

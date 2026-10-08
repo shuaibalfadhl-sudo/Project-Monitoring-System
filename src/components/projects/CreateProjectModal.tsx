@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import SearchableSelect from '@/components/SearchableSelect'
 
 export default function CreateProjectModal() {
   const [isOpen, setIsOpen] = useState(false)
@@ -11,13 +12,27 @@ export default function CreateProjectModal() {
   const supabase = createClient()
   
   const [isLoading, setIsLoading] = useState(false)
+  const [companies, setCompanies] = useState<any[]>([])
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     start_date: '',
     target_date: '',
-    status: 'planning'
+    status: 'planning',
+    company_id: ''
   })
+
+  useEffect(() => {
+    async function fetchCompanies() {
+      const { data } = await supabase.from('companies').select('id, name').order('name')
+      setCompanies(data || [])
+      if (data && data.length > 0) {
+        setFormData(prev => ({ ...prev, company_id: data[0].id }))
+      }
+    }
+    fetchCompanies()
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -27,13 +42,6 @@ export default function CreateProjectModal() {
     
     if (!user) {
       toast.error('Authentication error')
-      setIsLoading(false)
-      return
-    }
-
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (!profile || profile.role !== 'project_manager') {
-      toast.error(`RLS BLOCKED: Your role must be "project_manager" to insert.`)
       setIsLoading(false)
       return
     }
@@ -56,7 +64,8 @@ export default function CreateProjectModal() {
         description: '',
         start_date: '',
         target_date: '',
-        status: 'planning'
+        status: 'planning',
+        company_id: companies.length > 0 ? companies[0].id : ''
       })
       router.refresh()
       setIsLoading(false)
@@ -97,6 +106,16 @@ export default function CreateProjectModal() {
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Company <span className="text-red-500">*</span></label>
+                  <SearchableSelect
+                    options={companies}
+                    value={formData.company_id}
+                    onChange={(val) => setFormData({...formData, company_id: val})}
+                    placeholder="Search and select a company..."
                   />
                 </div>
 
