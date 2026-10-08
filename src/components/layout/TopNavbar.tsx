@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -8,10 +8,12 @@ import { toast } from 'sonner'
 
 export default function TopNavbar({ 
   profileName,
+  avatarUrl = null,
   companies = [],
   initialActiveCompanyId = null
 }: { 
   profileName: string;
+  avatarUrl?: string | null;
   companies?: any[];
   initialActiveCompanyId?: string | null;
 }) {
@@ -21,6 +23,8 @@ export default function TopNavbar({
   
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [uuidNames, setUuidNames] = useState<Record<string, string>>({})
+  const [isPending, startTransition] = useTransition()
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null)
   
   const activeCompany = companies.find(c => c.id === initialActiveCompanyId) || null
 
@@ -112,8 +116,11 @@ export default function TopNavbar({
   }
 
   const handleCompanySelect = (companyId: string) => {
+    setSwitchingTo(companyId)
     document.cookie = `activeCompanyId=${companyId}; path=/; max-age=31536000` // 1 year expiry
-    router.refresh()
+    startTransition(() => {
+      router.refresh()
+    })
   }
 
   return (
@@ -173,7 +180,8 @@ export default function TopNavbar({
                 <button 
                   key={company.id}
                   onClick={() => handleCompanySelect(company.id)}
-                  className={`w-full text-left flex items-center gap-2 px-4 py-2 text-sm font-medium ${
+                  disabled={isPending}
+                  className={`w-full text-left flex items-center gap-2 px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
                     company.id === initialActiveCompanyId 
                       ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400' 
                       : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
@@ -182,9 +190,9 @@ export default function TopNavbar({
                   <div className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-xs shrink-0">
                     {company.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="truncate">{company.name}</span>
+                  <span className="truncate flex-1">{company.name}</span>
                   {company.id === initialActiveCompanyId && (
-                    <svg className="w-4 h-4 ml-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-4 h-4 ml-auto text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   )}
@@ -199,8 +207,12 @@ export default function TopNavbar({
         <button 
           className="flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 p-2 rounded-xl transition-colors focus:outline-none cursor-pointer"
         >
-          <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm shrink-0">
-            {(profileName || 'U').charAt(0).toUpperCase()}
+          <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              (profileName || 'U').charAt(0).toUpperCase()
+            )}
           </div>
           <span className="text-sm font-bold text-slate-700 dark:text-slate-200 hidden sm:block">{profileName}</span>
           <svg className="w-4 h-4 text-slate-400 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,6 +249,19 @@ export default function TopNavbar({
         </div>
       </div>
       </div>
+      
+      {/* Global Page Loading Overlay */}
+      {isPending && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/20 dark:bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center transition-all duration-300">
+          <div className="bg-white dark:bg-slate-800 px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-200">
+            <svg className="animate-spin w-10 h-10 text-[var(--sys-primary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Loading company data...</p>
+          </div>
+        </div>
+      )}
     </header>
   )
 }

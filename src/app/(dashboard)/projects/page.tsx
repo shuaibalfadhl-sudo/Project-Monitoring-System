@@ -28,7 +28,7 @@ export default async function ProjectsPage() {
   if (isSuperAdmin) {
     let query = supabase
       .from('projects')
-      .select('*, project_modules(id, status)')
+      .select('*, project_modules(id, status), project_members(user_id)')
       .order('created_at', { ascending: false })
       
     if (activeCompanyId) {
@@ -56,7 +56,7 @@ export default async function ProjectsPage() {
     // RLS will enforce that we only see projects created by this user
     let query = supabase
       .from('projects')
-      .select('*')
+      .select('*, project_modules(id, status), project_members(user_id)')
       .order('created_at', { ascending: false })
       
     if (activeCompanyId) {
@@ -69,7 +69,7 @@ export default async function ProjectsPage() {
     // For auditors and developers, get the projects they are a member of
     let query = supabase
       .from('project_members')
-      .select('projects!inner(*, project_modules(id, status))')
+      .select('projects!inner(*, project_modules(id, status), project_members(user_id))')
       .eq('user_id', user.id)
       
     if (activeCompanyId) {

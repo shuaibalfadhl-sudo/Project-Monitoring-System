@@ -109,21 +109,21 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* HEADER CARD */}
-      <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-800 p-8">
         <div className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-3">{project.name}</h1>
             <div className="flex items-center gap-3">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 capitalize border border-blue-100">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 capitalize border border-blue-100 dark:border-blue-800/50">
                 {project.status === 'qa_approved' ? 'QA Approved' : project.status === 'for_qa' ? 'For QA' : project.status.replace('_', ' ')}
               </span>
-              <span className="text-xs font-semibold text-gray-500 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-800 px-3 py-1 rounded-full border border-gray-100 dark:border-slate-700">
                 {project.start_date || 'N/A'} — {project.target_date || 'N/A'}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/projects" className="text-sm font-semibold text-gray-500 hover:text-[var(--sys-primary)]">
+            <Link href="/projects" className="text-sm font-semibold text-gray-500 dark:text-slate-400 hover:text-[var(--sys-primary)] dark:hover:text-[var(--sys-primary)]">
               ← Back to Projects
             </Link>
             {isManager && (
@@ -132,20 +132,20 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
           </div>
         </div>
         
-        <div className="mt-6 border-t border-gray-100 pt-6">
+        <div className="mt-6 border-t border-gray-100 dark:border-slate-800 pt-6">
           <StatusFilter currentStatus={currentStatus} />
         </div>
         
         <div className="grid lg:grid-cols-3 gap-8 mt-8">
           <div className="space-y-6">
             <div>
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Description</h3>
-              <p className="text-gray-700 font-medium leading-relaxed">{project.description || 'No description provided.'}</p>
+              <h3 className="text-sm font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">Description</h3>
+              <p className="text-gray-700 dark:text-slate-300 font-medium leading-relaxed">{project.description || 'No description provided.'}</p>
             </div>
             
-            <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm flex flex-col">
+            <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm dark:shadow-none flex flex-col">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Project Members</h3>
+                <h3 className="text-sm font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Project Members</h3>
                 <div className="flex gap-3 items-center">
                   <ViewAllMembersModal members={processedMembers} isManager={isManager} projectId={project.id} />
                   {isManager && (
@@ -159,11 +159,11 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
               <div className="space-y-3 flex-1 overflow-y-auto">
                 {processedMembers.slice(0, 3).map((member: any) => {
                   return (
-                  <div key={member.user_id || member.id} className={`flex justify-between items-center p-3 rounded-xl border ${member.is_owner ? 'bg-blue-50/50 border-blue-100' : 'bg-gray-50 border-gray-100'}`}>
+                  <div key={member.user_id || member.id} className={`flex justify-between items-center p-3 rounded-xl border ${member.is_owner ? 'bg-blue-50/50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/40' : 'bg-gray-50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-700'}`}>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-bold text-[var(--sys-primary)]">{member.full_name || 'Unnamed member'}</p>
                       {member.is_owner && (
-                        <span className="bg-blue-100 text-blue-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Owner</span>
+                        <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Owner</span>
                       )}
                     </div>
                     {isManager && !member.is_owner && (
@@ -173,43 +173,43 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
                 )})}
                 
                 {processedMembers.length > 3 && (
-                  <div className="text-center pt-2 border-t border-gray-100 mt-2">
-                    <p className="text-xs font-bold text-gray-400 mt-2">+{processedMembers.length - 3} more members...</p>
+                  <div className="text-center pt-2 border-t border-gray-100 dark:border-slate-800 mt-2">
+                    <p className="text-xs font-bold text-gray-400 dark:text-slate-500 mt-2">+{processedMembers.length - 3} more members...</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
           
-          <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm flex flex-col justify-center">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6">Module Status</h3>
+          <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm dark:shadow-none flex flex-col justify-center">
+            <h3 className="text-sm font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-6">Module Status</h3>
             <div className="w-full space-y-3">
               {presentStatuses.length > 0 ? presentStatuses.map(status => (
-                <div key={status} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                <div key={status} className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: statusColors[status] }}></div>
-                    <span className={`text-sm font-bold text-gray-700 ${status === 'qa_approved' || status === 'for_qa' ? '' : 'capitalize'}`}>{status === 'qa_approved' ? 'QA Approved' : status === 'for_qa' ? 'For QA' : status.replace('_', ' ')}</span>
+                    <span className={`text-sm font-bold text-gray-700 dark:text-slate-300 ${status === 'qa_approved' || status === 'for_qa' ? '' : 'capitalize'}`}>{status === 'qa_approved' ? 'QA Approved' : status === 'for_qa' ? 'For QA' : status.replace('_', ' ')}</span>
                   </div>
                   <span className="text-base font-black text-[var(--sys-primary)]">{statusCounts[status]}</span>
                 </div>
               )) : (
                 <div className="text-center py-4">
-                  <span className="text-sm font-semibold text-gray-500">No modules yet</span>
+                  <span className="text-sm font-semibold text-gray-500 dark:text-slate-400">No modules yet</span>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm flex flex-col justify-center items-center">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-8 w-full">Project Progress</h3>
+          <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm dark:shadow-none flex flex-col justify-center items-center">
+            <h3 className="text-sm font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-8 w-full">Project Progress</h3>
             <div className="flex-1 flex flex-col justify-center items-center py-4">
               <div className="w-56 h-56 rounded-full relative shadow-inner bg-gray-50 dark:bg-slate-800">
                 <div className="absolute inset-0 z-0">
                   <ProjectPieChart data={typeof pieChartData !== 'undefined' ? pieChartData : []} activeId={currentStatus} />
                 </div>
-                <div className="absolute inset-8 bg-white rounded-full flex flex-col items-center justify-center shadow-sm z-10 pointer-events-none">
+                <div className="absolute inset-8 bg-white dark:bg-slate-900 rounded-full flex flex-col items-center justify-center shadow-sm z-10 pointer-events-none">
                   <span className="text-5xl font-black text-[var(--sys-primary)] tracking-tighter">{Math.round(p_approved)}%</span>
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1 text-center leading-tight break-all px-2">
+                  <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest mt-1 text-center leading-tight break-all px-2">
                     {currentStatus === 'qa_approved' ? 'QA Approved' : currentStatus === 'for_qa' ? 'For QA' : currentStatus.replace('_', ' ')}
                   </span>
                 </div>

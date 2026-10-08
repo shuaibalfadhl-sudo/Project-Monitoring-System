@@ -27,6 +27,10 @@ export default function SidebarNav({ role }: { role: string }) {
         Dashboard
       </Link>
       
+      <Link href="/hall-of-fame" className={getLinkClasses('/hall-of-fame')}>
+        Hall of Fame
+      </Link>
+      
       <Link href="/modules" className={getLinkClasses('/modules')}>
         All Modules
       </Link>

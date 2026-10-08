@@ -41,7 +41,7 @@ export function LoginForm() {
       <div className="space-y-2">
         <label
           htmlFor="email"
-          className="block text-sm font-medium text-gray-700"
+          className="block text-sm font-medium text-gray-700 dark:text-slate-300"
         >
           Email
         </label>
@@ -54,14 +54,14 @@ export function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Enter your email"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50 text-gray-900"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] focus:border-[var(--sys-primary)] disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-slate-800 text-gray-900 dark:text-white dark:bg-slate-900"
           disabled={isLoading}
         />
       </div>
       <div className="space-y-2">
         <label
           htmlFor="password"
-          className="block text-sm font-medium text-gray-700"
+          className="block text-sm font-medium text-gray-700 dark:text-slate-300"
         >
           Password
         </label>
@@ -74,14 +74,14 @@ export function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Enter your password"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50 text-gray-900"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] focus:border-[var(--sys-primary)] disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-slate-800 text-gray-900 dark:text-white dark:bg-slate-900"
           disabled={isLoading}
         />
       </div>
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full py-2.5 px-4 text-white bg-blue-600 hover:bg-blue-700 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+        className="w-full py-3 px-4 text-white bg-[var(--sys-primary)] hover:opacity-90 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] focus:ring-offset-2 dark:focus:ring-offset-slate-800 disabled:opacity-50 transition-all shadow-md"
       >
         {isLoading ? 'Signing in...' : 'Sign In'}
       </button>

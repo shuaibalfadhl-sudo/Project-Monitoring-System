@@ -268,7 +268,7 @@ export default function AllModulesClient({
         </div>
 
         {totalPages > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-200 dark:border-slate-700 px-6 py-4 gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-200 dark:border-slate-700 px-6 py-4 gap-4 bg-white dark:bg-slate-800">
             <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
               <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">
                 Showing{" "}

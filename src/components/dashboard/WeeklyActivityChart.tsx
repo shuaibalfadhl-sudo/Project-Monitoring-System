@@ -111,22 +111,49 @@ export default function WeeklyActivityChart({
         </select>
       </div>
 
-      <div className="flex gap-10 mb-8">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Deployed</span>
+      {(() => {
+        const total = totalDeployments + totalRevisions;
+        const rate = total > 0 ? Math.round((totalDeployments / total) * 100) : 0;
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="flex items-center gap-4 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
+              <div className="w-12 h-12 shrink-0 bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-0.5">Deployed</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">{totalDeployments}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
+              <div className="w-12 h-12 shrink-0 bg-orange-50 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-0.5">Revisions</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">{totalRevisions}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
+              <div className="w-12 h-12 shrink-0 bg-purple-50 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-0.5">Deployment Rate</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">{rate}%</p>
+              </div>
+            </div>
           </div>
-          <span className="text-3xl font-black text-[var(--sys-primary)]">{totalDeployments}</span>
-        </div>
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Revision</span>
-          </div>
-          <span className="text-3xl font-black text-[var(--sys-primary)]">{totalRevisions}</span>
-        </div>
-      </div>
+        );
+      })()}
 
       <div className="flex-1 w-full min-h-[300px]">
         <ResponsiveContainer width="100%" height="100%">

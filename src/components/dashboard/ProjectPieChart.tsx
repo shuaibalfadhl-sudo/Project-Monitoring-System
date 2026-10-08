@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 type PieChartProps = {
   data: { id: string; value: number; color: string }[];
@@ -8,6 +8,25 @@ type PieChartProps = {
 };
 
 export default function ProjectPieChart({ data, activeId }: PieChartProps) {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    let start: number;
+    const duration = 1200; // 1.2s animation
+
+    const animate = (time: number) => {
+      if (!start) start = time;
+      const elapsed = time - start;
+      const p = Math.min(elapsed / duration, 1);
+      const easeOut = 1 - Math.pow(1 - p, 4); // cubic ease-out
+      setProgress(easeOut);
+      if (p < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+  }, []);
+
   const total = data.reduce((acc, d) => acc + d.value, 0);
   
   if (total === 0) {
@@ -23,7 +42,8 @@ export default function ProjectPieChart({ data, activeId }: PieChartProps) {
   const slices = data.map((slice) => {
     if (slice.value === 0) return null;
     
-    const angle = (slice.value / total) * 360;
+    const targetAngle = (slice.value / total) * 360;
+    const angle = targetAngle * progress; // Animate the angle
     
     if (angle === 360) {
       return (

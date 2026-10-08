@@ -118,41 +118,41 @@ export default function ModuleList({
   const getStatusColor = (status?: string) => {
     switch (status) {
       case "development":
-        return "bg-blue-100 text-blue-700";
+        return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
       case "pm_review":
-        return "bg-purple-100 text-purple-700";
+        return "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300";
       case "for_qa":
-        return "bg-orange-100 text-orange-700";
+        return "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300";
       case "auditing":
-        return "bg-amber-100 text-amber-700";
+        return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
       case "revision":
-        return "bg-red-100 text-red-700";
+        return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
       case "revising":
-        return "bg-rose-100 text-rose-700";
+        return "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300";
       case "qa_approved":
-        return "bg-green-100 text-green-700";
+        return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300";
       case "deployment":
-        return "bg-indigo-100 text-indigo-700";
+        return "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300";
       case "deployed":
-        return "bg-emerald-100 text-emerald-700";
+        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
       case "pending":
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300";
     }
   };
 
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
       case "critical":
-        return "bg-red-100 text-red-800 border-red-200";
+        return "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50";
       case "high":
-        return "bg-orange-100 text-orange-800 border-orange-200";
+        return "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-400 border-orange-200 dark:border-orange-800/50";
       case "medium":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50";
       case "low":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800/50";
       default:
-        return "bg-slate-100 text-slate-800 border-slate-200";
+        return "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
     }
   };
 
@@ -174,8 +174,8 @@ export default function ModuleList({
   );
 
   return (
-    <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
-      <div className="p-6 sm:p-8 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-800 overflow-hidden">
+      <div className="p-6 sm:p-8 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-xl font-bold text-[var(--sys-primary)]">Modules</h2>
 
         <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3 items-center">
@@ -188,7 +188,7 @@ export default function ModuleList({
             }}
             disabled={isRefreshing}
             title="Refresh table"
-            className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl text-sm font-medium bg-white text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60"
+            className="flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-medium bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-60"
           >
             <svg
               className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
@@ -224,7 +224,7 @@ export default function ModuleList({
             </div>
             <input
               type="text"
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:text-white"
               placeholder="Search modules..."
               value={searchTerm}
               onChange={(e) => {
@@ -236,7 +236,7 @@ export default function ModuleList({
 
           {/* Status Filter */}
           <select
-            className="w-full sm:w-40 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white"
+            className="w-full sm:w-40 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:text-white"
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value);
@@ -258,7 +258,7 @@ export default function ModuleList({
 
           {/* Priority Filter */}
           <select
-            className="w-full sm:w-32 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white"
+            className="w-full sm:w-32 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:text-white"
             value={priorityFilter}
             onChange={(e) => {
               setPriorityFilter(e.target.value);
@@ -279,13 +279,13 @@ export default function ModuleList({
       <div className="p-8">
         {!modules || modules.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-gray-500 font-medium">
+            <p className="text-gray-500 dark:text-slate-400 font-medium">
               No modules have been created yet.
             </p>
           </div>
         ) : filteredModules.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-gray-500 font-medium">
+            <p className="text-gray-500 dark:text-slate-400 font-medium">
               No modules match your filters.
             </p>
           </div>
@@ -293,47 +293,47 @@ export default function ModuleList({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b-2 border-gray-100">
-                  <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                <tr className="border-b-2 border-gray-100 dark:border-slate-800">
+                  <th className="pb-4 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     Module Name
                   </th>
-                  <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider text-center">
+                  <th className="pb-4 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider text-center">
                     Category
                   </th>
-                  <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider text-center">
+                  <th className="pb-4 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider text-center">
                     Priority
                   </th>
-                  <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                  <th className="pb-4 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     Status
                   </th>
                   {isManager ? (
-                    <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider text-right">
+                    <th className="pb-4 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider text-right">
                       Actions
                     </th>
                   ) : (
-                    <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                    <th className="pb-4 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Description
                     </th>
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800/50">
                 {paginatedModules.map((module: ProjectModule) => (
                   <tr
                     key={module.id}
                     onClick={() => openModal(module)}
-                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                    className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
                   >
                     <td className="py-4 font-bold text-[var(--sys-primary)]">
                       {module.name}
                       {module.revision_count ? (
-                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">
+                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
                           {module.revision_count} Rev
                         </span>
                       ) : null}
                     </td>
                     <td className="py-4 text-center">
-                      <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded capitalize">
+                      <span className="text-xs font-bold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded capitalize">
                         {module.category
                           ? module.category.replace("_", " ")
                           : "New Module"}
@@ -360,16 +360,16 @@ export default function ModuleList({
                           onClick={(e) => e.stopPropagation()}
                         >
                           <EditModuleModal module={module} />
-                          <button className="text-sm font-semibold text-red-500 hover:text-red-700">
+                          <button className="text-sm font-semibold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
                             Delete
                           </button>
                         </div>
                       </td>
                     ) : (
-                      <td className="py-4 text-sm text-gray-600 font-medium">
+                      <td className="py-4 text-sm text-gray-600 dark:text-slate-400 font-medium">
                         <div className="line-clamp-1 max-w-xs">
                           {module.description || (
-                            <span className="italic text-gray-400">
+                            <span className="italic text-gray-400 dark:text-slate-500">
                               No description
                             </span>
                           )}
@@ -382,9 +382,9 @@ export default function ModuleList({
             </table>
 
             {totalPages > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between border-t border-gray-100 px-6 py-4 gap-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between border-t border-gray-100 dark:border-slate-800 px-6 py-4 gap-4">
                 <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
-                  <p className="text-sm text-gray-700 font-medium">
+                  <p className="text-sm text-gray-700 dark:text-slate-300 font-medium">
                     Showing{" "}
                     <span className="font-bold">
                       {(currentPage - 1) * itemsPerPage +
@@ -402,7 +402,7 @@ export default function ModuleList({
                     modules
                   </p>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500 font-medium">
+                    <span className="text-sm text-gray-500 dark:text-slate-400 font-medium">
                       Show
                     </span>
                     <select
@@ -411,7 +411,7 @@ export default function ModuleList({
                         setItemsPerPage(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white px-2 py-1 cursor-pointer"
+                      className="border border-gray-200 dark:border-slate-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:text-white px-2 py-1 cursor-pointer"
                     >
                       <option value={5}>5</option>
                       <option value={10}>10</option>
@@ -428,7 +428,7 @@ export default function ModuleList({
                         setCurrentPage((prev) => Math.max(prev - 1, 1))
                       }
                       disabled={currentPage === 1}
-                      className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                      className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                     >
                       <svg
                         className="h-5 w-5"
@@ -449,7 +449,7 @@ export default function ModuleList({
                           page === "..." ? (
                             <span
                               key={`ellipsis-${i}`}
-                              className="w-8 h-8 flex items-center justify-center text-gray-400 font-bold tracking-widest"
+                              className="w-8 h-8 flex items-center justify-center text-gray-400 dark:text-slate-500 font-bold tracking-widest"
                             >
                               ...
                             </span>
