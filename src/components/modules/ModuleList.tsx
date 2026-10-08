@@ -89,6 +89,20 @@ export default function ModuleList({
     }
   };
 
+  const handleQuickStatusChange = async (moduleId: string, newStatus: string) => {
+    try {
+      const { error: updateError } = await supabase
+        .from("project_modules")
+        .update({ status: newStatus })
+        .eq("id", moduleId);
+
+      if (updateError) throw updateError;
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message || "An error occurred while updating the status.");
+    }
+  };
+
   const generatePagination = (currentPage: number, totalPages: number) => {
     if (totalPages <= 7) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -349,11 +363,33 @@ export default function ModuleList({
                       </span>
                     </td>
                     <td className="py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${module.status === 'qa_approved' || module.status === 'for_qa' ? '' : 'capitalize'} ${getStatusColor(module.status)}`}
-                      >
-                        {module.status === 'qa_approved' ? 'QA Approved' : module.status === 'for_qa' ? 'For QA' : (module.status || "pending").replace("_", " ")}
-                      </span>
+                      {isManager && !['auditing', 'qa_approved', 'deployed', 'deployment'].includes(module.status || 'pending') ? (
+                        <div onClick={(e) => e.stopPropagation()} className="relative inline-block group">
+                          <select
+                            className={`pl-2.5 pr-7 py-1 rounded-lg text-xs font-bold border-2 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] cursor-pointer ${getStatusColor(module.status)} border-transparent hover:border-gray-300 dark:hover:border-slate-600 transition-colors appearance-none relative z-0`}
+                            value={module.status || 'pending'}
+                            onChange={(e) => handleQuickStatusChange(module.id, e.target.value)}
+                          >
+                            <option value="pending" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Pending</option>
+                            <option value="development" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Development</option>
+                            <option value="pm_review" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">PM Review</option>
+                            <option value="for_qa" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For QA</option>
+                            <option value="revision" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revision</option>
+                            <option value="revising" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revising</option>
+                          </select>
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-current opacity-50 group-hover:opacity-100 transition-opacity z-10">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </div>
+                        </div>
+                      ) : (
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border-2 border-transparent ${module.status === 'qa_approved' || module.status === 'for_qa' ? '' : 'capitalize'} ${getStatusColor(module.status)}`}
+                        >
+                          {module.status === 'qa_approved' ? 'QA Approved' : module.status === 'for_qa' ? 'For QA' : (module.status || "pending").replace("_", " ")}
+                        </span>
+                      )}
                     </td>
                     {isManager ? (
                       <td className="py-4 text-right">
