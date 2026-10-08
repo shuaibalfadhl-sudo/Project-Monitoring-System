@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import CreateModuleModal from "@/components/modules/CreateModuleModal";
 import EditModuleModal from "@/components/modules/EditModuleModal";
+import ConfirmDeleteModal from "@/components/modules/ConfirmDeleteModal";
 
 interface ModuleListProps {
   modules: ProjectModule[];
@@ -38,6 +39,7 @@ export default function ModuleList({
   const [reworkLink, setReworkLink] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [moduleToDelete, setModuleToDelete] = useState<ProjectModule | null>(null);
 
   const router = useRouter();
   const supabase = createClient();
@@ -272,7 +274,7 @@ export default function ModuleList({
             <option value="low">Low</option>
           </select>
 
-          <CreateModuleModal projectId={projectId} />
+          <CreateModuleModal projectId={projectId} isManager={isManager} />
         </div>
       </div>
 
@@ -359,8 +361,11 @@ export default function ModuleList({
                           className="flex justify-end gap-4"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <EditModuleModal module={module} />
-                          <button className="text-sm font-semibold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                          <EditModuleModal module={module} isManager={isManager} />
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setModuleToDelete(module); }}
+                            className="text-sm font-semibold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                          >
                             Delete
                           </button>
                         </div>
@@ -871,6 +876,13 @@ export default function ModuleList({
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal 
+        isOpen={!!moduleToDelete}
+        onClose={() => setModuleToDelete(null)}
+        moduleId={moduleToDelete?.id || ''}
+        moduleName={moduleToDelete?.name || ''}
+      />
     </div>
   );
 }

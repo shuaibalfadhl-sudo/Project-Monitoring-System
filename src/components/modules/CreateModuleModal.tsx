@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
-export default function CreateModuleModal({ projectId }: { projectId: string }) {
+export default function CreateModuleModal({ projectId, isManager }: { projectId: string, isManager?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
@@ -142,11 +142,15 @@ export default function CreateModuleModal({ projectId }: { projectId: string }) 
                       <option value="development">Development</option>
                       <option value="pm_review">PM Review</option>
                       <option value="for_qa">For QA</option>
-                      <option value="auditing">Auditing</option>
-                      <option value="revising">Revising</option>
-                      <option value="qa_approved">QA Approved</option>
-                      <option value="deployment">Deployment</option>
-                      <option value="deployed">Deployed</option>
+                      {!isManager && (
+                        <>
+                          <option value="auditing">Auditing</option>
+                          <option value="revising">Revising</option>
+                          <option value="qa_approved">QA Approved</option>
+                          <option value="deployment">Deployment</option>
+                          <option value="deployed">Deployed</option>
+                        </>
+                      )}
                     </select>
                   </div>
                 </div>
