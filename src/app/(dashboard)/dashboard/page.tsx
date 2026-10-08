@@ -113,7 +113,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       
       {(profile.role === 'system_auditor' || profile.role === 'project_manager' || profile.role === 'super_admin') ? (
         <div className="space-y-8 mb-10">
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {(profile.role === 'project_manager' || profile.role === 'super_admin') ? (
               <>
                 <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm animate-slide-up" style={{ animationDelay: '0.1s' }}>

@@ -89,7 +89,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row transition-colors duration-300">
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white p-6 shadow-xl flex flex-col md:sticky md:top-0 md:h-screen z-20 transition-colors duration-300">
+      <aside className="hidden md:flex w-full md:w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white p-6 shadow-xl flex-col md:sticky md:top-0 md:h-screen z-20 transition-colors duration-300">
         <div className="mb-10">
           <div className="flex flex-col md:flex-row items-center md:items-center gap-3 text-center md:text-left">
             {settings?.system_logo_url && (

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import SidebarNav from '@/components/layout/SidebarNav'
 
 export default function TopNavbar({ 
   profileName,
@@ -33,6 +34,14 @@ export default function TopNavbar({
   const [uuidNames, setUuidNames] = useState<Record<string, string>>({})
   const [isPending, startTransition] = useTransition()
   const [switchingTo, setSwitchingTo] = useState<string | null>(null)
+  
+  // Mobile menu state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [pathname])
   
   const activeCompany = companies.find(c => c.id === initialActiveCompanyId) || null
 
@@ -175,9 +184,21 @@ export default function TopNavbar({
   }
 
   return (
-    <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-16 flex items-center justify-between px-6 sticky top-0 z-40 shadow-sm transition-colors duration-300">
-      {/* Breadcrumbs */}
-      <nav className="flex" aria-label="Breadcrumb">
+    <>
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-16 flex items-center justify-between px-4 md:px-6 sticky top-0 z-40 shadow-sm transition-colors duration-300">
+        <div className="flex items-center gap-2 md:gap-0">
+          {/* Mobile Menu Toggle */}
+          <button 
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 -ml-2 mr-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg md:hidden transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          
+          {/* Breadcrumbs */}
+          <nav className="flex hidden sm:flex" aria-label="Breadcrumb">
         <ol className="inline-flex items-center space-x-1 md:space-x-3">
           <li className="inline-flex items-center">
             <Link href="/dashboard" className="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
@@ -204,10 +225,11 @@ export default function TopNavbar({
           ))}
         </ol>
       </nav>
+      </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         {/* Company Dropdown */}
-        <div className="relative group/company">
+        <div className="relative group/company hidden sm:block">
           <button 
             className="flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 px-3 py-1.5 rounded-lg transition-colors focus:outline-none border border-slate-200 dark:border-slate-700"
           >
@@ -358,6 +380,68 @@ export default function TopNavbar({
           </div>
         </div>
       </div>
+      </header>
+
+      {/* Mobile Slide-over Sidebar */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
+          <div className="relative flex w-full max-w-xs flex-1 flex-col bg-white dark:bg-slate-950 pt-5 pb-4 transition-transform transform translate-x-0">
+            <div className="absolute top-0 right-0 -mr-12 pt-2">
+              <button
+                type="button"
+                className="ml-1 flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <span className="sr-only">Close sidebar</span>
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="px-6 mb-6">
+              <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+                Menu
+              </h2>
+              {role && (
+                <p className="text-[11px] font-bold text-[var(--sys-primary)] mt-1 uppercase tracking-wider">
+                  {role.replace('_', ' ')}
+                </p>
+              )}
+            </div>
+            
+            <div className="h-full overflow-y-auto px-4">
+              <SidebarNav role={role || ''} />
+              
+              <div className="mt-8 border-t border-slate-200 dark:border-slate-800 pt-6">
+                <div className="px-2 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
+                  Your Companies
+                </div>
+                {companies.map(company => (
+                  <button 
+                    key={company.id}
+                    onClick={() => {
+                      handleCompanySelect(company.id)
+                      setIsMobileMenuOpen(false)
+                    }}
+                    className={`w-full text-left flex items-center gap-3 px-3 py-2 mb-1 rounded-lg text-sm font-medium ${
+                      company.id === initialActiveCompanyId 
+                        ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400' 
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
+                      {company.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="truncate flex-1">{company.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Global Page Loading Overlay */}
       {isPending && (
@@ -371,6 +455,6 @@ export default function TopNavbar({
           </div>
         </div>
       )}
-    </header>
+    </>
   )
 }
