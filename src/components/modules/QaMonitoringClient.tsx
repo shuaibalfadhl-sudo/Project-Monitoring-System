@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -29,6 +29,11 @@ export default function QaMonitoringClient({
   initialModules,
 }: QaMonitoringClientProps) {
   const [modules, setModules] = useState<QaModule[]>(initialModules);
+  
+  useEffect(() => {
+    setModules(initialModules);
+  }, [initialModules]);
+
   const [selectedModule, setSelectedModule] = useState<QaModule | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");

@@ -10,12 +10,20 @@ export default function TopNavbar({
   profileName,
   avatarUrl = null,
   companies = [],
-  initialActiveCompanyId = null
+  initialActiveCompanyId = null,
+  notificationCount = 0,
+  notifications = [],
+  role,
+  userId
 }: { 
   profileName: string;
   avatarUrl?: string | null;
   companies?: any[];
   initialActiveCompanyId?: string | null;
+  notificationCount?: number;
+  notifications?: { label: string, count: number, href: string }[];
+  role?: string;
+  userId?: string;
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -40,6 +48,49 @@ export default function TopNavbar({
       setIsDarkMode(false)
     }
   }, [])
+
+  // Realtime notifications
+  const [prevNotifCount, setPrevNotifCount] = useState(notificationCount)
+
+  useEffect(() => {
+    if (notificationCount > prevNotifCount) {
+      toast.info('You have new tasks that need your attention!')
+    }
+    setPrevNotifCount(notificationCount)
+  }, [notificationCount, prevNotifCount])
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('modules_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'project_modules'
+        },
+        (payload) => {
+          // Check if this update might be relevant based on role
+          let isRelevant = false
+          const newRow = payload.new as any
+          
+          if (newRow && newRow.status) {
+            if (role === 'system_auditor' && newRow.status === 'for_qa') isRelevant = true
+            if (role === 'project_manager' && (newRow.status === 'revision' || newRow.status === 'revising')) isRelevant = true
+            if (role === 'developer' && newRow.assigned_developer_id === userId && ['development', 'pending', 'revising'].includes(newRow.status)) isRelevant = true
+          }
+
+          if (isRelevant) {
+            router.refresh()
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, router, role, userId])
 
   // Generate breadcrumbs from pathname
   const pathSegments = pathname.split('/').filter(p => p !== '')
@@ -202,52 +253,110 @@ export default function TopNavbar({
           </div>
         </div>
 
-        {/* User Dropdown */}
-      <div className="relative group">
-        <button 
-          className="flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 p-2 rounded-xl transition-colors focus:outline-none cursor-pointer"
-        >
-          <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              (profileName || 'U').charAt(0).toUpperCase()
-            )}
+        <div className="flex items-center gap-2 border-l border-slate-200 dark:border-slate-700 pl-4">
+          {/* Notification Bell */}
+          <div className="relative group/notification">
+            <button
+              className="relative p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors block focus:outline-none"
+              title="Tasks needing attention"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {notificationCount > 0 && (
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center min-w-[20px] h-[20px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm animate-pulse">
+                  {notificationCount > 99 ? '99+' : notificationCount}
+                </span>
+              )}
+            </button>
+            
+            {/* Notification Dropdown */}
+            <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 py-1 z-50 opacity-0 invisible group-hover/notification:opacity-100 group-hover/notification:visible transition-all duration-200 transform origin-top-right">
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                <span className="text-sm font-bold text-slate-700 dark:text-white">Notifications</span>
+                <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full font-bold">
+                  {notificationCount} New
+                </span>
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                {notifications.length > 0 ? (
+                  notifications.map((notif, idx) => (
+                    <Link 
+                      key={idx} 
+                      href={notif.href}
+                      className="block px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-50 dark:border-slate-700/50 last:border-0"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                            {notif.label}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            You have {notif.count} module{notif.count !== 1 ? 's' : ''} in {notif.label}
+                          </p>
+                        </div>
+                        <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md shrink-0">
+                          {notif.count}
+                        </span>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="px-4 py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
+                    No new notifications
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-          <span className="text-sm font-bold text-slate-700 dark:text-slate-200 hidden sm:block">{profileName}</span>
-          <svg className="w-4 h-4 text-slate-400 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
 
-        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right">
-          <Link 
-            href="/profile" 
-            className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary)] font-medium"
-          >
-            Profile
-          </Link>
-          <Link 
-            href="/companies" 
-            className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary)] font-medium"
-          >
-            Companies
-          </Link>
-          <button 
-            onClick={toggleTheme}
-            className="w-full text-left block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary)] font-medium"
-          >
-            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
-          </button>
-          <div className="border-t border-slate-100 dark:border-slate-700 my-1"></div>
-          <button 
-            onClick={handleLogout}
-            className="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 font-bold"
-          >
-            Logout
-          </button>
+          {/* User Dropdown */}
+          <div className="relative group">
+            <button 
+              className="flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 p-2 rounded-xl transition-colors focus:outline-none cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  (profileName || 'U').charAt(0).toUpperCase()
+                )}
+              </div>
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-200 hidden sm:block">{profileName}</span>
+              <svg className="w-4 h-4 text-slate-400 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right">
+              <Link 
+                href="/profile" 
+                className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary)] font-medium"
+              >
+                Profile
+              </Link>
+              <Link 
+                href="/companies" 
+                className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary)] font-medium"
+              >
+                Companies
+              </Link>
+              <button 
+                onClick={toggleTheme}
+                className="w-full text-left block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary)] font-medium"
+              >
+                {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+              </button>
+              <div className="border-t border-slate-100 dark:border-slate-700 my-1"></div>
+              <button 
+                onClick={handleLogout}
+                className="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 font-bold"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
       </div>
       
       {/* Global Page Loading Overlay */}

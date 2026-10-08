@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { ProjectModule, ModuleStatus } from '@/types/project'
 
-export default function EditModuleModal({ module, isManager }: { module: ProjectModule, isManager?: boolean }) {
+export default function EditModuleModal({ module, isManager, isQaRevisionMode }: { module: ProjectModule, isManager?: boolean, isQaRevisionMode?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
@@ -159,18 +159,27 @@ export default function EditModuleModal({ module, isManager }: { module: Project
                       value={formData.status}
                       onChange={(e) => setFormData({...formData, status: e.target.value as ModuleStatus})}
                     >
-                      <option value="pending">Pending</option>
-                      <option value="development">Development</option>
-                      <option value="pm_review">PM Review</option>
-                      <option value="for_qa">For QA</option>
-                      {!isManager && (
+                      {isQaRevisionMode ? (
                         <>
-                          <option value="auditing">Auditing</option>
-                          <option value="revision">Revision</option>
                           <option value="revising">Revising</option>
-                          <option value="qa_approved">QA Approved</option>
-                          <option value="deployment">Deployment</option>
-                          <option value="deployed">Deployed</option>
+                          <option value="for_qa">For QA</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="pending">Pending</option>
+                          <option value="development">Development</option>
+                          <option value="pm_review">PM Review</option>
+                          <option value="for_qa">For QA</option>
+                          {!isManager && (
+                            <>
+                              <option value="auditing">Auditing</option>
+                              <option value="revision">Revision</option>
+                              <option value="revising">Revising</option>
+                              <option value="qa_approved">QA Approved</option>
+                              <option value="deployment">Deployment</option>
+                              <option value="deployed">Deployed</option>
+                            </>
+                          )}
                         </>
                       )}
                     </select>

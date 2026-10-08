@@ -44,6 +44,48 @@ export default async function DashboardLayout({
     activeCompanyId = companies[0].id
   }
 
+  // Calculate notifications based on role
+  let notificationCount = 0
+  let notifications: { label: string, count: number, href: string }[] = []
+
+  if (profile.role === 'system_auditor') {
+    const { count } = await supabaseServer
+      .from('project_modules')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'for_qa')
+    notificationCount = count || 0
+    if (count && count > 0) {
+      notifications.push({ label: 'For QA', count, href: '/qa-monitoring' })
+    }
+  } else if (profile.role === 'project_manager') {
+    const { count } = await supabaseServer
+      .from('project_modules')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['revision', 'revising'])
+    notificationCount = count || 0
+    if (count && count > 0) {
+      notifications.push({ label: 'Revision', count, href: '/qa-revision' })
+    }
+  } else if (profile.role === 'developer') {
+    const { data: devModules } = await supabaseServer
+      .from('project_modules')
+      .select('status')
+      .in('status', ['development', 'pending', 'revising'])
+      .eq('assigned_developer_id', profile.id)
+    
+    if (devModules) {
+      const devCount = devModules.filter(m => m.status === 'development').length
+      const penCount = devModules.filter(m => m.status === 'pending').length
+      const revCount = devModules.filter(m => m.status === 'revising').length
+      
+      if (devCount > 0) notifications.push({ label: 'Development', count: devCount, href: '/modules' })
+      if (penCount > 0) notifications.push({ label: 'Pending', count: penCount, href: '/modules' })
+      if (revCount > 0) notifications.push({ label: 'Revising', count: revCount, href: '/modules' })
+      
+      notificationCount = devModules.length
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row transition-colors duration-300">
       {/* Sidebar Navigation */}
@@ -75,6 +117,10 @@ export default async function DashboardLayout({
           avatarUrl={profile.avatar_path || null}
           companies={companies || []}
           initialActiveCompanyId={activeCompanyId}
+          notificationCount={notificationCount}
+          notifications={notifications}
+          role={profile.role}
+          userId={profile.id}
         />
         
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">

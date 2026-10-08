@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,10 @@ export default function QaRevisionClient({
   initialModules: any[];
 }) {
   const [modules, setModules] = useState(initialModules);
+  
+  useEffect(() => {
+    setModules(initialModules);
+  }, [initialModules]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -299,6 +303,7 @@ export default function QaRevisionClient({
                           </button>
                         ) : (
                           <EditModuleModal
+                            isQaRevisionMode={true}
                             module={{
                               id: module.id,
                               project_id: module.project.id,
