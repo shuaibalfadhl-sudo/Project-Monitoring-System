@@ -20,7 +20,8 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
     status: 'pending',
     module_document_url: '',
     category: 'new_module',
-    deadline: ''
+    deadline: '',
+    website_link: ''
   })
 
   useEffect(() => {
@@ -51,7 +52,8 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
         status: 'pending',
         module_document_url: '',
         category: 'new_module',
-        deadline: ''
+        deadline: '',
+        website_link: ''
       })
       router.refresh()
       setIsLoading(false)
@@ -176,6 +178,18 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                     onChange={(e) => setFormData({...formData, module_document_url: e.target.value})}
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">Provide a link to Google Drive, SharePoint, etc.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Website Link (Testing)</label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
+                    value={formData.website_link}
+                    onChange={(e) => setFormData({...formData, website_link: e.target.value})}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">Link for testing the module (e.g., staging or local URL).</p>
                 </div>
               </form>
             </div>

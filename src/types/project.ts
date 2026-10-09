@@ -33,6 +33,7 @@ export interface ProjectModule {
   category?: string | null
   revision_count?: number
   deadline?: string | null
+  website_link?: string | null
 }
 
 export interface ProjectMember {
