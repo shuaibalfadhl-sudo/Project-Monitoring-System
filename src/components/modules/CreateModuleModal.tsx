@@ -30,6 +30,12 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    if (!formData.deadline) {
+      toast.error('Please insert a deadline time')
+      return
+    }
+
     setIsLoading(true)
 
     const { error } = await supabase

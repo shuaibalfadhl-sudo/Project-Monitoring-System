@@ -56,6 +56,12 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode }:
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    if (!formData.deadline) {
+      toast.error('Please insert a deadline time')
+      return
+    }
+
     setIsLoading(true)
 
     const dataToSubmit = { ...formData };
