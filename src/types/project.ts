@@ -32,6 +32,7 @@ export interface ProjectModule {
   assigned_developer_id?: string | null
   category?: string | null
   revision_count?: number
+  deadline?: string | null
 }
 
 export interface ProjectMember {

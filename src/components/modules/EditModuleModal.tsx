@@ -25,7 +25,8 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode }:
     status: module.status || 'pending',
     module_document_url: module.module_document_url || '',
     assigned_developer_id: module.assigned_developer_id || '',
-    category: module.category || 'new_module'
+    category: module.category || 'new_module',
+    deadline: module.deadline || ''
   })
 
   useEffect(() => {
@@ -59,6 +60,9 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode }:
     const dataToSubmit = { ...formData };
     if (dataToSubmit.assigned_developer_id === '') {
       dataToSubmit.assigned_developer_id = null as any;
+    }
+    if (dataToSubmit.deadline === '') {
+      dataToSubmit.deadline = null as any;
     }
 
     const { error } = await supabase
@@ -151,7 +155,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode }:
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Status</label>
                     <select
@@ -183,6 +187,15 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode }:
                         </>
                       )}
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Deadline</label>
+                    <input
+                      type="date"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
+                      value={formData.deadline}
+                      onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                    />
                   </div>
                 </div>
 
