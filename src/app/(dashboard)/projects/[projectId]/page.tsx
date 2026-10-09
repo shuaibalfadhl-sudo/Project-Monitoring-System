@@ -226,6 +226,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
         isManager={isManager} 
         isAuditor={isAuditor}
         isDeveloper={isDeveloper}
+        isSuperAdmin={isSuperAdmin}
       />
     </div>
   )

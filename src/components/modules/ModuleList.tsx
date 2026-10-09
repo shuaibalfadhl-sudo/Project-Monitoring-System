@@ -15,6 +15,7 @@ interface ModuleListProps {
   isManager: boolean;
   isAuditor: boolean;
   isDeveloper?: boolean;
+  isSuperAdmin?: boolean;
 }
 
 export default function ModuleList({
@@ -23,6 +24,7 @@ export default function ModuleList({
   isManager,
   isAuditor,
   isDeveloper,
+  isSuperAdmin,
 }: ModuleListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -363,7 +365,7 @@ export default function ModuleList({
                       </span>
                     </td>
                     <td className="py-4">
-                      {isManager && !['auditing', 'qa_approved', 'deployed', 'deployment'].includes(module.status || 'pending') ? (
+                      {isSuperAdmin || (isManager && !['auditing', 'qa_approved', 'deployed', 'deployment'].includes(module.status || 'pending')) ? (
                         <div onClick={(e) => e.stopPropagation()} className="relative inline-block group">
                           <select
                             className={`pl-2.5 pr-7 py-1 rounded-lg text-xs font-bold border-2 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] cursor-pointer ${getStatusColor(module.status)} border-transparent hover:border-gray-300 dark:hover:border-slate-600 transition-colors appearance-none relative z-0`}
@@ -374,6 +376,14 @@ export default function ModuleList({
                             <option value="development" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Development</option>
                             <option value="pm_review" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">PM Review</option>
                             <option value="for_qa" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For QA</option>
+                            {isSuperAdmin && (
+                              <>
+                                <option value="auditing" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Auditing</option>
+                                <option value="qa_approved" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">QA Approved</option>
+                                <option value="deployment" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Deployment</option>
+                                <option value="deployed" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Deployed</option>
+                              </>
+                            )}
                             <option value="revision" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revision</option>
                             <option value="revising" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revising</option>
                           </select>
@@ -397,7 +407,7 @@ export default function ModuleList({
                           className="flex justify-end gap-4"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <EditModuleModal module={module} isManager={isManager} />
+                          <EditModuleModal module={module} isManager={isManager} isSuperAdmin={isSuperAdmin} />
                           <button 
                             onClick={(e) => { e.stopPropagation(); setModuleToDelete(module); }}
                             className="text-sm font-semibold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"

@@ -47,26 +47,34 @@ export default async function DashboardLayout({
   // Calculate notifications based on role
   let notificationCount = 0
   let notifications: { label: string, count: number, href: string }[] = []
+  let forQaCount = 0
+  let qaRevisionCount = 0
 
-  if (profile.role === 'system_auditor') {
+  if (profile.role === 'system_auditor' || profile.role === 'super_admin') {
     const { count } = await supabaseServer
       .from('project_modules')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'for_qa')
-    notificationCount = count || 0
     if (count && count > 0) {
+      notificationCount += count
+      forQaCount = count
       notifications.push({ label: 'For QA', count, href: '/qa-monitoring' })
     }
-  } else if (profile.role === 'project_manager') {
+  }
+  
+  if (profile.role === 'project_manager' || profile.role === 'super_admin') {
     const { count } = await supabaseServer
       .from('project_modules')
       .select('*', { count: 'exact', head: true })
       .in('status', ['revision', 'revising'])
-    notificationCount = count || 0
     if (count && count > 0) {
+      notificationCount += count
+      qaRevisionCount = count
       notifications.push({ label: 'Revision', count, href: '/qa-revision' })
     }
-  } else if (profile.role === 'developer') {
+  }
+  
+  if (profile.role === 'developer') {
     const { data: devModules } = await supabaseServer
       .from('project_modules')
       .select('status')
@@ -82,7 +90,7 @@ export default async function DashboardLayout({
       if (penCount > 0) notifications.push({ label: 'Pending', count: penCount, href: '/modules' })
       if (revCount > 0) notifications.push({ label: 'Revising', count: revCount, href: '/modules' })
       
-      notificationCount = devModules.length
+      notificationCount += devModules.length
     }
   }
 
@@ -107,7 +115,7 @@ export default async function DashboardLayout({
           </div>
         </div>
         
-        <SidebarNav role={profile.role} />
+        <SidebarNav role={profile.role} forQaCount={forQaCount} qaRevisionCount={qaRevisionCount} />
       </aside>
 
       {/* Main Content Area */}

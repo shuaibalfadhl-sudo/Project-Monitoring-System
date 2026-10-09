@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { ProjectModule, ModuleStatus } from '@/types/project'
 
-export default function EditModuleModal({ module, isManager, isQaRevisionMode }: { module: ProjectModule, isManager?: boolean, isQaRevisionMode?: boolean }) {
+export default function EditModuleModal({ module, isManager, isQaRevisionMode, isSuperAdmin }: { module: ProjectModule, isManager?: boolean, isQaRevisionMode?: boolean, isSuperAdmin?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
@@ -181,7 +181,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode }:
                           <option value="development">Development</option>
                           <option value="pm_review">PM Review</option>
                           <option value="for_qa">For QA</option>
-                          {!isManager && (
+                          {(!isManager || isSuperAdmin) && (
                             <>
                               <option value="auditing">Auditing</option>
                               <option value="revision">Revision</option>

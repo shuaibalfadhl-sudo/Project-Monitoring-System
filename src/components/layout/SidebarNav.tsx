@@ -3,7 +3,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function SidebarNav({ role }: { role: string }) {
+export default function SidebarNav({ 
+  role,
+  forQaCount = 0,
+  qaRevisionCount = 0
+}: { 
+  role: string,
+  forQaCount?: number,
+  qaRevisionCount?: number
+}) {
   const pathname = usePathname();
   const isManager = role === 'project_manager';
   const isAuditor = role === 'system_auditor';
@@ -40,7 +48,12 @@ export default function SidebarNav({ role }: { role: string }) {
             Projects
           </Link>
           <Link href="/qa-revision" className={getLinkClasses('/qa-revision')}>
-            QA Revision
+            <span className="flex items-center justify-between">
+              <span>QA Revision</span>
+              {qaRevisionCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{qaRevisionCount}</span>
+              )}
+            </span>
           </Link>
           <Link href="/deployment" className={getLinkClasses('/deployment')}>
             Deployment Status
@@ -54,7 +67,12 @@ export default function SidebarNav({ role }: { role: string }) {
             Assigned Projects
           </Link>
           <Link href="/qa-monitoring" className={getLinkClasses('/qa-monitoring')}>
-            QA Monitoring
+            <span className="flex items-center justify-between">
+              <span>QA Monitoring</span>
+              {forQaCount > 0 && (
+                <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{forQaCount}</span>
+              )}
+            </span>
           </Link>
         </>
       )}
@@ -73,10 +91,20 @@ export default function SidebarNav({ role }: { role: string }) {
             All Projects
           </Link>
           <Link href="/qa-monitoring" className={getLinkClasses('/qa-monitoring')}>
-            For QA Modules
+            <span className="flex items-center justify-between">
+              <span>For QA Modules</span>
+              {forQaCount > 0 && (
+                <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{forQaCount}</span>
+              )}
+            </span>
           </Link>
           <Link href="/qa-revision" className={getLinkClasses('/qa-revision')}>
-            QA Revision
+            <span className="flex items-center justify-between">
+              <span>QA Revision</span>
+              {qaRevisionCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{qaRevisionCount}</span>
+              )}
+            </span>
           </Link>
           <Link href="/deployment" className={getLinkClasses('/deployment')}>
             Deployment Status
