@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ProjectModule } from "@/types/project";
 import { createClient } from "@/lib/supabase/client";
@@ -26,12 +27,17 @@ export default function ModuleList({
   isDeveloper,
   isSuperAdmin,
 }: ModuleListProps) {
+  const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [selectedModule, setSelectedModule] = useState<ProjectModule | null>(
     null,
   );
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -322,6 +328,9 @@ export default function ModuleList({
                     Priority
                   </th>
                   <th className="pb-4 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                    Developer
+                  </th>
+                  <th className="pb-4 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     Status
                   </th>
                   {isManager ? (
@@ -363,6 +372,22 @@ export default function ModuleList({
                       >
                         {module.priority}
                       </span>
+                    </td>
+                    <td className="py-4">
+                      {module.assigned_developer_name ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xs font-bold shrink-0">
+                            {module.assigned_developer_name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                            {module.assigned_developer_name}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center text-xs font-medium text-slate-400 dark:text-slate-500 italic">
+                          No developer assigned
+                        </span>
+                      )}
                     </td>
                     <td className="py-4">
                       {isSuperAdmin || (isManager && !['auditing', 'qa_approved', 'deployed', 'deployment'].includes(module.status || 'pending')) ? (
@@ -548,10 +573,16 @@ export default function ModuleList({
       </div>
 
       {/* Module Details Modal */}
-      {selectedModule && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+      {selectedModule && mounted && createPortal(
+        <div 
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          onClick={() => setSelectedModule(null)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] border border-gray-100 dark:border-slate-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900">
               <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">
                 Module Details
               </h2>
@@ -598,9 +629,9 @@ export default function ModuleList({
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                     Priority
                   </h3>
                   <span
@@ -610,7 +641,15 @@ export default function ModuleList({
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Category
+                  </h3>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 capitalize">
+                    {selectedModule.category ? selectedModule.category.replace('_', ' ') : 'New Module'}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                     Status
                   </h3>
                   <span
@@ -619,7 +658,96 @@ export default function ModuleList({
                     {selectedModule.status === 'qa_approved' ? 'QA Approved' : selectedModule.status === 'for_qa' ? 'For QA' : (selectedModule.status || "pending").replace("_", " ")}
                   </span>
                 </div>
+                <div>
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Deadline
+                  </h3>
+                  {selectedModule.deadline ? (
+                    <span className="inline-flex items-center text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      {new Date(selectedModule.deadline).toLocaleDateString()}
+                    </span>
+                  ) : (
+                    <span className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
+                      No deadline set
+                    </span>
+                  )}
+                </div>
               </div>
+
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                  Assigned Developer
+                </h3>
+                {selectedModule.assigned_developer_name ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-bold border border-blue-100 dark:border-blue-800">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    {selectedModule.assigned_developer_name}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
+                    No developer assigned
+                  </span>
+                )}
+              </div>
+
+              {/* Document and Testing Links */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Module Document
+                  </h3>
+                  {selectedModule.module_document_url ? (
+                    <a
+                      href={selectedModule.module_document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      View Document ↗
+                    </a>
+                  ) : (
+                    <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
+                      No attached document by PM
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Website Link (Testing)
+                  </h3>
+                  {selectedModule.website_link ? (
+                    <a
+                      href={selectedModule.website_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm font-bold text-purple-600 dark:text-purple-400 hover:underline"
+                    >
+                      Open Link ↗
+                    </a>
+                  ) : (
+                    <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
+                      No website link provided
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {selectedModule.qa_result_document_url && (
+                <div className="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30">
+                  <h3 className="text-xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider mb-2">
+                    QA Result Document
+                  </h3>
+                  <a
+                    href={selectedModule.qa_result_document_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm font-bold text-rose-600 dark:text-rose-400 hover:underline"
+                  >
+                    View QA Results ↗
+                  </a>
+                </div>
+              )}
 
               {(selectedModule.qa_acknowledged_at ||
                 selectedModule.qa_result_acknowledged_at) && (
@@ -920,7 +1048,8 @@ export default function ModuleList({
                 )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* Delete Confirmation Modal */}
       <ConfirmDeleteModal 

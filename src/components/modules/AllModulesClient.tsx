@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -12,6 +13,7 @@ export default function AllModulesClient({
   initialModules: any[];
   role: string;
 }) {
+  const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -20,6 +22,10 @@ export default function AllModulesClient({
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [selectedModule, setSelectedModule] = useState<any | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const router = useRouter();
   const supabase = createClient();
@@ -229,6 +235,9 @@ export default function AllModulesClient({
                   Project
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Developer
+                </th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Status
                 </th>
               </tr>
@@ -259,6 +268,22 @@ export default function AllModulesClient({
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mt-1">
                       By: {mod.project.creator_name || "Unknown"}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {mod.assigned_developer_name ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xs font-bold shrink-0">
+                          {mod.assigned_developer_name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                          {mod.assigned_developer_name}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="inline-flex items-center text-xs font-medium text-slate-400 dark:text-slate-500 italic">
+                        No developer assigned
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     {role === 'project_manager' && !['auditing', 'qa_approved', 'deployed', 'deployment'].includes(mod.status || 'pending') ? (
@@ -409,9 +434,15 @@ export default function AllModulesClient({
         )}
       </div>
 
-      {selectedModule && (
-        <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh] border border-slate-200 dark:border-slate-700">
+      {selectedModule && mounted && createPortal(
+        <div 
+          className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          onClick={() => setSelectedModule(null)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] border border-slate-200 dark:border-slate-700"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
               <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">
                 Module Details
@@ -468,7 +499,7 @@ export default function AllModulesClient({
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-4">
                 <div>
                   <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                     Priority
@@ -488,6 +519,21 @@ export default function AllModulesClient({
                   >
                     {(selectedModule.status || "pending").replace("_", " ")}
                   </span>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Assigned Developer
+                  </h3>
+                  {selectedModule.assigned_developer_name ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-bold border border-blue-100 dark:border-blue-800">
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      {selectedModule.assigned_developer_name}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center text-sm font-semibold text-slate-400 dark:text-slate-500 italic">
+                      No developer assigned
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -605,7 +651,8 @@ export default function AllModulesClient({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

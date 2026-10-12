@@ -30,6 +30,7 @@ export interface ProjectModule {
   module_document_url?: string | null
   qa_result_document_url?: string | null
   assigned_developer_id?: string | null
+  assigned_developer_name?: string | null
   category?: string | null
   revision_count?: number
   deadline?: string | null

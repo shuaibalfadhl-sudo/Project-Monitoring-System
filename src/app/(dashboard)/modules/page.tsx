@@ -135,13 +135,14 @@ export default async function AllModulesPage() {
     }
   }
 
-  // Fetch auditor and PM names for acknowledgements
+  // Fetch auditor, PM, and developer names
   if (allModules.length > 0) {
     const userIds = [
       ...new Set(
         allModules
           .map((m) => m.qa_acknowledged_by)
           .concat(allModules.map((m) => m.qa_result_acknowledged_by))
+          .concat(allModules.map((m) => m.assigned_developer_id))
           .filter(Boolean),
       ),
     ];
@@ -153,6 +154,9 @@ export default async function AllModulesPage() {
 
       const userMap = new Map(users?.map((u) => [u.id, u.full_name]) || []);
       allModules.forEach((m) => {
+        if (m.assigned_developer_id) {
+          m.assigned_developer_name = userMap.get(m.assigned_developer_id);
+        }
         if (m.qa_acknowledged_by) {
           m.qa_acknowledged_by_name = userMap.get(m.qa_acknowledged_by);
         }

@@ -13,7 +13,7 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const profile = await getUserProfile()
-  
+
   if (!profile) {
     redirect('/login')
   }
@@ -34,11 +34,11 @@ export default async function DashboardLayout({
     .from('companies')
     .select('id, name')
     .order('name')
-    
+
   // Get active company from cookie
   const cookieStore = await cookies()
   let activeCompanyId = cookieStore.get('activeCompanyId')?.value || null
-  
+
   // Auto-select first company if none is selected but user has companies
   if (!activeCompanyId && companies && companies.length > 0) {
     activeCompanyId = companies[0].id
@@ -61,7 +61,7 @@ export default async function DashboardLayout({
       notifications.push({ label: 'For QA', count, href: '/qa-monitoring' })
     }
   }
-  
+
   if (profile.role === 'project_manager' || profile.role === 'super_admin') {
     const { count } = await supabaseServer
       .from('project_modules')
@@ -73,23 +73,23 @@ export default async function DashboardLayout({
       notifications.push({ label: 'Revision', count, href: '/qa-revision' })
     }
   }
-  
+
   if (profile.role === 'developer') {
     const { data: devModules } = await supabaseServer
       .from('project_modules')
       .select('status')
       .in('status', ['development', 'pending', 'revising'])
       .eq('assigned_developer_id', profile.id)
-    
+
     if (devModules) {
       const devCount = devModules.filter(m => m.status === 'development').length
       const penCount = devModules.filter(m => m.status === 'pending').length
       const revCount = devModules.filter(m => m.status === 'revising').length
-      
+
       if (devCount > 0) notifications.push({ label: 'Development', count: devCount, href: '/modules' })
       if (penCount > 0) notifications.push({ label: 'Pending', count: penCount, href: '/modules' })
       if (revCount > 0) notifications.push({ label: 'Revising', count: revCount, href: '/modules' })
-      
+
       notificationCount += devModules.length
     }
   }
@@ -114,14 +114,14 @@ export default async function DashboardLayout({
             </div>
           </div>
         </div>
-        
+
         <SidebarNav role={profile.role} forQaCount={forQaCount} qaRevisionCount={qaRevisionCount} />
       </aside>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-h-screen">
-        <TopNavbar 
-          profileName={profile.full_name || 'User'} 
+        <TopNavbar
+          profileName={profile.full_name || 'User'}
           avatarUrl={profile.avatar_path || null}
           companies={companies || []}
           initialActiveCompanyId={activeCompanyId}
@@ -130,7 +130,7 @@ export default async function DashboardLayout({
           role={profile.role}
           userId={profile.id}
         />
-        
+
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
           {children}
         </main>

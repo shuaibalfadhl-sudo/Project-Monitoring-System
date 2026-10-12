@@ -55,7 +55,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
     .eq('project_id', project.id)
     .order('priority', { ascending: true })
 
-  // Fetch all profiles to map auditor/PM names
+  // Fetch all profiles to map auditor/PM/developer names
   const { data: allProfiles } = await supabase
     .from('profiles')
     .select('id, full_name')
@@ -64,6 +64,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
 
   const mappedModules = modules?.map(m => ({
     ...m,
+    assigned_developer_name: m.assigned_developer_id ? profilesMap.get(m.assigned_developer_id) : null,
     qa_acknowledged_by_name: m.qa_acknowledged_by ? profilesMap.get(m.qa_acknowledged_by) : null,
     qa_result_acknowledged_by_name: m.qa_result_acknowledged_by ? profilesMap.get(m.qa_result_acknowledged_by) : null
   })) || []
