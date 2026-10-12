@@ -44,20 +44,50 @@ export default function CreateProjectModal() {
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
-      toast.error('Authentication error')
+      toast.error('Authentication error. Please log in again.')
       setIsLoading(false)
       return
     }
 
+    // Check user profile role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile || (profile.role !== 'project_manager' && profile.role !== 'super_admin')) {
+      toast.error('Permission Denied: Your account role must be "Project Manager" or "Super Admin" to create projects.')
+      setIsLoading(false)
+      return
+    }
+
+    if (!formData.company_id) {
+      toast.error('Please select a company for this project.')
+      setIsLoading(false)
+      return
+    }
+
+    const payload = {
+      name: formData.name.trim(),
+      description: formData.description?.trim() || null,
+      status: formData.status,
+      company_id: formData.company_id,
+      start_date: formData.start_date || null,
+      target_date: formData.target_date || null,
+      created_by: user.id
+    }
+
     const { error } = await supabase
       .from('projects')
-      .insert({
-        ...formData,
-        created_by: user.id
-      })
+      .insert(payload)
 
     if (error) {
-      toast.error(`Error: ${error.message}`)
+      if (error.message.includes('row-level security')) {
+        toast.error('Database permission error: Your database role does not allow creating projects in this company.')
+      } else {
+        toast.error(`Error: ${error.message}`)
+      }
       setIsLoading(false)
     } else {
       toast.success('Project created successfully!')

@@ -162,6 +162,7 @@ export default function QaRevisionClient({
           <option value="all">All Statuses</option>
           <option value="revision">Revision</option>
           <option value="revising">Revising</option>
+          <option value="pm_review">PM Review</option>
         </select>
 
         <select
@@ -244,6 +245,10 @@ export default function QaRevisionClient({
                         {module.status === "revision" ? (
                           <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
                             REVISION
+                          </span>
+                        ) : module.status === "pm_review" ? (
+                          <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                            PM REVIEW
                           </span>
                         ) : (
                           <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">

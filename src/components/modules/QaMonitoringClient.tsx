@@ -118,21 +118,20 @@ export default function QaMonitoringClient({
   const handleSave = async () => {
     if (!selectedModule || !newStatus) return;
 
-    if (newStatus === "revision" && !reworkLink.trim()) {
-      setError(
-        "Please provide a document link or description for the revision.",
-      );
-      return;
-    }
+    if (newStatus === "revision") {
+      const trimmedLink = reworkLink.trim();
+      if (!trimmedLink) {
+        setError("Please provide a valid document URL for the revision.");
+        return;
+      }
 
-    // Validate URL if it's a URL
-    if (newStatus === "revision" && reworkLink.trim().startsWith("http")) {
       try {
-        new URL(reworkLink);
-      } catch (e) {
-        setError(
-          "Please provide a valid URL (starting with http:// or https://)",
-        );
+        const u = new URL(trimmedLink);
+        if (u.protocol !== "http:" && u.protocol !== "https:") {
+          throw new Error();
+        }
+      } catch {
+        setError("Please provide a valid document URL (starting with http:// or https://)");
         return;
       }
     }
@@ -141,6 +140,8 @@ export default function QaMonitoringClient({
     setError("");
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { error: updateError } = await supabase
         .from("project_modules")
         .update({
@@ -152,6 +153,26 @@ export default function QaMonitoringClient({
 
       if (updateError) throw updateError;
 
+      // When marking revision, record the document URL in qa_document_history
+      if (newStatus === "revision") {
+        const { error: histErr } = await supabase
+          .from("qa_document_history")
+          .insert({
+            module_id: selectedModule.id,
+            document_url: reworkLink.trim(),
+            uploaded_by: user?.id,
+          });
+
+        if (histErr) {
+          console.error("qa_document_history insert failed:", histErr.message);
+          toast.warning("Status updated, but could not record document in history: " + histErr.message);
+        } else {
+          toast.success("Module marked for revision and document recorded in history.");
+        }
+      } else {
+        toast.success("Module marked as QA Approved.");
+      }
+
       // Remove module from list if it's no longer 'for_qa' or 'auditing'
       setModules((prev) => prev.filter((m) => m.id !== selectedModule.id));
       closeModal();
@@ -162,6 +183,7 @@ export default function QaMonitoringClient({
       setIsSubmitting(false);
     }
   };
+
 
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
@@ -653,18 +675,28 @@ export default function QaMonitoringClient({
 
                   {newStatus === "revision" && (
                     <div className="animate-in fade-in slide-in-from-top-4 duration-300 pt-2">
-                      <h3 className="text-xs font-bold text-red-600 uppercase tracking-wider mb-2 flex items-center gap-2">
-                        QA Result Document Link{" "}
-                        <span className="text-red-500 text-base">*</span>
-                      </h3>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs font-bold text-red-600 uppercase tracking-wider flex items-center gap-1.5">
+                          QA Result Document URL <span className="text-red-500 text-sm">*</span>
+                        </h3>
+                        <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full uppercase">
+                          Required
+                        </span>
+                      </div>
                       <input
                         type="url"
                         value={reworkLink}
-                        onChange={(e) => setReworkLink(e.target.value)}
-                        placeholder="https://..."
-                        className="w-full p-4 rounded-xl border-2 border-red-100 bg-red-50/50 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none transition-all font-medium placeholder:text-red-300"
+                        onChange={(e) => {
+                          setReworkLink(e.target.value);
+                          setError("");
+                        }}
+                        placeholder="https://docs.google.com/... or link to revision document"
+                        className="w-full p-4 rounded-xl border-2 border-red-200 bg-red-50/50 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10 outline-none transition-all font-medium placeholder:text-red-300 text-slate-800"
                         required
                       />
+                      <p className="text-[11px] text-gray-500 mt-1.5">
+                        This document link will be recorded in the module&apos;s QA Document History.
+                      </p>
                     </div>
                   )}
                 </>

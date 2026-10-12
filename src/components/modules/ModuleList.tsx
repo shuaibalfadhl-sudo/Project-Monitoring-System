@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import CreateModuleModal from "@/components/modules/CreateModuleModal";
 import EditModuleModal from "@/components/modules/EditModuleModal";
 import ConfirmDeleteModal from "@/components/modules/ConfirmDeleteModal";
+import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 
 interface ModuleListProps {
   modules: ProjectModule[];
@@ -59,6 +60,15 @@ export default function ModuleList({
     setError("");
   };
 
+  const isValidDocUrl = (value: string): boolean => {
+    try {
+      const u = new URL(value.trim());
+      return u.protocol === "http:" || u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedModule || !newStatus) return;
 
@@ -88,6 +98,21 @@ export default function ModuleList({
 
       if (updateError) throw updateError;
 
+      // When marking revision, persist the document URL to qa_document_history
+      if (newStatus === "revision" && reworkLink.trim() && isValidDocUrl(reworkLink)) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { error: histErr } = await supabase
+          .from("qa_document_history")
+          .insert({
+            module_id: selectedModule.id,
+            document_url: reworkLink.trim(),
+            uploaded_by: user?.id,
+          });
+        if (histErr) {
+          console.warn("qa_document_history insert failed:", histErr.message);
+        }
+      }
+
       setSelectedModule(null);
       router.refresh();
     } catch (err: any) {
@@ -96,6 +121,7 @@ export default function ModuleList({
       setIsSubmitting(false);
     }
   };
+
 
   const handleQuickStatusChange = async (moduleId: string, newStatus: string) => {
     try {
@@ -805,6 +831,11 @@ export default function ModuleList({
                   </div>
                 </div>
               )}
+
+              {/* Document History — visible to all authorized users */}
+              <DocumentHistorySection
+                moduleId={selectedModule.id}
+              />
 
               {isAuditor && selectedModule.status === "for_qa" && (
                 <div className="border-t border-gray-100 pt-6 mt-6">

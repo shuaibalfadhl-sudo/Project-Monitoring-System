@@ -172,7 +172,11 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                     >
                       {isQaRevisionMode ? (
                         <>
+                          {formData.status === "revision" && (
+                            <option value="revision">Revision</option>
+                          )}
                           <option value="revising">Revising</option>
+                          <option value="pm_review">PM Review</option>
                           <option value="for_qa">For QA</option>
                         </>
                       ) : (

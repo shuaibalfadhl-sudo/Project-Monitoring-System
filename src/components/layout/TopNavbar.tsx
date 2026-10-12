@@ -15,7 +15,9 @@ export default function TopNavbar({
   notificationCount = 0,
   notifications = [],
   role,
-  userId
+  userId,
+  forQaCount = 0,
+  qaRevisionCount = 0,
 }: { 
   profileName: string;
   avatarUrl?: string | null;
@@ -25,6 +27,8 @@ export default function TopNavbar({
   notifications?: { label: string, count: number, href: string }[];
   role?: string;
   userId?: string;
+  forQaCount?: number;
+  qaRevisionCount?: number;
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -412,7 +416,11 @@ export default function TopNavbar({
             </div>
             
             <div className="h-full overflow-y-auto px-4">
-              <SidebarNav role={role || ''} />
+              <SidebarNav 
+                role={role || ''} 
+                forQaCount={forQaCount}
+                qaRevisionCount={qaRevisionCount}
+              />
               
               <div className="mt-8 border-t border-slate-200 dark:border-slate-800 pt-6">
                 <div className="px-2 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">

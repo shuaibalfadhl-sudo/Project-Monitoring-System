@@ -51,7 +51,7 @@ export default async function QaRevisionPage() {
     projects.forEach((p: any) => {
       if (p.project_modules) {
         const mods = p.project_modules.filter((m: any) => 
-          m.status === 'revision' || m.status === 'revising'
+          m.status === 'revision' || m.status === 'revising' || (m.status === 'pm_review' && m.qa_result_document_url)
         )
         mods.forEach((m: any) => {
           reworkModules.push({

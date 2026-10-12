@@ -44,30 +44,79 @@ export default async function DashboardLayout({
     activeCompanyId = companies[0].id
   }
 
-  // Calculate notifications based on role
+  // Calculate notifications based on role and active company
   let notificationCount = 0
   let notifications: { label: string, count: number, href: string }[] = []
   let forQaCount = 0
   let qaRevisionCount = 0
 
   if (profile.role === 'system_auditor' || profile.role === 'super_admin') {
-    const { count } = await supabaseServer
-      .from('project_modules')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'for_qa')
-    if (count && count > 0) {
-      notificationCount += count
-      forQaCount = count
-      notifications.push({ label: 'For QA', count, href: '/qa-monitoring' })
+    if (profile.role === 'super_admin') {
+      let query = supabaseServer
+        .from('projects')
+        .select('project_modules(id, status)')
+      if (activeCompanyId) {
+        query = query.eq('company_id', activeCompanyId)
+      }
+      const { data } = await query
+      let count = 0
+      data?.forEach((p: any) => {
+        p.project_modules?.forEach((m: any) => {
+          if (m.status === 'for_qa') count++
+        })
+      })
+      if (count > 0) {
+        notificationCount += count
+        forQaCount = count
+        notifications.push({ label: 'For QA', count, href: '/qa-monitoring' })
+      }
+    } else {
+      let query = supabaseServer
+        .from('project_members')
+        .select('projects!inner(id, company_id, project_modules(id, status))')
+        .eq('user_id', profile.id)
+      if (activeCompanyId) {
+        query = query.eq('projects.company_id', activeCompanyId)
+      }
+      const { data } = await query
+      let count = 0
+      data?.forEach((d: any) => {
+        d.projects?.project_modules?.forEach((m: any) => {
+          if (m.status === 'for_qa') count++
+        })
+      })
+      if (count > 0) {
+        notificationCount += count
+        forQaCount = count
+        notifications.push({ label: 'For QA', count, href: '/qa-monitoring' })
+      }
     }
   }
 
   if (profile.role === 'project_manager' || profile.role === 'super_admin') {
-    const { count } = await supabaseServer
-      .from('project_modules')
-      .select('*', { count: 'exact', head: true })
-      .in('status', ['revision', 'revising'])
-    if (count && count > 0) {
+    let query = supabaseServer
+      .from('projects')
+      .select('project_modules(id, status, qa_result_document_url)')
+    if (activeCompanyId) {
+      query = query.eq('company_id', activeCompanyId)
+    }
+    if (profile.role !== 'super_admin') {
+      query = query.eq('created_by', profile.id)
+    }
+    const { data } = await query
+    let count = 0
+    data?.forEach((p: any) => {
+      p.project_modules?.forEach((m: any) => {
+        if (
+          m.status === 'revision' ||
+          m.status === 'revising' ||
+          (m.status === 'pm_review' && m.qa_result_document_url)
+        ) {
+          count++
+        }
+      })
+    })
+    if (count > 0) {
       notificationCount += count
       qaRevisionCount = count
       notifications.push({ label: 'Revision', count, href: '/qa-revision' })
@@ -75,13 +124,24 @@ export default async function DashboardLayout({
   }
 
   if (profile.role === 'developer') {
-    const { data: devModules } = await supabaseServer
-      .from('project_modules')
-      .select('status')
-      .in('status', ['development', 'pending', 'revising'])
-      .eq('assigned_developer_id', profile.id)
+    let query = supabaseServer
+      .from('project_members')
+      .select('projects!inner(id, company_id, project_modules(id, status, assigned_developer_id))')
+      .eq('user_id', profile.id)
+    if (activeCompanyId) {
+      query = query.eq('projects.company_id', activeCompanyId)
+    }
+    const { data } = await query
+    let devModules: any[] = []
+    data?.forEach((d: any) => {
+      d.projects?.project_modules?.forEach((m: any) => {
+        if (m.assigned_developer_id === profile.id && ['development', 'pending', 'revising'].includes(m.status)) {
+          devModules.push(m)
+        }
+      })
+    })
 
-    if (devModules) {
+    if (devModules.length > 0) {
       const devCount = devModules.filter(m => m.status === 'development').length
       const penCount = devModules.filter(m => m.status === 'pending').length
       const revCount = devModules.filter(m => m.status === 'revising').length
@@ -129,6 +189,8 @@ export default async function DashboardLayout({
           notifications={notifications}
           role={profile.role}
           userId={profile.id}
+          forQaCount={forQaCount}
+          qaRevisionCount={qaRevisionCount}
         />
 
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
