@@ -26,9 +26,11 @@ export default async function QaRevisionPage() {
         description,
         priority,
         status,
+        module_document_url,
         qa_result_document_url,
         qa_acknowledged_at,
-        qa_acknowledged_by
+        qa_acknowledged_by,
+        website_link
       )
     `)
 

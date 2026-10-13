@@ -538,24 +538,47 @@ export default function AllModulesClient({
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                  Module Document
-                </h3>
-                {selectedModule.module_document_url ? (
-                  <a
-                    href={selectedModule.module_document_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    View Document ↗
-                  </a>
-                ) : (
-                  <p className="text-sm font-semibold text-slate-400 italic">
-                    No attached document by PM
-                  </p>
-                )}
+              {/* Document and Testing Links */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
+                  <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Module Document
+                  </h3>
+                  {selectedModule.module_document_url ? (
+                    <a
+                      href={selectedModule.module_document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      View Document ↗
+                    </a>
+                  ) : (
+                    <p className="text-sm font-semibold text-slate-400 italic">
+                      No attached document by PM
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
+                  <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Website Link (Testing)
+                  </h3>
+                  {selectedModule.website_link ? (
+                    <a
+                      href={selectedModule.website_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm font-bold text-purple-600 dark:text-purple-400 hover:underline"
+                    >
+                      Open Link ↗
+                    </a>
+                  ) : (
+                    <p className="text-sm font-semibold text-slate-400 italic">
+                      No website link provided
+                    </p>
+                  )}
+                </div>
               </div>
 
               {selectedModule.qa_result_document_url && (

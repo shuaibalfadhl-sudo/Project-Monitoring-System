@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ interface QaModule {
   status: string;
   module_document_url?: string | null;
   qa_result_document_url?: string | null;
+  website_link?: string | null;
   project: {
     id: string;
     name: string;
@@ -29,7 +31,12 @@ export default function QaMonitoringClient({
   initialModules,
 }: QaMonitoringClientProps) {
   const [modules, setModules] = useState<QaModule[]>(initialModules);
+  const [mounted, setMounted] = useState(false);
   
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     setModules(initialModules);
   }, [initialModules]);
@@ -523,21 +530,27 @@ export default function QaMonitoringClient({
       </div>
 
       {/* Modal */}
-      {selectedModule && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+      {selectedModule && mounted && createPortal(
+        <div 
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          onClick={closeModal}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 dark:border-slate-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900 flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">
                   Review Module
                 </h2>
-                <p className="text-sm font-semibold text-gray-500 mt-1">
+                <p className="text-sm font-semibold text-gray-500 dark:text-slate-400 mt-1">
                   {selectedModule.project.name}
                 </p>
               </div>
               <button
                 onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                className="text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <svg
                   className="w-6 h-6"
@@ -557,7 +570,7 @@ export default function QaMonitoringClient({
 
             <div className="p-6 overflow-y-auto space-y-6">
               <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                   Module Name
                 </h3>
                 <p className="text-lg font-bold text-[var(--sys-primary)]">
@@ -565,24 +578,47 @@ export default function QaMonitoringClient({
                 </p>
               </div>
 
-              <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                  Module Document
-                </h3>
-                {selectedModule.module_document_url ? (
-                  <a
-                    href={selectedModule.module_document_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-bold text-blue-600 hover:underline"
-                  >
-                    View Document ↗
-                  </a>
-                ) : (
-                  <p className="text-sm font-semibold text-gray-400 italic">
-                    No attached document by PM
-                  </p>
-                )}
+              {/* Document and Testing Links */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Module Document
+                  </h3>
+                  {selectedModule.module_document_url ? (
+                    <a
+                      href={selectedModule.module_document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      View Document ↗
+                    </a>
+                  ) : (
+                    <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
+                      No attached document by PM
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Website Link (Testing)
+                  </h3>
+                  {selectedModule.website_link ? (
+                    <a
+                      href={selectedModule.website_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm font-bold text-purple-600 dark:text-purple-400 hover:underline"
+                    >
+                      Open Link ↗
+                    </a>
+                  ) : (
+                    <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
+                      No website link provided
+                    </p>
+                  )}
+                </div>
               </div>
 
               {selectedModule.status === "for_qa" ? (
@@ -722,10 +758,10 @@ export default function QaMonitoringClient({
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-100 bg-white flex justify-end gap-3">
+            <div className="p-6 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-end gap-3">
               <button
                 onClick={closeModal}
-                className="px-6 py-2.5 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors"
+                className="px-6 py-2.5 rounded-xl font-bold text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
                 disabled={isSubmitting}
               >
                 Close
@@ -736,7 +772,7 @@ export default function QaMonitoringClient({
                   disabled={!newStatus || isSubmitting}
                   className={`px-8 py-2.5 rounded-xl font-bold text-white transition-all shadow-lg ${
                     !newStatus
-                      ? "bg-gray-300 cursor-not-allowed shadow-none"
+                      ? "bg-gray-300 dark:bg-slate-700 cursor-not-allowed shadow-none"
                       : newStatus === "qa_approved"
                         ? "bg-green-500 hover:bg-green-600 hover:-translate-y-0.5 shadow-green-500/20"
                         : "bg-red-500 hover:bg-red-600 hover:-translate-y-0.5 shadow-red-500/20"
@@ -747,7 +783,8 @@ export default function QaMonitoringClient({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -318,6 +318,7 @@ export default function QaRevisionClient({
                               status: module.status,
                               created_at: "",
                               module_document_url: module.module_document_url,
+                              website_link: module.website_link,
                               assigned_developer_id:
                                 module.assigned_developer_id,
                             }}

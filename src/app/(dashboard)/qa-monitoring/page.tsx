@@ -34,7 +34,8 @@ export default async function QaMonitoringPage() {
           priority,
           status,
           module_document_url,
-          qa_result_document_url
+          qa_result_document_url,
+          website_link
         )
       `)
       
@@ -61,7 +62,8 @@ export default async function QaMonitoringPage() {
             priority,
             status,
             module_document_url,
-            qa_result_document_url
+            qa_result_document_url,
+            website_link
           )
         )
       `)
@@ -93,6 +95,7 @@ export default async function QaMonitoringPage() {
             status: m.status,
             module_document_url: m.module_document_url,
             qa_result_document_url: m.qa_result_document_url,
+            website_link: m.website_link,
             project: {
               id: p.id,
               name: p.name,
