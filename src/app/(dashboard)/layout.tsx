@@ -52,6 +52,8 @@ export default async function DashboardLayout({
   let forQaCount = 0
   let qaRevisionCount = 0
   let pmReviewCount = 0
+  let developmentCount = 0
+  let revisingCount = 0
 
   if (profile.role === 'system_auditor' || profile.role === 'super_admin') {
     if (profile.role === 'super_admin') {
@@ -154,11 +156,43 @@ export default async function DashboardLayout({
       const penCount = devModules.filter(m => m.status === 'pending').length
       const revCount = devModules.filter(m => m.status === 'revising').length
 
-      if (devCount > 0) notifications.push({ label: 'Development', count: devCount, href: '/modules' })
-      if (penCount > 0) notifications.push({ label: 'Pending', count: penCount, href: '/modules' })
-      if (revCount > 0) notifications.push({ label: 'Revising', count: revCount, href: '/modules' })
+      developmentCount = devCount
+      revisingCount = revCount
+      const devWorkspaceCount = devCount + revCount
 
-      notificationCount += devModules.length
+      if (devWorkspaceCount > 0) {
+        notifications.push({ label: 'Dev Workspace', count: devWorkspaceCount, href: '/dev-workspace' })
+        notificationCount += devWorkspaceCount
+      }
+      if (penCount > 0) {
+        notifications.push({ label: 'Pending', count: penCount, href: '/modules' })
+        notificationCount += penCount
+      }
+    }
+  }
+
+  if (profile.role === 'super_admin') {
+    let query = supabaseServer
+      .from('projects')
+      .select('project_modules(id, status)')
+    if (activeCompanyId) {
+      query = query.eq('company_id', activeCompanyId)
+    }
+    const { data } = await query
+    let devCount = 0
+    let revCount = 0
+    data?.forEach((p: any) => {
+      p.project_modules?.forEach((m: any) => {
+        if (m.status === 'development') devCount++
+        else if (m.status === 'revising') revCount++
+      })
+    })
+    developmentCount = devCount
+    revisingCount = revCount
+    const devWorkspaceCount = devCount + revCount
+    if (devWorkspaceCount > 0) {
+      notifications.push({ label: 'Dev Workspace', count: devWorkspaceCount, href: '/dev-workspace' })
+      notificationCount += devWorkspaceCount
     }
   }
 
@@ -169,6 +203,8 @@ export default async function DashboardLayout({
       initialForQaCount={forQaCount}
       initialQaRevisionCount={qaRevisionCount}
       initialPmReviewCount={pmReviewCount}
+      initialDevelopmentCount={developmentCount}
+      initialRevisingCount={revisingCount}
       initialNotificationCount={notificationCount}
       initialNotifications={notifications}
     >

@@ -57,6 +57,8 @@ interface NavCountsProviderProps {
   initialForQaCount: number
   initialQaRevisionCount: number
   initialPmReviewCount?: number
+  initialDevelopmentCount?: number
+  initialRevisingCount?: number
   initialNotificationCount: number
   initialNotifications: NotificationItem[]
   profile: {
@@ -71,6 +73,8 @@ export function NavCountsProvider({
   initialForQaCount,
   initialQaRevisionCount,
   initialPmReviewCount = 0,
+  initialDevelopmentCount = 0,
+  initialRevisingCount = 0,
   initialNotificationCount,
   initialNotifications,
   profile,
@@ -81,8 +85,8 @@ export function NavCountsProvider({
   const [pmReviewCount, setPmReviewCount] = useState(initialPmReviewCount);
   const [notificationCount, setNotificationCount] = useState(initialNotificationCount);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
-  const [developmentCount, setDevelopmentCount] = useState(0);
-  const [revisingCount, setRevisingCount] = useState(0);
+  const [developmentCount, setDevelopmentCount] = useState(initialDevelopmentCount);
+  const [revisingCount, setRevisingCount] = useState(initialRevisingCount);
   
   const prevNotifCountRef = useRef(initialNotificationCount)
   const router = useRouter()
@@ -94,9 +98,19 @@ export function NavCountsProvider({
     setForQaCount(initialForQaCount)
     setQaRevisionCount(initialQaRevisionCount)
     setPmReviewCount(initialPmReviewCount)
+    setDevelopmentCount(initialDevelopmentCount)
+    setRevisingCount(initialRevisingCount)
     setNotificationCount(initialNotificationCount)
     setNotifications(initialNotifications)
-  }, [initialForQaCount, initialQaRevisionCount, initialPmReviewCount, initialNotificationCount, initialNotifications])
+  }, [
+    initialForQaCount,
+    initialQaRevisionCount,
+    initialPmReviewCount,
+    initialDevelopmentCount,
+    initialRevisingCount,
+    initialNotificationCount,
+    initialNotifications,
+  ])
 
   const fetchCounts = useCallback(async () => {
     if (isFetchingRef.current) return
@@ -209,11 +223,15 @@ export function NavCountsProvider({
           const penCount = devModules.filter(m => m.status === 'pending').length
           const revCount = devModules.filter(m => m.status === 'revising').length
 
-          if (devCount > 0) notifs.push({ label: 'Development', count: devCount, href: '/dev-workspace' })
-          if (penCount > 0) notifs.push({ label: 'Pending', count: penCount, href: '/modules' })
-          if (revCount > 0) notifs.push({ label: 'Revising', count: revCount, href: '/dev-workspace' })
-
-          notifCount += devModules.length
+          const devWorkspaceCount = devCount + revCount
+          if (devWorkspaceCount > 0) {
+            notifs.push({ label: 'Dev Workspace', count: devWorkspaceCount, href: '/dev-workspace' })
+            notifCount += devWorkspaceCount
+          }
+          if (penCount > 0) {
+            notifs.push({ label: 'Pending', count: penCount, href: '/modules' })
+            notifCount += penCount
+          }
 
           setDevelopmentCount(devCount)
           setRevisingCount(revCount)
@@ -242,8 +260,10 @@ export function NavCountsProvider({
         })
         setDevelopmentCount(devCount)
         setRevisingCount(revCount)
-        if (devCount + revCount > 0) {
-          notifs.push({ label: 'Dev Workspace', count: devCount + revCount, href: '/dev-workspace' })
+        const devWorkspaceCount = devCount + revCount
+        if (devWorkspaceCount > 0) {
+          notifs.push({ label: 'Dev Workspace', count: devWorkspaceCount, href: '/dev-workspace' })
+          notifCount += devWorkspaceCount
         }
       }
 
@@ -275,7 +295,7 @@ export function NavCountsProvider({
       debounceTimer = setTimeout(() => {
         fetchCounts()
         router.refresh()
-      }, 150)
+      }, 300)
     }
 
     const channel = supabase

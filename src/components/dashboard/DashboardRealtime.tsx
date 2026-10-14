@@ -16,7 +16,7 @@ export default function DashboardRealtime() {
       }
       refreshTimerRef.current = setTimeout(() => {
         router.refresh()
-      }, 150)
+      }, 300)
     }
 
     // Subscribe to changes on project_modules, projects, and project_members
