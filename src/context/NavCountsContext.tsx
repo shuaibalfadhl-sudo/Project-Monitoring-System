@@ -107,7 +107,7 @@ export function NavCountsProvider({
           let count = 0
           data?.forEach((p: any) => {
             p.project_modules?.forEach((m: any) => {
-              if (m.status === 'for_qa' || m.status === 'auditing') count++
+              if (m.status === 'for_qa') count++
             })
           })
           if (count > 0) {
