@@ -32,7 +32,53 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
     if (isOpen) {
+      // Re-sync form state from current module prop
+      const formatDeadline = (d?: string | null) => {
+        if (!d) return ''
+        return d.includes('T') ? d.split('T')[0] : d
+      }
+
+      setFormData({
+        name: module.name || '',
+        description: module.description || '',
+        priority: module.priority || 'medium',
+        status: module.status || 'pending',
+        module_document_url: module.module_document_url || '',
+        assigned_developer_id: module.assigned_developer_id || '',
+        category: module.category || 'new_module',
+        deadline: formatDeadline(module.deadline),
+        website_link: module.website_link || ''
+      })
+
+      // Fetch the latest module record directly from database to guarantee the latest registered deadline is displayed
+      const fetchLatestModuleData = async () => {
+        const { data, error } = await supabase
+          .from('project_modules')
+          .select('*')
+          .eq('id', module.id)
+          .single()
+
+        if (!error && data) {
+          setFormData({
+            name: data.name || '',
+            description: data.description || '',
+            priority: data.priority || 'medium',
+            status: data.status || 'pending',
+            module_document_url: data.module_document_url || '',
+            assigned_developer_id: data.assigned_developer_id || '',
+            category: data.category || 'new_module',
+            deadline: formatDeadline(data.deadline),
+            website_link: data.website_link || ''
+          })
+        }
+      }
+
+      fetchLatestModuleData()
+
       // Fetch developers assigned to this project
       const fetchDevelopers = async () => {
         const { data, error } = await supabase
@@ -52,7 +98,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
       
       fetchDevelopers();
     }
-  }, [isOpen, module.project_id, supabase])
+  }, [isOpen, module, supabase])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -182,6 +228,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                       ) : (
                         <>
                           <option value="pending">Pending</option>
+                          <option value="for data gathering">For Data Gathering</option>
                           <option value="development">Development</option>
                           <option value="pm_review">PM Review</option>
                           <option value="for_qa">For QA</option>

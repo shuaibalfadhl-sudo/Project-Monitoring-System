@@ -25,9 +25,14 @@ export default async function DeploymentPage() {
         description,
         priority,
         status,
+        module_document_url,
         qa_result_document_url,
         qa_acknowledged_at,
-        qa_acknowledged_by
+        qa_acknowledged_by,
+        website_link,
+        deadline,
+        category,
+        assigned_developer_id
       )
     `)
 
@@ -55,6 +60,7 @@ export default async function DeploymentPage() {
         mods.forEach((m: any) => {
           deploymentModules.push({
             ...m,
+            project_id: p.id,
             project: { id: p.id, name: p.name }
           })
         })

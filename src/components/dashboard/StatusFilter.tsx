@@ -12,6 +12,7 @@ const STATUSES = [
   { value: "revision", label: "Revision" },
   { value: "pm_review", label: "PM Review" },
   { value: "development", label: "Development" },
+  { value: "for data gathering", label: "For Data Gathering" },
   { value: "pending", label: "Pending" }
 ];
 

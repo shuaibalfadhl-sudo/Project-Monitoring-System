@@ -11,7 +11,7 @@ export interface Project {
   created_at: string
 }
 
-export type ModuleStatus = 'pending' | 'development' | 'pm_review' | 'for_qa' | 'auditing' | 'revision' | 'revising' | 'qa_approved' | 'deployment' | 'deployed'
+export type ModuleStatus = 'pending' | 'for data gathering' | 'for_data_gathering' | 'development' | 'pm_review' | 'for_qa' | 'auditing' | 'revision' | 'revising' | 'qa_approved' | 'deployment' | 'deployed'
 
 export interface ProjectModule {
   id: string

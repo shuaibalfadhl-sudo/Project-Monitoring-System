@@ -167,6 +167,9 @@ export default function ModuleList({
 
   const getStatusColor = (status?: string) => {
     switch (status) {
+      case "for data gathering":
+      case "for_data_gathering":
+        return "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300";
       case "development":
         return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
       case "pm_review":
@@ -295,6 +298,7 @@ export default function ModuleList({
           >
             <option value="all">All Statuses</option>
             <option value="pending">Pending</option>
+            <option value="for data gathering">For Data Gathering</option>
             <option value="development">Development</option>
             <option value="pm_review">PM Review</option>
             <option value="for_qa">For QA</option>
@@ -424,6 +428,7 @@ export default function ModuleList({
                             onChange={(e) => handleQuickStatusChange(module.id, e.target.value)}
                           >
                             <option value="pending" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Pending</option>
+                            <option value="for data gathering" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For Data Gathering</option>
                             <option value="development" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Development</option>
                             <option value="pm_review" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">PM Review</option>
                             <option value="for_qa" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For QA</option>
@@ -448,7 +453,7 @@ export default function ModuleList({
                         <span
                           className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border-2 border-transparent ${module.status === 'qa_approved' || module.status === 'for_qa' ? '' : 'capitalize'} ${getStatusColor(module.status)}`}
                         >
-                          {module.status === 'qa_approved' ? 'QA Approved' : module.status === 'for_qa' ? 'For QA' : (module.status || "pending").replace("_", " ")}
+                          {module.status === 'qa_approved' ? 'QA Approved' : module.status === 'for_qa' ? 'For QA' : (module.status === 'for data gathering' || module.status === 'for_data_gathering') ? 'For Data Gathering' : (module.status || "pending").replace("_", " ")}
                         </span>
                       )}
                     </td>
@@ -681,7 +686,7 @@ export default function ModuleList({
                   <span
                     className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${selectedModule.status === 'qa_approved' || selectedModule.status === 'for_qa' ? '' : 'capitalize'} ${getStatusColor(selectedModule.status)}`}
                   >
-                    {selectedModule.status === 'qa_approved' ? 'QA Approved' : selectedModule.status === 'for_qa' ? 'For QA' : (selectedModule.status || "pending").replace("_", " ")}
+                    {selectedModule.status === 'qa_approved' ? 'QA Approved' : selectedModule.status === 'for_qa' ? 'For QA' : (selectedModule.status === 'for data gathering' || selectedModule.status === 'for_data_gathering') ? 'For Data Gathering' : (selectedModule.status || "pending").replace("_", " ")}
                   </span>
                 </div>
                 <div>

@@ -30,7 +30,9 @@ export default async function QaRevisionPage() {
         qa_result_document_url,
         qa_acknowledged_at,
         qa_acknowledged_by,
-        website_link
+        website_link,
+        deadline,
+        category
       )
     `)
 

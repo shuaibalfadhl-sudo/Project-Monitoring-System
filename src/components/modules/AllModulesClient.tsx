@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
+import EditModuleModal from "@/components/modules/EditModuleModal";
 
 export default function AllModulesClient({
   initialModules,
@@ -88,6 +89,9 @@ export default function AllModulesClient({
 
   const getStatusColor = (status?: string) => {
     switch (status) {
+      case "for data gathering":
+      case "for_data_gathering":
+        return "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300";
       case "development":
         return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
       case "pm_review":
@@ -110,6 +114,15 @@ export default function AllModulesClient({
       default:
         return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
     }
+  };
+
+  const formatStatus = (status?: string) => {
+    if (!status) return "Pending";
+    if (status === "for_qa") return "For QA";
+    if (status === "qa_approved") return "QA Approved";
+    if (status === "for data gathering" || status === "for_data_gathering") return "For Data Gathering";
+    if (status === "pm_review") return "PM Review";
+    return status.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
   const getPriorityColor = (priority?: string) => {
@@ -185,7 +198,7 @@ export default function AllModulesClient({
         </div>
 
         <select
-          className="w-full sm:w-40 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+          className="w-full sm:w-44 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
           value={statusFilter}
           onChange={(e) => {
             setStatusFilter(e.target.value);
@@ -194,6 +207,7 @@ export default function AllModulesClient({
         >
           <option value="all">All Statuses</option>
           <option value="pending">Pending</option>
+          <option value="for data gathering">For Data Gathering</option>
           <option value="development">Development</option>
           <option value="pm_review">PM Review</option>
           <option value="for_qa">For QA</option>
@@ -241,6 +255,11 @@ export default function AllModulesClient({
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Status
                 </th>
+                {(role === 'project_manager' || role === 'super_admin') && (
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -287,7 +306,7 @@ export default function AllModulesClient({
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    {role === 'project_manager' && !['auditing', 'qa_approved', 'deployed', 'deployment'].includes(mod.status || 'pending') ? (
+                    {role === 'project_manager' || role === 'super_admin' ? (
                       <div onClick={(e) => e.stopPropagation()} className="relative inline-block group">
                         <select
                           className={`pl-2.5 pr-7 py-1 rounded-lg text-xs font-bold border-2 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] cursor-pointer ${getStatusColor(mod.status)} border-transparent hover:border-gray-300 dark:hover:border-slate-600 transition-colors appearance-none relative z-0`}
@@ -295,32 +314,51 @@ export default function AllModulesClient({
                           onChange={(e) => handleQuickStatusChange(mod.id, e.target.value)}
                         >
                           <option value="pending" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Pending</option>
+                          <option value="for data gathering" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For Data Gathering</option>
                           <option value="development" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Development</option>
                           <option value="pm_review" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">PM Review</option>
                           <option value="for_qa" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For QA</option>
+                          <option value="auditing" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Auditing</option>
                           <option value="revision" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revision</option>
                           <option value="revising" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revising</option>
+                          <option value="qa_approved" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">QA Approved</option>
+                          <option value="deployment" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Deployment</option>
+                          <option value="deployed" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Deployed</option>
                         </select>
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-current opacity-50 group-hover:opacity-100 transition-opacity z-10">
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                           </svg>
                         </div>
                       </div>
                     ) : (
                       <span
-                        className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border-2 border-transparent ${mod.status === 'qa_approved' || mod.status === 'for_qa' ? '' : 'capitalize'} ${getStatusColor(mod.status)}`}
+                        className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border-2 border-transparent ${getStatusColor(mod.status)}`}
                       >
-                        {mod.status === 'qa_approved' ? 'QA Approved' : mod.status === 'for_qa' ? 'For QA' : (mod.status || "pending").replace("_", " ")}
+                        {formatStatus(mod.status)}
                       </span>
                     )}
                   </td>
+                  {(role === 'project_manager' || role === 'super_admin') && (
+                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end">
+                        {/* Edit Button - not available for deployment status */}
+                        {mod.status !== 'deployment' && (
+                          <EditModuleModal
+                            module={mod}
+                            isManager={role === 'project_manager'}
+                            isSuperAdmin={role === 'super_admin'}
+                          />
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
               {filteredModules.length === 0 && (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={role === 'project_manager' || role === 'super_admin' ? 6 : 5}
                     className="px-6 py-8 text-center text-slate-500 dark:text-slate-400"
                   >
                     {initialModules.length === 0
@@ -516,9 +554,9 @@ export default function AllModulesClient({
                     Status
                   </h3>
                   <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold capitalize ${getStatusColor(selectedModule.status)}`}
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${getStatusColor(selectedModule.status)}`}
                   >
-                    {(selectedModule.status || "pending").replace("_", " ")}
+                    {formatStatus(selectedModule.status)}
                   </span>
                 </div>
                 <div>

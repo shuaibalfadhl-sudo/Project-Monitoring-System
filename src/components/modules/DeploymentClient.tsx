@@ -4,7 +4,6 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import EditModuleModal from "./EditModuleModal";
 
 export default function DeploymentClient({
   initialModules,

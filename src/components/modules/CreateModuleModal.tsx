@@ -149,6 +149,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                       onChange={(e) => setFormData({...formData, status: e.target.value})}
                     >
                       <option value="pending">Pending</option>
+                      <option value="for data gathering">For Data Gathering</option>
                       <option value="development">Development</option>
                       <option value="pm_review">PM Review</option>
                       <option value="for_qa">For QA</option>

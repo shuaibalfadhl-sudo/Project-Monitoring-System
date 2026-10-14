@@ -319,6 +319,8 @@ export default function QaRevisionClient({
                               created_at: "",
                               module_document_url: module.module_document_url,
                               website_link: module.website_link,
+                              category: module.category,
+                              deadline: module.deadline,
                               assigned_developer_id:
                                 module.assigned_developer_id,
                             }}

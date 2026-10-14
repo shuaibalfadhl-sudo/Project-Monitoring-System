@@ -42,6 +42,7 @@ export default function QaMonitoringClient({
   }, [initialModules]);
 
   const [selectedModule, setSelectedModule] = useState<QaModule | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -90,6 +91,7 @@ export default function QaMonitoringClient({
 
   const closeModal = () => {
     setSelectedModule(null);
+    setCopiedLink(false);
     setNewStatus("");
     setReworkLink("");
     setError("");
@@ -605,14 +607,49 @@ export default function QaMonitoringClient({
                     Website Link (Testing)
                   </h3>
                   {selectedModule.website_link ? (
-                    <a
-                      href={selectedModule.website_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm font-bold text-purple-600 dark:text-purple-400 hover:underline"
-                    >
-                      Open Link ↗
-                    </a>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedModule.website_link) {
+                            navigator.clipboard.writeText(selectedModule.website_link);
+                            setCopiedLink(true);
+                            toast.success("Website link copied to clipboard!");
+                            setTimeout(() => setCopiedLink(false), 2000);
+                          }
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          copiedLink
+                            ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                            : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800"
+                        }`}
+                        title="Copy website link"
+                      >
+                        {copiedLink ? (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                            Copy Link
+                          </>
+                        )}
+                      </button>
+                      <a
+                        href={selectedModule.website_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-300 hover:underline"
+                      >
+                        Open ↗
+                      </a>
+                    </div>
                   ) : (
                     <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
                       No website link provided
