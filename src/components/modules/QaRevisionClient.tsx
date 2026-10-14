@@ -1,10 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import EditModuleModal from "./EditModuleModal";
+import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
+
+const DATE_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Manila",
+  year: "numeric",
+  month: "short",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true,
+});
 
 export default function QaRevisionClient({
   initialModules,
@@ -16,13 +27,134 @@ export default function QaRevisionClient({
   useEffect(() => {
     setModules(initialModules);
   }, [initialModules]);
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedModule, setSelectedModule] = useState<any | null>(null);
+  const [reviewStatus, setReviewStatus] = useState<"revising" | "for_qa">("revising");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [assignedDevId, setAssignedDevId] = useState<string>("");
+  const [newDeadline, setNewDeadline] = useState<string>("");
+  const [projectDevs, setProjectDevs] = useState<{ id: string; full_name: string }[]>([]);
+  const [loadingDevs, setLoadingDevs] = useState(false);
+
+  const supabase = createClient();
+  const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("qa-revision-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "project_modules" }, () => {
+        router.refresh();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, router]);
+
+  const handleOpenReview = async (mod: any) => {
+    setSelectedModule(mod);
+    setReviewStatus(mod.status === "for_qa" ? "for_qa" : "revising");
+    setAssignedDevId(mod.assigned_developer_id || "");
+    const deadlineVal = mod.deadline
+      ? mod.deadline.includes("T")
+        ? mod.deadline.split("T")[0]
+        : mod.deadline
+      : "";
+    setNewDeadline(deadlineVal);
+    setCopiedLink(false);
+
+    if (mod.project?.id) {
+      setLoadingDevs(true);
+      try {
+        const { data, error } = await supabase
+          .from("project_members")
+          .select("user_id, profiles!inner(id, full_name, role)")
+          .eq("project_id", mod.project.id)
+          .eq("profiles.role", "developer");
+        if (!error && data) {
+          const devs = data.map((d: any) => ({
+            id: d.profiles.id,
+            full_name: d.profiles.full_name || "Unnamed Developer",
+          }));
+          setProjectDevs(devs);
+        }
+      } catch (err) {
+        console.error("Error fetching project developers:", err);
+      } finally {
+        setLoadingDevs(false);
+      }
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!selectedModule) return;
+    setIsSubmittingReview(true);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const updates: any = {
+        status: reviewStatus,
+      };
+
+      if (!selectedModule.qa_result_acknowledged_at) {
+        updates.qa_result_acknowledged_at = new Date().toISOString();
+        if (user) {
+          updates.qa_result_acknowledged_by = user.id;
+        }
+      }
+
+      if (assignedDevId !== undefined) {
+        updates.assigned_developer_id = assignedDevId ? assignedDevId : null;
+      }
+
+      if (newDeadline) {
+        updates.deadline = newDeadline;
+      }
+
+      if (selectedModule.status === "revision") {
+        try {
+          await supabase.rpc("acknowledge_qa_result", {
+            p_module_id: selectedModule.id,
+          });
+        } catch (rpcErr) {
+          console.warn("acknowledge_qa_result RPC notice:", rpcErr);
+        }
+      }
+
+      const { error } = await supabase
+        .from("project_modules")
+        .update(updates)
+        .eq("id", selectedModule.id);
+
+      if (error) throw error;
+
+      toast.success(
+        `Review submitted: Status updated to "${reviewStatus === "for_qa" ? "For QA" : "Revising"}"`
+      );
+
+      setModules((prev) => prev.filter((m) => m.id !== selectedModule.id));
+
+      setSelectedModule(null);
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit review.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   const generatePagination = (currentPage: number, totalPages: number) => {
     if (totalPages <= 7)
@@ -47,37 +179,7 @@ export default function QaRevisionClient({
       totalPages,
     ];
   };
-  const supabase = createClient();
-  const router = useRouter();
 
-  const handleAcknowledge = async (moduleId: string) => {
-    try {
-      setLoadingId(moduleId);
-      const { error } = await supabase.rpc("acknowledge_qa_result", {
-        p_module_id: moduleId,
-      });
-
-      if (error) throw error;
-
-      toast.success("QA Result Acknowledged. Module returned to Revising.");
-      setModules(
-        modules.map((m) =>
-          m.id === moduleId
-            ? {
-                ...m,
-                status: "revising",
-                qa_result_acknowledged_at: new Date().toISOString(),
-              }
-            : m,
-        ),
-      );
-      router.refresh();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to acknowledge QA result");
-    } finally {
-      setLoadingId(null);
-    }
-  };
 
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
@@ -151,19 +253,6 @@ export default function QaRevisionClient({
           />
         </div>
 
-        <select
-          className="w-full sm:w-40 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setCurrentPage(1);
-          }}
-        >
-          <option value="all">All Statuses</option>
-          <option value="revision">Revision</option>
-          <option value="revising">Revising</option>
-          <option value="pm_review">PM Review</option>
-        </select>
 
         <select
           className="w-full sm:w-32 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
@@ -187,8 +276,7 @@ export default function QaRevisionClient({
             const matchesSearch =
               m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
               m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesStatus =
-              statusFilter === "all" || m.status === statusFilter;
+            const matchesStatus = m.status === "revision";
             const matchesPriority =
               priorityFilter === "all" || m.priority === priorityFilter;
             return matchesSearch && matchesStatus && matchesPriority;
@@ -229,7 +317,8 @@ export default function QaRevisionClient({
                   {paginatedModules.map((module: any) => (
                     <tr
                       key={module.id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      onClick={() => handleOpenReview(module)}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
                     >
                       <td className="px-6 py-4 text-center">
                         <span
@@ -239,22 +328,12 @@ export default function QaRevisionClient({
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-bold text-slate-900 dark:text-white block">
+                        <span className="font-bold text-slate-900 dark:text-white block group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                           {module.name}
                         </span>
-                        {module.status === "revision" ? (
-                          <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
-                            REVISION
-                          </span>
-                        ) : module.status === "pm_review" ? (
-                          <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
-                            PM REVIEW
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
-                            REVISING
-                          </span>
-                        )}
+                        <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
+                          REVISION
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
                         {module.project.name}
@@ -266,15 +345,13 @@ export default function QaRevisionClient({
                           </span>
                           {module.qa_acknowledged_at && (
                             <span className="text-xs text-slate-400">
-                              {new Intl.DateTimeFormat("en-US", {
-                                timeZone: "Asia/Manila",
-                                year: "numeric",
-                                month: "short",
-                                day: "2-digit",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              }).format(new Date(module.qa_acknowledged_at))}
+                              {(() => {
+                                try {
+                                  return DATE_FMT.format(new Date(module.qa_acknowledged_at));
+                                } catch {
+                                  return module.qa_acknowledged_at;
+                                }
+                              })()}
                             </span>
                           )}
                         </div>
@@ -285,7 +362,8 @@ export default function QaRevisionClient({
                             href={module.qa_result_document_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-bold hover:underline"
                           >
                             View Document ↗
                           </a>
@@ -295,44 +373,23 @@ export default function QaRevisionClient({
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 flex items-center gap-3">
-                        {module.status === "revision" ? (
-                          <button
-                            onClick={() => handleAcknowledge(module.id)}
-                            disabled={loadingId === module.id}
-                            className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-md disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {loadingId === module.id
-                              ? "Acknowledging..."
-                              : "Acknowledge Result"}
-                          </button>
-                        ) : (
-                          <EditModuleModal
-                            isQaRevisionMode={true}
-                            module={{
-                              id: module.id,
-                              project_id: module.project.id,
-                              name: module.name,
-                              description: module.description,
-                              priority: module.priority,
-                              status: module.status,
-                              created_at: "",
-                              module_document_url: module.module_document_url,
-                              website_link: module.website_link,
-                              category: module.category,
-                              deadline: module.deadline,
-                              assigned_developer_id:
-                                module.assigned_developer_id,
-                            }}
-                          />
-                        )}
+                      <td className="px-6 py-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleOpenReview(module)}
+                          className="py-2 px-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md whitespace-nowrap flex items-center gap-1.5"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Review Result
+                        </button>
                       </td>
                     </tr>
                   ))}
                   {filteredModules.length === 0 && (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-6 py-8 text-center text-slate-500 dark:text-slate-400"
                       >
                         {modules.length === 0
@@ -459,6 +516,424 @@ export default function QaRevisionClient({
           );
         })()}
       </div>
+
+      {/* Review Result Modal */}
+      {selectedModule && mounted && createPortal(
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          onClick={() => setSelectedModule(null)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl sm:max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 dark:border-slate-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900 flex justify-between items-start">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Review Result</h2>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-bold capitalize ${
+                    selectedModule.status === "revision"
+                      ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+                      : selectedModule.status === "pm_review"
+                      ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                      : "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                  }`}>
+                    {selectedModule.status === "pm_review" ? "PM Review" : selectedModule.status}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-gray-500 dark:text-slate-400 mt-1">
+                  {selectedModule.project.name}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedModule(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6">
+              {/* Module Name */}
+              <div>
+                <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+                  Module Name
+                </p>
+                <p className="text-lg font-extrabold text-slate-800 dark:text-white">
+                  {selectedModule.name}
+                </p>
+              </div>
+
+              {/* Description */}
+              {selectedModule.description && (
+                <div>
+                  <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+                    Description
+                  </p>
+                  <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 space-y-3">
+                    {selectedModule.description.split("\n").map((line: string, i: number) =>
+                      line.trim() === "" ? (
+                        <div key={i} className="h-2" />
+                      ) : (
+                        <p key={i} className="text-sm text-slate-700 dark:text-slate-300 leading-7">
+                          {line}
+                        </p>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Priority, Category, Deadline, Dev grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Priority</p>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-bold capitalize ${getPriorityColor(selectedModule.priority)}`}>
+                    {selectedModule.priority}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Category</p>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 capitalize">
+                    {selectedModule.category ? selectedModule.category.replace(/_/g, " ") : "General"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Deadline</p>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    {selectedModule.deadline
+                      ? new Date(selectedModule.deadline).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+                      : "No deadline"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Assigned Dev</p>
+                  {selectedModule.assigned_developer_name ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 text-[10px] font-black flex items-center justify-center uppercase">
+                        {selectedModule.assigned_developer_name.charAt(0)}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">
+                        {selectedModule.assigned_developer_name}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400 dark:text-slate-500 italic">Unassigned</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Document & Testing Links */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Module Document
+                  </h3>
+                  {selectedModule.module_document_url ? (
+                    <a
+                      href={selectedModule.module_document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      View Document ↗
+                    </a>
+                  ) : (
+                    <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
+                      No attached document by PM
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Website Link (Testing)
+                  </h3>
+                  {selectedModule.website_link ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedModule.website_link) {
+                            navigator.clipboard.writeText(selectedModule.website_link);
+                            setCopiedLink(true);
+                            toast.success("Website link copied to clipboard!");
+                            setTimeout(() => setCopiedLink(false), 2000);
+                          }
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          copiedLink
+                            ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                            : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800"
+                        }`}
+                        title="Copy website link"
+                      >
+                        {copiedLink ? (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                            Copy Link
+                          </>
+                        )}
+                      </button>
+                      <a
+                        href={selectedModule.website_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-300 hover:underline"
+                      >
+                        Open ↗
+                      </a>
+                    </div>
+                  ) : (
+                    <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
+                      No website link provided
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* QA Result Document */}
+              <div className="p-4 rounded-2xl bg-rose-50/40 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30">
+                <h3 className="text-xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider mb-2">
+                  QA Result Document
+                </h3>
+                {selectedModule.qa_result_document_url ? (
+                  <a
+                    href={selectedModule.qa_result_document_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-600 dark:text-rose-400 hover:underline"
+                  >
+                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    View QA Results ↗
+                  </a>
+                ) : (
+                  <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
+                    No QA result document uploaded yet
+                  </p>
+                )}
+              </div>
+
+              {/* Workflow Acknowledgements */}
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-gray-100 dark:border-slate-700/80">
+                <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-3">
+                  Workflow Acknowledgements
+                </h3>
+                <div className="space-y-3">
+                  {/* System Auditor QA Acknowledgement */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div>
+                      <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase block">
+                        System Auditor QA
+                      </span>
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        {selectedModule.auditor_name || selectedModule.qa_acknowledged_by_name || "Unknown Auditor"}
+                      </span>
+                    </div>
+                    {selectedModule.qa_acknowledged_at ? (
+                      <span className="text-xs font-medium text-gray-500 dark:text-slate-400">
+                        {(() => {
+                          try {
+                            return DATE_FMT.format(new Date(selectedModule.qa_acknowledged_at));
+                          } catch {
+                            return selectedModule.qa_acknowledged_at;
+                          }
+                        })()}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                        <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 inline-block"></span>
+                        Not yet acknowledged
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="border-t border-gray-200/60 dark:border-slate-700/60"></div>
+
+                  {/* Project Manager QA Result Acknowledgement */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div>
+                      <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase block">
+                        Project Manager QA Result
+                      </span>
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        {selectedModule.qa_result_acknowledged_by_name || (selectedModule.qa_result_acknowledged_at ? "Project Manager" : "Pending Review")}
+                      </span>
+                    </div>
+                    {selectedModule.qa_result_acknowledged_at ? (
+                      <span className="text-xs font-medium text-gray-500 dark:text-slate-400">
+                        {(() => {
+                          try {
+                            return DATE_FMT.format(new Date(selectedModule.qa_result_acknowledged_at));
+                          } catch {
+                            return selectedModule.qa_result_acknowledged_at;
+                          }
+                        })()}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 inline-block animate-pulse"></span>
+                        Will be acknowledged on submit
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Decision (Revising vs For QA only) */}
+              <div className="p-4 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
+                <h3 className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider mb-1">
+                  Review Decision: Set Next Status
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
+                  Select whether to return this module to the developer for fixes or proceed directly to QA testing:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  {/* Option 1: Revising */}
+                  <div
+                    onClick={() => setReviewStatus("revising")}
+                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                      reviewStatus === "revising"
+                        ? "border-blue-500 bg-white dark:bg-slate-800 shadow-sm ring-2 ring-blue-500/20"
+                        : "border-gray-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 hover:border-blue-300"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="reviewStatus"
+                      checked={reviewStatus === "revising"}
+                      onChange={() => setReviewStatus("revising")}
+                      className="mt-1 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-slate-900 dark:text-white">Revising</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                          To Developer
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        Send back to developer to resolve issues noted in the QA report.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Option 2: For QA */}
+                  <div
+                    onClick={() => setReviewStatus("for_qa")}
+                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                      reviewStatus === "for_qa"
+                        ? "border-emerald-500 bg-white dark:bg-slate-800 shadow-sm ring-2 ring-emerald-500/20"
+                        : "border-gray-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 hover:border-emerald-300"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="reviewStatus"
+                      checked={reviewStatus === "for_qa"}
+                      onChange={() => setReviewStatus("for_qa")}
+                      className="mt-1 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-slate-900 dark:text-white">For QA</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                          To Auditor
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        Fixes ready or verified. Send directly to System Auditor for QA re-testing.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional parameters when Revising */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-indigo-100 dark:border-indigo-900/30">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Assigned Developer
+                    </label>
+                    <select
+                      value={assignedDevId}
+                      onChange={(e) => setAssignedDevId(e.target.value)}
+                      disabled={loadingDevs}
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                    >
+                      <option value="">Unassigned</option>
+                      {projectDevs.map((dev) => (
+                        <option key={dev.id} value={dev.id}>
+                          {dev.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Deadline
+                    </label>
+                    <input
+                      type="date"
+                      value={newDeadline}
+                      onChange={(e) => setNewDeadline(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* QA Document History */}
+              <DocumentHistorySection moduleId={selectedModule.id} />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-gray-100 dark:border-slate-800 bg-gray-50/30 dark:bg-slate-900 flex justify-end gap-3">
+              <button
+                onClick={() => setSelectedModule(null)}
+                className="px-5 py-2.5 text-sm font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitReview}
+                disabled={isSubmittingReview}
+                className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSubmittingReview ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Saving...
+                  </>
+                ) : (
+                  `Submit as ${reviewStatus === "for_qa" ? "For QA" : "Revising"}`
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

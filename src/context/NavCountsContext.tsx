@@ -14,6 +14,7 @@ interface NotificationItem {
 interface NavCountsContextType {
   forQaCount: number
   qaRevisionCount: number
+  pmReviewCount: number
   notificationCount: number
   developmentCount: number
   revisingCount: number
@@ -24,6 +25,7 @@ interface NavCountsContextType {
 const NavCountsContext = createContext<NavCountsContextType>({
   forQaCount: 0,
   qaRevisionCount: 0,
+  pmReviewCount: 0,
   developmentCount: 0,
   revisingCount: 0,
   notificationCount: 0,
@@ -54,6 +56,7 @@ interface NavCountsProviderProps {
   children: React.ReactNode
   initialForQaCount: number
   initialQaRevisionCount: number
+  initialPmReviewCount?: number
   initialNotificationCount: number
   initialNotifications: NotificationItem[]
   profile: {
@@ -67,6 +70,7 @@ export function NavCountsProvider({
   children,
   initialForQaCount,
   initialQaRevisionCount,
+  initialPmReviewCount = 0,
   initialNotificationCount,
   initialNotifications,
   profile,
@@ -74,6 +78,7 @@ export function NavCountsProvider({
 }: NavCountsProviderProps) {
   const [forQaCount, setForQaCount] = useState(initialForQaCount);
   const [qaRevisionCount, setQaRevisionCount] = useState(initialQaRevisionCount);
+  const [pmReviewCount, setPmReviewCount] = useState(initialPmReviewCount);
   const [notificationCount, setNotificationCount] = useState(initialNotificationCount);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const [developmentCount, setDevelopmentCount] = useState(0);
@@ -88,9 +93,10 @@ export function NavCountsProvider({
   useEffect(() => {
     setForQaCount(initialForQaCount)
     setQaRevisionCount(initialQaRevisionCount)
+    setPmReviewCount(initialPmReviewCount)
     setNotificationCount(initialNotificationCount)
     setNotifications(initialNotifications)
-  }, [initialForQaCount, initialQaRevisionCount, initialNotificationCount, initialNotifications])
+  }, [initialForQaCount, initialQaRevisionCount, initialPmReviewCount, initialNotificationCount, initialNotifications])
 
   const fetchCounts = useCallback(async () => {
     if (isFetchingRef.current) return
@@ -101,6 +107,7 @@ export function NavCountsProvider({
       let notifs: NotificationItem[] = []
       let fQaCount = 0
       let qRevCount = 0
+      let pmRevCount = 0
 
       // System auditor or Super Admin QA count
       if (profile.role === 'system_auditor' || profile.role === 'super_admin') {
@@ -144,7 +151,7 @@ export function NavCountsProvider({
         }
       }
 
-      // Project Manager or Super Admin Revision count
+      // Project Manager or Super Admin Revision count & PM Review count
       if (profile.role === 'project_manager' || profile.role === 'super_admin') {
         let query = supabase
           .from('projects')
@@ -159,12 +166,11 @@ export function NavCountsProvider({
         let count = 0
         data?.forEach((p: any) => {
           p.project_modules?.forEach((m: any) => {
-            if (
-              m.status === 'revision' ||
-              m.status === 'revising' ||
-              (m.status === 'pm_review' && m.qa_result_document_url)
-            ) {
+            if (m.status === 'revision') {
               count++
+            }
+            if (m.status === 'pm_review') {
+              pmRevCount++
             }
           })
         })
@@ -172,6 +178,10 @@ export function NavCountsProvider({
           notifCount += count
           qRevCount = count
           notifs.push({ label: 'Revision', count, href: '/qa-revision' })
+        }
+        if (pmRevCount > 0) {
+          notifCount += pmRevCount
+          notifs.push({ label: 'Module Review', count: pmRevCount, href: '/module-review' })
         }
       }
 
@@ -246,6 +256,7 @@ export function NavCountsProvider({
       // Update state
       setForQaCount(fQaCount)
       setQaRevisionCount(qRevCount)
+      setPmReviewCount(pmRevCount)
       setNotificationCount(notifCount)
       setNotifications(notifs)
     } catch (err) {
@@ -324,6 +335,7 @@ export function NavCountsProvider({
       value={{
         forQaCount,
         qaRevisionCount,
+        pmReviewCount,
         notificationCount,
         developmentCount,
         revisingCount,

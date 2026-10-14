@@ -17,6 +17,7 @@ export default function SidebarNav({
   const pathname = usePathname();
   const currentForQaCount = navCounts?.forQaCount ?? 0;
   const currentQaRevisionCount = navCounts?.qaRevisionCount ?? 0;
+  const currentPmReviewCount = navCounts?.pmReviewCount ?? 0;
   const currentDevWorkspaceCount = (navCounts?.developmentCount ?? 0) + (navCounts?.revisingCount ?? 0);
 
   const isManager = role === 'project_manager';
@@ -52,6 +53,14 @@ export default function SidebarNav({
         <>
           <Link href="/projects" className={getLinkClasses('/projects')}>
             Projects
+          </Link>
+          <Link href="/module-review" className={getLinkClasses('/module-review')}>
+            <span className="flex items-center justify-between">
+              <span>Module Review</span>
+              {currentPmReviewCount > 0 && (
+                <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentPmReviewCount}</span>
+              )}
+            </span>
           </Link>
           <Link href="/qa-revision" className={getLinkClasses('/qa-revision')}>
             <span className="flex items-center justify-between">
@@ -109,6 +118,14 @@ export default function SidebarNav({
               <span>For QA Modules</span>
               {currentForQaCount > 0 && (
                 <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentForQaCount}</span>
+              )}
+            </span>
+          </Link>
+          <Link href="/module-review" className={getLinkClasses('/module-review')}>
+            <span className="flex items-center justify-between">
+              <span>Module Review</span>
+              {currentPmReviewCount > 0 && (
+                <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentPmReviewCount}</span>
               )}
             </span>
           </Link>

@@ -51,6 +51,7 @@ export default async function DashboardLayout({
   let notifications: { label: string, count: number, href: string }[] = []
   let forQaCount = 0
   let qaRevisionCount = 0
+  let pmReviewCount = 0
 
   if (profile.role === 'system_auditor' || profile.role === 'super_admin') {
     if (profile.role === 'super_admin') {
@@ -107,14 +108,14 @@ export default async function DashboardLayout({
     }
     const { data } = await query
     let count = 0
+    let pmRevCount = 0
     data?.forEach((p: any) => {
       p.project_modules?.forEach((m: any) => {
-        if (
-          m.status === 'revision' ||
-          m.status === 'revising' ||
-          (m.status === 'pm_review' && m.qa_result_document_url)
-        ) {
+        if (m.status === 'revision') {
           count++
+        }
+        if (m.status === 'pm_review') {
+          pmRevCount++
         }
       })
     })
@@ -122,6 +123,11 @@ export default async function DashboardLayout({
       notificationCount += count
       qaRevisionCount = count
       notifications.push({ label: 'Revision', count, href: '/qa-revision' })
+    }
+    if (pmRevCount > 0) {
+      notificationCount += pmRevCount
+      pmReviewCount = pmRevCount
+      notifications.push({ label: 'Module Review', count: pmRevCount, href: '/module-review' })
     }
   }
 
@@ -162,6 +168,7 @@ export default async function DashboardLayout({
       activeCompanyId={activeCompanyId}
       initialForQaCount={forQaCount}
       initialQaRevisionCount={qaRevisionCount}
+      initialPmReviewCount={pmReviewCount}
       initialNotificationCount={notificationCount}
       initialNotifications={notifications}
     >
