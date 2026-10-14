@@ -17,6 +17,7 @@ export default function SidebarNav({
   const pathname = usePathname();
   const currentForQaCount = navCounts?.forQaCount ?? 0;
   const currentQaRevisionCount = navCounts?.qaRevisionCount ?? 0;
+  const currentDevWorkspaceCount = (navCounts?.developmentCount ?? 0) + (navCounts?.revisingCount ?? 0);
 
   const isManager = role === 'project_manager';
   const isAuditor = role === 'system_auditor';
@@ -87,6 +88,14 @@ export default function SidebarNav({
           <Link href="/projects" className={getLinkClasses('/projects')}>
             Assigned Projects
           </Link>
+          <Link href="/dev-workspace" className={getLinkClasses('/dev-workspace')}>
+            <span className="flex items-center justify-between">
+              <span>Dev Workspace</span>
+              {currentDevWorkspaceCount > 0 && (
+                <span className="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDevWorkspaceCount}</span>
+              )}
+            </span>
+          </Link>
         </>
       )}
 
@@ -108,6 +117,14 @@ export default function SidebarNav({
               <span>QA Revision</span>
               {currentQaRevisionCount > 0 && (
                 <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentQaRevisionCount}</span>
+              )}
+            </span>
+          </Link>
+          <Link href="/dev-workspace" className={getLinkClasses('/dev-workspace')}>
+            <span className="flex items-center justify-between">
+              <span>Dev Workspace</span>
+              {currentDevWorkspaceCount > 0 && (
+                <span className="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDevWorkspaceCount}</span>
               )}
             </span>
           </Link>

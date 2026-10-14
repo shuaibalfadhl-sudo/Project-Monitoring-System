@@ -15,6 +15,8 @@ interface NavCountsContextType {
   forQaCount: number
   qaRevisionCount: number
   notificationCount: number
+  developmentCount: number
+  revisingCount: number
   notifications: NotificationItem[]
   refreshCounts: () => Promise<void>
 }
@@ -22,6 +24,8 @@ interface NavCountsContextType {
 const NavCountsContext = createContext<NavCountsContextType>({
   forQaCount: 0,
   qaRevisionCount: 0,
+  developmentCount: 0,
+  revisingCount: 0,
   notificationCount: 0,
   notifications: [],
   refreshCounts: async () => {},
@@ -68,10 +72,12 @@ export function NavCountsProvider({
   profile,
   activeCompanyId,
 }: NavCountsProviderProps) {
-  const [forQaCount, setForQaCount] = useState(initialForQaCount)
-  const [qaRevisionCount, setQaRevisionCount] = useState(initialQaRevisionCount)
-  const [notificationCount, setNotificationCount] = useState(initialNotificationCount)
-  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications)
+  const [forQaCount, setForQaCount] = useState(initialForQaCount);
+  const [qaRevisionCount, setQaRevisionCount] = useState(initialQaRevisionCount);
+  const [notificationCount, setNotificationCount] = useState(initialNotificationCount);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
+  const [developmentCount, setDevelopmentCount] = useState(0);
+  const [revisingCount, setRevisingCount] = useState(0);
   
   const prevNotifCountRef = useRef(initialNotificationCount)
   const router = useRouter()
@@ -193,11 +199,41 @@ export function NavCountsProvider({
           const penCount = devModules.filter(m => m.status === 'pending').length
           const revCount = devModules.filter(m => m.status === 'revising').length
 
-          if (devCount > 0) notifs.push({ label: 'Development', count: devCount, href: '/modules' })
+          if (devCount > 0) notifs.push({ label: 'Development', count: devCount, href: '/dev-workspace' })
           if (penCount > 0) notifs.push({ label: 'Pending', count: penCount, href: '/modules' })
-          if (revCount > 0) notifs.push({ label: 'Revising', count: revCount, href: '/modules' })
+          if (revCount > 0) notifs.push({ label: 'Revising', count: revCount, href: '/dev-workspace' })
 
           notifCount += devModules.length
+
+          setDevelopmentCount(devCount)
+          setRevisingCount(revCount)
+        } else {
+          setDevelopmentCount(0)
+          setRevisingCount(0)
+        }
+      }
+
+      // Super admin Dev Workspace count (all dev/revising modules)
+      if (profile.role === 'super_admin') {
+        let query = supabase
+          .from('projects')
+          .select('project_modules(id, status)')
+        if (activeCompanyId) {
+          query = query.eq('company_id', activeCompanyId)
+        }
+        const { data } = await query
+        let devCount = 0
+        let revCount = 0
+        data?.forEach((p: any) => {
+          p.project_modules?.forEach((m: any) => {
+            if (m.status === 'development') devCount++
+            else if (m.status === 'revising') revCount++
+          })
+        })
+        setDevelopmentCount(devCount)
+        setRevisingCount(revCount)
+        if (devCount + revCount > 0) {
+          notifs.push({ label: 'Dev Workspace', count: devCount + revCount, href: '/dev-workspace' })
         }
       }
 
@@ -289,6 +325,8 @@ export function NavCountsProvider({
         forQaCount,
         qaRevisionCount,
         notificationCount,
+        developmentCount,
+        revisingCount,
         notifications,
         refreshCounts: fetchCounts,
       }}

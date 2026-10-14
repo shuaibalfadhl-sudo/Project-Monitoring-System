@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+﻿import { createClient } from "@/lib/supabase/server";
 import { getUserProfile } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
@@ -170,7 +170,7 @@ export default async function AllModulesPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="w-full space-y-6">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
           All Modules

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import { getUserProfile } from '@/lib/auth-utils'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
@@ -22,7 +22,7 @@ export default async function UsersPage() {
   if (error) console.error('Error fetching users:', error)
   if (data) users = data
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="w-full space-y-6">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
           User Management
