@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import SidebarNav from '@/components/layout/SidebarNav'
+import { useNavCounts } from '@/context/NavCountsContext'
 
 export default function TopNavbar({ 
   profileName,
@@ -34,6 +35,12 @@ export default function TopNavbar({
   const router = useRouter()
   const supabase = createClient()
   
+  const navCounts = useNavCounts()
+  const currentNotificationCount = navCounts?.notificationCount !== undefined ? navCounts.notificationCount : notificationCount
+  const currentNotifications = navCounts?.notifications !== undefined ? navCounts.notifications : notifications
+  const currentForQaCount = navCounts?.forQaCount !== undefined ? navCounts.forQaCount : forQaCount
+  const currentQaRevisionCount = navCounts?.qaRevisionCount !== undefined ? navCounts.qaRevisionCount : qaRevisionCount
+  
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [uuidNames, setUuidNames] = useState<Record<string, string>>({})
   const [isPending, startTransition] = useTransition()
@@ -46,7 +53,7 @@ export default function TopNavbar({
   useEffect(() => {
     setIsMobileMenuOpen(false)
   }, [pathname])
-  
+
   const activeCompany = companies.find(c => c.id === initialActiveCompanyId) || null
 
   // Initialize theme from local storage
@@ -61,49 +68,6 @@ export default function TopNavbar({
       setIsDarkMode(false)
     }
   }, [])
-
-  // Realtime notifications
-  const [prevNotifCount, setPrevNotifCount] = useState(notificationCount)
-
-  useEffect(() => {
-    if (notificationCount > prevNotifCount) {
-      toast.info('You have new tasks that need your attention!')
-    }
-    setPrevNotifCount(notificationCount)
-  }, [notificationCount, prevNotifCount])
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('modules_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'project_modules'
-        },
-        (payload) => {
-          // Check if this update might be relevant based on role
-          let isRelevant = false
-          const newRow = payload.new as any
-          
-          if (newRow && newRow.status) {
-            if (role === 'system_auditor' && newRow.status === 'for_qa') isRelevant = true
-            if (role === 'project_manager' && (newRow.status === 'revision' || newRow.status === 'revising')) isRelevant = true
-            if (role === 'developer' && newRow.assigned_developer_id === userId && ['development', 'pending', 'revising'].includes(newRow.status)) isRelevant = true
-          }
-
-          if (isRelevant) {
-            router.refresh()
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [supabase, router, role, userId])
 
   // Generate breadcrumbs from pathname
   const pathSegments = pathname.split('/').filter(p => p !== '')
@@ -289,9 +253,9 @@ export default function TopNavbar({
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              {notificationCount > 0 && (
+              {currentNotificationCount > 0 && (
                 <span className="absolute top-0 right-0 inline-flex items-center justify-center min-w-[20px] h-[20px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm animate-pulse">
-                  {notificationCount > 99 ? '99+' : notificationCount}
+                  {currentNotificationCount > 99 ? '99+' : currentNotificationCount}
                 </span>
               )}
             </button>
@@ -301,12 +265,12 @@ export default function TopNavbar({
               <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                 <span className="text-sm font-bold text-slate-700 dark:text-white">Notifications</span>
                 <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full font-bold">
-                  {notificationCount} New
+                  {currentNotificationCount} New
                 </span>
               </div>
               <div className="max-h-80 overflow-y-auto">
-                {notifications.length > 0 ? (
-                  notifications.map((notif, idx) => (
+                {currentNotifications.length > 0 ? (
+                  currentNotifications.map((notif, idx) => (
                     <Link 
                       key={idx} 
                       href={notif.href}

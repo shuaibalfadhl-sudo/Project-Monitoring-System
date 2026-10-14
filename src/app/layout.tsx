@@ -4,6 +4,10 @@ import { Inter } from 'next/font/google'
 import { Toaster } from 'sonner'
 import NextTopLoader from 'nextjs-toploader'
 import { createClient } from '@/lib/supabase/server'
+import { getUserProfile } from '@/lib/auth-utils'
+import { NavCountsProvider } from '@/context/NavCountsContext'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 
 const inter = Inter({ subsets: ['latin'] })
 

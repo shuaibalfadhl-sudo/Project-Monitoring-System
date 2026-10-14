@@ -2,7 +2,6 @@ import { getUserProfile } from '@/lib/auth-utils'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import DashboardRealtime from '@/components/dashboard/DashboardRealtime'
 import WeeklyActivityChart from '@/components/dashboard/WeeklyActivityChart'
 import FullscreenButton from '@/components/dashboard/FullscreenButton'
 import AnimatedProgress from '@/components/dashboard/AnimatedProgress'
@@ -183,7 +182,6 @@ export default async function HallOfFamePage() {
 
   return (
     <div id="hall-of-fame-container" className="w-full h-full min-h-screen bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-800 transition-colors duration-300 overflow-y-auto">
-      <DashboardRealtime />
       <div className="flex justify-between items-start mb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">Hall of Fame</h1>

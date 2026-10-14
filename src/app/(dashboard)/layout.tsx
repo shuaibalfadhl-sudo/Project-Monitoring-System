@@ -1,11 +1,13 @@
 import { getUserProfile } from '@/lib/auth-utils'
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { redirect as nextRedirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import SidebarNav from '@/components/layout/SidebarNav'
 import TopNavbar from '@/components/layout/TopNavbar'
+import DashboardRealtime from '@/components/dashboard/DashboardRealtime'
 import { cookies } from 'next/headers'
+import { NavCountsProvider } from '@/context/NavCountsContext'
 
 export default async function DashboardLayout({
   children,
@@ -15,7 +17,7 @@ export default async function DashboardLayout({
   const profile = await getUserProfile()
 
   if (!profile) {
-    redirect('/login')
+    nextRedirect('/login')
   }
 
   const isManager = profile.role === 'project_manager'
@@ -155,48 +157,58 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row transition-colors duration-300">
-      {/* Sidebar Navigation */}
-      <aside className="hidden md:flex w-full md:w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white p-6 shadow-xl flex-col md:sticky md:top-0 md:h-screen z-20 transition-colors duration-300">
-        <div className="mb-10">
-          <div className="flex flex-col md:flex-row items-center md:items-center gap-3 text-center md:text-left">
-            {settings?.system_logo_url && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={settings.system_logo_url} alt="System Logo" className="h-10 w-10 object-contain shrink-0" />
-            )}
-            <div>
-              <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
-                {settings?.system_name || 'Project System'}
-              </h2>
-              <p className="text-[11px] font-bold text-[var(--sys-primary)] mt-1 uppercase tracking-wider">
-                {profile.role.replace('_', ' ')}
-              </p>
+    <NavCountsProvider
+      profile={profile}
+      activeCompanyId={activeCompanyId}
+      initialForQaCount={forQaCount}
+      initialQaRevisionCount={qaRevisionCount}
+      initialNotificationCount={notificationCount}
+      initialNotifications={notifications}
+    >
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row transition-colors duration-300">
+        <DashboardRealtime />
+        {/* Sidebar Navigation */}
+        <aside className="hidden md:flex w-full md:w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white p-6 shadow-xl flex-col md:sticky md:top-0 md:h-screen z-20 transition-colors duration-300">
+          <div className="mb-10">
+            <div className="flex flex-col md:flex-row items-center md:items-center gap-3 text-center md:text-left">
+              {settings?.system_logo_url && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={settings.system_logo_url} alt="System Logo" className="h-10 w-10 object-contain shrink-0" />
+              )}
+              <div>
+                <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+                  {settings?.system_name || 'Project System'}
+                </h2>
+                <p className="text-[11px] font-bold text-[var(--sys-primary)] mt-1 uppercase tracking-wider">
+                  {profile.role.replace('_', ' ')}
+                </p>
+              </div>
             </div>
           </div>
+
+          <SidebarNav role={profile.role} />
+        </aside>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-h-screen">
+          <TopNavbar
+            profileName={profile.full_name || 'User'}
+            avatarUrl={profile.avatar_path || null}
+            companies={companies || []}
+            initialActiveCompanyId={activeCompanyId}
+            notificationCount={notificationCount}
+            notifications={notifications}
+            role={profile.role}
+            userId={profile.id}
+            forQaCount={forQaCount}
+            qaRevisionCount={qaRevisionCount}
+          />
+
+          <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+            {children}
+          </main>
         </div>
-
-        <SidebarNav role={profile.role} forQaCount={forQaCount} qaRevisionCount={qaRevisionCount} />
-      </aside>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-screen">
-        <TopNavbar
-          profileName={profile.full_name || 'User'}
-          avatarUrl={profile.avatar_path || null}
-          companies={companies || []}
-          initialActiveCompanyId={activeCompanyId}
-          notificationCount={notificationCount}
-          notifications={notifications}
-          role={profile.role}
-          userId={profile.id}
-          forQaCount={forQaCount}
-          qaRevisionCount={qaRevisionCount}
-        />
-
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-          {children}
-        </main>
       </div>
-    </div>
+    </NavCountsProvider>
   )
 }

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useNavCounts } from '@/context/NavCountsContext';
 
 export default function SidebarNav({ 
   role,
@@ -12,7 +13,11 @@ export default function SidebarNav({
   forQaCount?: number,
   qaRevisionCount?: number
 }) {
+  const navCounts = useNavCounts();
   const pathname = usePathname();
+  const currentForQaCount = navCounts?.forQaCount ?? 0;
+  const currentQaRevisionCount = navCounts?.qaRevisionCount ?? 0;
+
   const isManager = role === 'project_manager';
   const isAuditor = role === 'system_auditor';
   const isDeveloper = role === 'developer';
@@ -50,8 +55,8 @@ export default function SidebarNav({
           <Link href="/qa-revision" className={getLinkClasses('/qa-revision')}>
             <span className="flex items-center justify-between">
               <span>QA Revision</span>
-              {qaRevisionCount > 0 && (
-                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{qaRevisionCount}</span>
+              {currentQaRevisionCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentQaRevisionCount}</span>
               )}
             </span>
           </Link>
@@ -69,8 +74,8 @@ export default function SidebarNav({
           <Link href="/qa-monitoring" className={getLinkClasses('/qa-monitoring')}>
             <span className="flex items-center justify-between">
               <span>QA Monitoring</span>
-              {forQaCount > 0 && (
-                <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{forQaCount}</span>
+              {currentForQaCount > 0 && (
+                <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentForQaCount}</span>
               )}
             </span>
           </Link>
@@ -93,16 +98,16 @@ export default function SidebarNav({
           <Link href="/qa-monitoring" className={getLinkClasses('/qa-monitoring')}>
             <span className="flex items-center justify-between">
               <span>For QA Modules</span>
-              {forQaCount > 0 && (
-                <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{forQaCount}</span>
+              {currentForQaCount > 0 && (
+                <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentForQaCount}</span>
               )}
             </span>
           </Link>
           <Link href="/qa-revision" className={getLinkClasses('/qa-revision')}>
             <span className="flex items-center justify-between">
               <span>QA Revision</span>
-              {qaRevisionCount > 0 && (
-                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{qaRevisionCount}</span>
+              {currentQaRevisionCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentQaRevisionCount}</span>
               )}
             </span>
           </Link>
