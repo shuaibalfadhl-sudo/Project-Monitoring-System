@@ -233,11 +233,13 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                           <option value="pm_review">PM Review</option>
                           <option value="for_qa">For QA</option>
                           {(!isManager || isSuperAdmin) && (
+                            <option value="auditing">Auditing</option>
+                          )}
+                          <option value="for revision">For Revision</option>
+                          <option value="revision">Revision</option>
+                          <option value="revising">Revising</option>
+                          {(!isManager || isSuperAdmin) && (
                             <>
-                              <option value="auditing">Auditing</option>
-                              <option value="for revision">For Revision</option>
-                              <option value="revision">Revision</option>
-                              <option value="revising">Revising</option>
                               <option value="qa_approved">QA Approved</option>
                               <option value="deployment">Deployment</option>
                               <option value="deployed">Deployed</option>

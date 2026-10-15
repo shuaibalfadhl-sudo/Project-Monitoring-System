@@ -153,6 +153,9 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                       <option value="development">Development</option>
                       <option value="pm_review">PM Review</option>
                       <option value="for_qa">For QA</option>
+                      {isManager && (
+                        <option value="deployed">Deployed</option>
+                      )}
                       {!isManager && (
                         <>
                           <option value="auditing">Auditing</option>

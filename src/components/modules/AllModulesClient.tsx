@@ -323,13 +323,19 @@ export default function AllModulesClient({
                           <option value="development" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Development</option>
                           <option value="pm_review" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">PM Review</option>
                           <option value="for_qa" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For QA</option>
-                          <option value="auditing" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Auditing</option>
+                          {role === 'super_admin' && (
+                            <option value="auditing" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Auditing</option>
+                          )}
                           <option value="for revision" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For Revision</option>
                           <option value="revision" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revision</option>
                           <option value="revising" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revising</option>
-                          <option value="qa_approved" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">QA Approved</option>
-                          <option value="deployment" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Deployment</option>
-                          <option value="deployed" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Deployed</option>
+                          {role === 'super_admin' && (
+                            <>
+                              <option value="qa_approved" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">QA Approved</option>
+                              <option value="deployment" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Deployment</option>
+                              <option value="deployed" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Deployed</option>
+                            </>
+                          )}
                         </select>
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-current opacity-50 group-hover:opacity-100 transition-opacity z-10">
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

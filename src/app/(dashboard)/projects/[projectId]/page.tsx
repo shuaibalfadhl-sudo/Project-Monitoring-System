@@ -108,7 +108,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const p_approved = totalModules > 0 ? (currentStatus === 'all' ? 100 : ((statusCounts[currentStatus] || 0) / totalModules) * 100) : 0;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="w-full space-y-8">
       {/* HEADER CARD */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-800 p-8">
         <div className="flex justify-between items-start mb-6">

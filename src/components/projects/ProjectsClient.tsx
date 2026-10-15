@@ -32,7 +32,7 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
   )
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
           {isAuditor ? 'Assigned Projects' : isSuperAdmin ? 'All Projects' : 'Projects'}
