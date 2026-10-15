@@ -552,7 +552,7 @@ export default function QaMonitoringClient({
           onClick={closeModal}
         >
           <div
-            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 dark:border-slate-800"
+            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 dark:border-slate-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900 flex justify-between items-center">
@@ -592,6 +592,30 @@ export default function QaMonitoringClient({
                 <p className="text-lg font-bold text-[var(--sys-primary)]">
                   {selectedModule.name}
                 </p>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                  Description
+                </h3>
+                {selectedModule.description ? (
+                  <div className="space-y-2">
+                    {selectedModule.description
+                      .split(/\n+/)
+                      .map((para, i) => (
+                        <p
+                          key={i}
+                          className="text-sm font-medium text-gray-700 dark:text-slate-300"
+                        >
+                          {para}
+                        </p>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-sm font-medium text-gray-400 dark:text-slate-500 italic">
+                    No description provided.
+                  </p>
+                )}
               </div>
 
               {/* Document and Testing Links */}
