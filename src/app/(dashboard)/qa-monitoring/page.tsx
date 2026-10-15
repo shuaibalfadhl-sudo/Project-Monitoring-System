@@ -123,5 +123,11 @@ export default async function QaMonitoringPage() {
     }
   })
 
-  return <QaMonitoringClient initialModules={allQaModules} />
+  // Build the project filter options scoped to the user's role:
+  // super_admin -> all projects (in active company); system_auditor -> only projects they belong to.
+  const projectOptions = saProjects
+    .map((p: any) => ({ id: p.id, name: p.name }))
+    .filter((p: any) => p.id);
+
+  return <QaMonitoringClient initialModules={allQaModules} projects={projectOptions} />
 }
