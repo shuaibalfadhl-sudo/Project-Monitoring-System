@@ -53,6 +53,7 @@ export default async function DashboardLayout({
   let qaRevisionCount = 0
   let pmReviewCount = 0
   let developmentCount = 0
+  let revisionCount = 0
   let revisingCount = 0
 
   if (profile.role === 'system_auditor' || profile.role === 'super_admin') {
@@ -113,7 +114,7 @@ export default async function DashboardLayout({
     let pmRevCount = 0
     data?.forEach((p: any) => {
       p.project_modules?.forEach((m: any) => {
-        if (m.status === 'revision') {
+        if (m.status === 'for revision' || m.status === 'for_revision') {
           count++
         }
         if (m.status === 'pm_review') {
@@ -124,7 +125,7 @@ export default async function DashboardLayout({
     if (count > 0) {
       notificationCount += count
       qaRevisionCount = count
-      notifications.push({ label: 'Revision', count, href: '/qa-revision' })
+      notifications.push({ label: 'QA Revision', count, href: '/qa-revision' })
     }
     if (pmRevCount > 0) {
       notificationCount += pmRevCount
@@ -145,7 +146,7 @@ export default async function DashboardLayout({
     let devModules: any[] = []
     data?.forEach((d: any) => {
       d.projects?.project_modules?.forEach((m: any) => {
-        if (m.assigned_developer_id === profile.id && ['development', 'pending', 'revising'].includes(m.status)) {
+        if (m.assigned_developer_id === profile.id && ['development', 'pending', 'revision', 'revising'].includes(m.status)) {
           devModules.push(m)
         }
       })
@@ -154,11 +155,13 @@ export default async function DashboardLayout({
     if (devModules.length > 0) {
       const devCount = devModules.filter(m => m.status === 'development').length
       const penCount = devModules.filter(m => m.status === 'pending').length
-      const revCount = devModules.filter(m => m.status === 'revising').length
+      const revCount = devModules.filter(m => m.status === 'revision').length
+      const revisingCnt = devModules.filter(m => m.status === 'revising').length
 
       developmentCount = devCount
-      revisingCount = revCount
-      const devWorkspaceCount = devCount + revCount
+      revisionCount = revCount
+      revisingCount = revisingCnt
+      const devWorkspaceCount = devCount + revCount + revisingCnt
 
       if (devWorkspaceCount > 0) {
         notifications.push({ label: 'Dev Workspace', count: devWorkspaceCount, href: '/dev-workspace' })
@@ -181,15 +184,18 @@ export default async function DashboardLayout({
     const { data } = await query
     let devCount = 0
     let revCount = 0
+    let revisingCnt = 0
     data?.forEach((p: any) => {
       p.project_modules?.forEach((m: any) => {
         if (m.status === 'development') devCount++
-        else if (m.status === 'revising') revCount++
+        else if (m.status === 'revision') revCount++
+        else if (m.status === 'revising') revisingCnt++
       })
     })
     developmentCount = devCount
-    revisingCount = revCount
-    const devWorkspaceCount = devCount + revCount
+    revisionCount = revCount
+    revisingCount = revisingCnt
+    const devWorkspaceCount = devCount + revCount + revisingCnt
     if (devWorkspaceCount > 0) {
       notifications.push({ label: 'Dev Workspace', count: devWorkspaceCount, href: '/dev-workspace' })
       notificationCount += devWorkspaceCount
@@ -204,6 +210,7 @@ export default async function DashboardLayout({
       initialQaRevisionCount={qaRevisionCount}
       initialPmReviewCount={pmReviewCount}
       initialDevelopmentCount={developmentCount}
+      initialRevisionCount={revisionCount}
       initialRevisingCount={revisingCount}
       initialNotificationCount={notificationCount}
       initialNotifications={notifications}

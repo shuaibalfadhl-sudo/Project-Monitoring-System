@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 
 interface QaModule {
   id: string;
@@ -32,7 +33,7 @@ export default function QaMonitoringClient({
 }: QaMonitoringClientProps) {
   const [modules, setModules] = useState<QaModule[]>(initialModules);
   const [mounted, setMounted] = useState(false);
-  
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -77,6 +78,7 @@ export default function QaMonitoringClient({
   const [newStatus, setNewStatus] = useState<string>("");
   const [reworkLink, setReworkLink] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [error, setError] = useState("");
 
   const router = useRouter();
@@ -95,6 +97,7 @@ export default function QaMonitoringClient({
     setNewStatus("");
     setReworkLink("");
     setError("");
+    setShowConfirmModal(false);
   };
 
   const handleAcknowledge = async (moduleId: string) => {
@@ -124,10 +127,10 @@ export default function QaMonitoringClient({
     }
   };
 
-  const handleSave = async () => {
+  const validateAndPromptConfirm = () => {
     if (!selectedModule || !newStatus) return;
 
-    if (newStatus === "revision") {
+    if (newStatus === "for revision" || newStatus === "for_revision") {
       const trimmedLink = reworkLink.trim();
       if (!trimmedLink) {
         setError("Please provide a valid document URL for the revision.");
@@ -145,25 +148,34 @@ export default function QaMonitoringClient({
       }
     }
 
+    setError("");
+    setShowConfirmModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!selectedModule || !newStatus) return;
+
     setIsSubmitting(true);
     setError("");
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
+      const isForRevision = newStatus === "for revision" || newStatus === "for_revision";
+
       const { error: updateError } = await supabase
         .from("project_modules")
         .update({
           status: newStatus,
           qa_result_document_url:
-            newStatus === "revision" ? reworkLink.trim() : null,
+            isForRevision ? reworkLink.trim() : null,
         })
         .eq("id", selectedModule.id);
 
       if (updateError) throw updateError;
 
-      // When marking revision, record the document URL in qa_document_history
-      if (newStatus === "revision") {
+      // When marking for revision, record the document URL in qa_document_history
+      if (isForRevision) {
         const { error: histErr } = await supabase
           .from("qa_document_history")
           .insert({
@@ -176,7 +188,7 @@ export default function QaMonitoringClient({
           console.error("qa_document_history insert failed:", histErr.message);
           toast.warning("Status updated, but could not record document in history: " + histErr.message);
         } else {
-          toast.success("Module marked for revision and document recorded in history.");
+          toast.success("Module marked For Revision and document recorded in history.");
         }
       } else {
         toast.success("Module marked as QA Approved.");
@@ -184,10 +196,12 @@ export default function QaMonitoringClient({
 
       // Remove module from list if it's no longer 'for_qa' or 'auditing'
       setModules((prev) => prev.filter((m) => m.id !== selectedModule.id));
+      setShowConfirmModal(false);
       closeModal();
       router.refresh();
     } catch (err: any) {
       setError(err.message || "An error occurred while updating the module.");
+      setShowConfirmModal(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -533,11 +547,11 @@ export default function QaMonitoringClient({
 
       {/* Modal */}
       {selectedModule && mounted && createPortal(
-        <div 
+        <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
           onClick={closeModal}
         >
-          <div 
+          <div
             className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 dark:border-slate-800"
             onClick={(e) => e.stopPropagation()}
           >
@@ -618,11 +632,10 @@ export default function QaMonitoringClient({
                             setTimeout(() => setCopiedLink(false), 2000);
                           }
                         }}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                          copiedLink
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${copiedLink
                             ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
                             : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800"
-                        }`}
+                          }`}
                         title="Copy website link"
                       >
                         {copiedLink ? (
@@ -714,18 +727,18 @@ export default function QaMonitoringClient({
                       </label>
 
                       <label
-                        className={`flex-1 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${newStatus === "revision" ? "border-red-500 bg-red-50 text-red-700 shadow-[0_4px_12px_rgba(225,29,72,0.15)]" : "border-gray-200 hover:border-red-200 text-gray-500 hover:bg-red-50/50"}`}
+                        className={`flex-1 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${newStatus === "for revision" || newStatus === "for_revision" ? "border-red-500 bg-red-50 text-red-700 shadow-[0_4px_12px_rgba(225,29,72,0.15)]" : "border-gray-200 hover:border-red-200 text-gray-500 hover:bg-red-50/50"}`}
                       >
                         <input
                           type="radio"
                           name="status"
-                          value="revision"
+                          value="for revision"
                           className="hidden"
-                          checked={newStatus === "revision"}
+                          checked={newStatus === "for revision" || newStatus === "for_revision"}
                           onChange={(e) => setNewStatus(e.target.value)}
                         />
                         <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center ${newStatus === "revision" ? "bg-red-100" : "bg-gray-100"}`}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center ${newStatus === "for revision" || newStatus === "for_revision" ? "bg-red-100" : "bg-gray-100"}`}
                         >
                           <svg
                             className="w-5 h-5"
@@ -746,7 +759,7 @@ export default function QaMonitoringClient({
                     </div>
                   </div>
 
-                  {newStatus === "revision" && (
+                  {(newStatus === "for revision" || newStatus === "for_revision") && (
                     <div className="animate-in fade-in slide-in-from-top-4 duration-300 pt-2">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-xs font-bold text-red-600 uppercase tracking-wider flex items-center gap-1.5">
@@ -805,17 +818,16 @@ export default function QaMonitoringClient({
               </button>
               {selectedModule.status === "auditing" && (
                 <button
-                  onClick={handleSave}
+                  onClick={validateAndPromptConfirm}
                   disabled={!newStatus || isSubmitting}
-                  className={`px-8 py-2.5 rounded-xl font-bold text-white transition-all shadow-lg ${
-                    !newStatus
+                  className={`px-8 py-2.5 rounded-xl font-bold text-white transition-all shadow-lg ${!newStatus
                       ? "bg-gray-300 dark:bg-slate-700 cursor-not-allowed shadow-none"
                       : newStatus === "qa_approved"
                         ? "bg-green-500 hover:bg-green-600 hover:-translate-y-0.5 shadow-green-500/20"
                         : "bg-red-500 hover:bg-red-600 hover:-translate-y-0.5 shadow-red-500/20"
-                  }`}
+                    }`}
                 >
-                  {isSubmitting ? "Saving..." : "Save Decision"}
+                  Save Decision
                 </button>
               )}
             </div>
@@ -823,6 +835,30 @@ export default function QaMonitoringClient({
         </div>,
         document.body
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmStatusModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleSave}
+        isLoading={isSubmitting}
+        title="Confirm QA Decision"
+        message={
+          <>
+            Are you sure you want to mark{" "}
+            <span className="font-bold text-slate-800 dark:text-white">"{selectedModule?.name}"</span> as{" "}
+            <span className="font-bold text-indigo-600 dark:text-indigo-400">
+              {newStatus === "qa_approved" ? "QA Passed" : "For Revision"}
+            </span>?
+          </>
+        }
+        confirmText="Confirm Decision"
+        confirmButtonClass={
+          newStatus === "qa_approved"
+            ? "bg-green-500 hover:bg-green-600 text-white shadow-green-500/20"
+            : "bg-red-500 hover:bg-red-600 text-white shadow-red-500/20"
+        }
+      />
     </div>
   );
 }

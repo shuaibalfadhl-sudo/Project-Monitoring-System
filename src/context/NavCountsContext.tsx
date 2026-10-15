@@ -17,6 +17,7 @@ interface NavCountsContextType {
   pmReviewCount: number
   notificationCount: number
   developmentCount: number
+  revisionCount: number
   revisingCount: number
   notifications: NotificationItem[]
   refreshCounts: () => Promise<void>
@@ -27,10 +28,11 @@ const NavCountsContext = createContext<NavCountsContextType>({
   qaRevisionCount: 0,
   pmReviewCount: 0,
   developmentCount: 0,
+  revisionCount: 0,
   revisingCount: 0,
   notificationCount: 0,
   notifications: [],
-  refreshCounts: async () => {},
+  refreshCounts: async () => { },
 })
 
 export function useNavCounts() {
@@ -58,6 +60,7 @@ interface NavCountsProviderProps {
   initialQaRevisionCount: number
   initialPmReviewCount?: number
   initialDevelopmentCount?: number
+  initialRevisionCount?: number
   initialRevisingCount?: number
   initialNotificationCount: number
   initialNotifications: NotificationItem[]
@@ -74,6 +77,7 @@ export function NavCountsProvider({
   initialQaRevisionCount,
   initialPmReviewCount = 0,
   initialDevelopmentCount = 0,
+  initialRevisionCount = 0,
   initialRevisingCount = 0,
   initialNotificationCount,
   initialNotifications,
@@ -86,8 +90,9 @@ export function NavCountsProvider({
   const [notificationCount, setNotificationCount] = useState(initialNotificationCount);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const [developmentCount, setDevelopmentCount] = useState(initialDevelopmentCount);
+  const [revisionCount, setRevisionCount] = useState(initialRevisionCount);
   const [revisingCount, setRevisingCount] = useState(initialRevisingCount);
-  
+
   const prevNotifCountRef = useRef(initialNotificationCount)
   const router = useRouter()
   const supabase = createClient()
@@ -99,6 +104,7 @@ export function NavCountsProvider({
     setQaRevisionCount(initialQaRevisionCount)
     setPmReviewCount(initialPmReviewCount)
     setDevelopmentCount(initialDevelopmentCount)
+    setRevisionCount(initialRevisionCount)
     setRevisingCount(initialRevisingCount)
     setNotificationCount(initialNotificationCount)
     setNotifications(initialNotifications)
@@ -107,6 +113,7 @@ export function NavCountsProvider({
     initialQaRevisionCount,
     initialPmReviewCount,
     initialDevelopmentCount,
+    initialRevisionCount,
     initialRevisingCount,
     initialNotificationCount,
     initialNotifications,
@@ -180,7 +187,7 @@ export function NavCountsProvider({
         let count = 0
         data?.forEach((p: any) => {
           p.project_modules?.forEach((m: any) => {
-            if (m.status === 'revision') {
+            if (m.status === 'for revision' || m.status === 'for_revision') {
               count++
             }
             if (m.status === 'pm_review') {
@@ -191,7 +198,7 @@ export function NavCountsProvider({
         if (count > 0) {
           notifCount += count
           qRevCount = count
-          notifs.push({ label: 'Revision', count, href: '/qa-revision' })
+          notifs.push({ label: 'QA Revision', count, href: '/qa-revision' })
         }
         if (pmRevCount > 0) {
           notifCount += pmRevCount
@@ -212,7 +219,7 @@ export function NavCountsProvider({
         let devModules: any[] = []
         data?.forEach((d: any) => {
           d.projects?.project_modules?.forEach((m: any) => {
-            if (m.assigned_developer_id === profile.id && ['development', 'pending', 'revising'].includes(m.status)) {
+            if (m.assigned_developer_id === profile.id && ['development', 'pending', 'revision', 'revising'].includes(m.status)) {
               devModules.push(m)
             }
           })
@@ -221,9 +228,10 @@ export function NavCountsProvider({
         if (devModules.length > 0) {
           const devCount = devModules.filter(m => m.status === 'development').length
           const penCount = devModules.filter(m => m.status === 'pending').length
-          const revCount = devModules.filter(m => m.status === 'revising').length
+          const revCount = devModules.filter(m => m.status === 'revision').length
+          const revisingCount = devModules.filter(m => m.status === 'revising').length
 
-          const devWorkspaceCount = devCount + revCount
+          const devWorkspaceCount = devCount + revCount + revisingCount
           if (devWorkspaceCount > 0) {
             notifs.push({ label: 'Dev Workspace', count: devWorkspaceCount, href: '/dev-workspace' })
             notifCount += devWorkspaceCount
@@ -234,14 +242,16 @@ export function NavCountsProvider({
           }
 
           setDevelopmentCount(devCount)
-          setRevisingCount(revCount)
+          setRevisionCount(revCount)
+          setRevisingCount(revisingCount)
         } else {
           setDevelopmentCount(0)
+          setRevisionCount(0)
           setRevisingCount(0)
         }
       }
 
-      // Super admin Dev Workspace count (all dev/revising modules)
+      // Super admin Dev Workspace count (all dev/revision/revising modules)
       if (profile.role === 'super_admin') {
         let query = supabase
           .from('projects')
@@ -252,15 +262,18 @@ export function NavCountsProvider({
         const { data } = await query
         let devCount = 0
         let revCount = 0
+        let revisingCount = 0
         data?.forEach((p: any) => {
           p.project_modules?.forEach((m: any) => {
             if (m.status === 'development') devCount++
-            else if (m.status === 'revising') revCount++
+            else if (m.status === 'revision') revCount++
+            else if (m.status === 'revising') revisingCount++
           })
         })
         setDevelopmentCount(devCount)
-        setRevisingCount(revCount)
-        const devWorkspaceCount = devCount + revCount
+        setRevisionCount(revCount)
+        setRevisingCount(revisingCount)
+        const devWorkspaceCount = devCount + revCount + revisingCount
         if (devWorkspaceCount > 0) {
           notifs.push({ label: 'Dev Workspace', count: devWorkspaceCount, href: '/dev-workspace' })
           notifCount += devWorkspaceCount
@@ -358,6 +371,7 @@ export function NavCountsProvider({
         pmReviewCount,
         notificationCount,
         developmentCount,
+        revisionCount,
         revisingCount,
         notifications,
         refreshCounts: fetchCounts,

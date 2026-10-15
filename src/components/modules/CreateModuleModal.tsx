@@ -11,7 +11,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-  
+
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -68,7 +68,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
 
   return (
     <>
-      <button 
+      <button
         onClick={() => setIsOpen(true)}
         className="w-full sm:w-auto py-2 px-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-[var(--sys-primary)] hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-300 dark:hover:border-slate-600 rounded-xl font-bold transition-all shadow-sm text-sm text-center"
       >
@@ -80,7 +80,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900">
               <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Add Module</h2>
-              <button 
+              <button
                 onClick={() => setIsOpen(false)}
                 className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"
               >
@@ -89,7 +89,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                 </svg>
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto flex-1">
               <form id="create-module-form" onSubmit={handleSubmit} className="space-y-6">
                 <div>
@@ -99,7 +99,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                     required
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
 
@@ -109,7 +109,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                     rows={3}
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
 
@@ -119,7 +119,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                     <select
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                       value={formData.priority}
-                      onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -132,7 +132,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                     <select
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                       value={formData.category}
-                      onChange={(e) => setFormData({...formData, category: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     >
                       <option value="new_module">New Module</option>
                       <option value="revise_module">Revise Module</option>
@@ -146,7 +146,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                     <select
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                       value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     >
                       <option value="pending">Pending</option>
                       <option value="for data gathering">For Data Gathering</option>
@@ -156,6 +156,8 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                       {!isManager && (
                         <>
                           <option value="auditing">Auditing</option>
+                          <option value="for revision">For Revision</option>
+                          <option value="revision">Revision</option>
                           <option value="revising">Revising</option>
                           <option value="qa_approved">QA Approved</option>
                           <option value="deployment">Deployment</option>
@@ -170,7 +172,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                       type="date"
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                       value={formData.deadline}
-                      onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
                     />
                   </div>
                 </div>
@@ -182,7 +184,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                     placeholder="https://..."
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                     value={formData.module_document_url}
-                    onChange={(e) => setFormData({...formData, module_document_url: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, module_document_url: e.target.value })}
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">Provide a link to Google Drive, SharePoint, etc.</p>
                 </div>
@@ -194,7 +196,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                     placeholder="https://..."
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                     value={formData.website_link}
-                    onChange={(e) => setFormData({...formData, website_link: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, website_link: e.target.value })}
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">Link for testing the module (e.g., staging or local URL).</p>
                 </div>
@@ -221,7 +223,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
             </div>
           </div>
         </div>
-      , document.body)}
+        , document.body)}
     </>
   )
 }

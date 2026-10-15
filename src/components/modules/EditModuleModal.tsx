@@ -12,12 +12,12 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-  
+
   const [isLoading, setIsLoading] = useState(false)
   const [developers, setDevelopers] = useState<{ id: string, full_name: string }[]>([])
   const [isDevDropdownOpen, setIsDevDropdownOpen] = useState(false)
   const [devSearch, setDevSearch] = useState('')
-  
+
   const [formData, setFormData] = useState({
     name: module.name,
     description: module.description || '',
@@ -86,7 +86,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
           .select('user_id, profiles!inner(id, full_name, role)')
           .eq('project_id', module.project_id)
           .eq('profiles.role', 'developer');
-          
+
         if (!error && data) {
           const devs = data.map((d: any) => ({
             id: d.profiles.id,
@@ -95,7 +95,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
           setDevelopers(devs);
         }
       };
-      
+
       fetchDevelopers();
     }
   }, [isOpen, module, supabase])
@@ -136,7 +136,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
 
   return (
     <>
-      <button 
+      <button
         onClick={() => setIsOpen(true)}
         className="text-sm font-semibold text-blue-600 hover:text-blue-800"
       >
@@ -148,7 +148,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900">
               <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Edit Module</h2>
-              <button 
+              <button
                 onClick={() => setIsOpen(false)}
                 className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"
               >
@@ -157,7 +157,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                 </svg>
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto flex-1 text-left">
               <form id="edit-module-form" onSubmit={handleSubmit} className="space-y-6">
                 <div>
@@ -167,7 +167,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                     required
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
 
@@ -177,7 +177,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                     rows={3}
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
 
@@ -187,7 +187,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                     <select
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                       value={formData.priority}
-                      onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -200,7 +200,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                     <select
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                       value={formData.category}
-                      onChange={(e) => setFormData({...formData, category: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     >
                       <option value="new_module">New Module</option>
                       <option value="revise_module">Revise Module</option>
@@ -214,7 +214,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                     <select
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                       value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: e.target.value as ModuleStatus})}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as ModuleStatus })}
                     >
                       {isQaRevisionMode ? (
                         <>
@@ -235,6 +235,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                           {(!isManager || isSuperAdmin) && (
                             <>
                               <option value="auditing">Auditing</option>
+                              <option value="for revision">For Revision</option>
                               <option value="revision">Revision</option>
                               <option value="revising">Revising</option>
                               <option value="qa_approved">QA Approved</option>
@@ -252,7 +253,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                       type="date"
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                       value={formData.deadline}
-                      onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
                     />
                   </div>
                 </div>
@@ -260,22 +261,22 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Assign Developer</label>
                   <div className="relative">
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setIsDevDropdownOpen(!isDevDropdownOpen)}
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium text-left flex justify-between items-center dark:text-white"
                     >
-                      {formData.assigned_developer_id 
-                        ? developers.find(d => d.id === formData.assigned_developer_id)?.full_name || 'Unknown' 
+                      {formData.assigned_developer_id
+                        ? developers.find(d => d.id === formData.assigned_developer_id)?.full_name || 'Unknown'
                         : 'Unassigned'}
                       <svg className={`w-4 h-4 text-gray-500 transition-transform ${isDevDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     {isDevDropdownOpen && (
                       <div className="absolute z-10 w-full mt-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 flex flex-col overflow-hidden">
                         <div className="p-2 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50">
-                          <input 
-                            type="text" 
-                            placeholder="Search developer..." 
+                          <input
+                            type="text"
+                            placeholder="Search developer..."
                             className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] dark:text-white"
                             value={devSearch}
                             onChange={(e) => setDevSearch(e.target.value)}
@@ -284,18 +285,18 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                           />
                         </div>
                         <div className="overflow-y-auto flex-1 p-1">
-                          <button 
+                          <button
                             type="button"
-                            onClick={() => { setFormData({...formData, assigned_developer_id: ''}); setIsDevDropdownOpen(false); setDevSearch(''); }}
+                            onClick={() => { setFormData({ ...formData, assigned_developer_id: '' }); setIsDevDropdownOpen(false); setDevSearch(''); }}
                             className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors ${!formData.assigned_developer_id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
                           >
                             Unassigned
                           </button>
                           {developers.filter(d => d.full_name.toLowerCase().includes(devSearch.toLowerCase())).map(dev => (
-                            <button 
+                            <button
                               key={dev.id}
                               type="button"
-                              onClick={() => { setFormData({...formData, assigned_developer_id: dev.id}); setIsDevDropdownOpen(false); setDevSearch(''); }}
+                              onClick={() => { setFormData({ ...formData, assigned_developer_id: dev.id }); setIsDevDropdownOpen(false); setDevSearch(''); }}
                               className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors ${formData.assigned_developer_id === dev.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
                             >
                               {dev.full_name}
@@ -320,7 +321,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                     placeholder="https://..."
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                     value={formData.module_document_url}
-                    onChange={(e) => setFormData({...formData, module_document_url: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, module_document_url: e.target.value })}
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">Provide a link to Google Drive, SharePoint, etc.</p>
                 </div>
@@ -332,7 +333,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                     placeholder="https://..."
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                     value={formData.website_link}
-                    onChange={(e) => setFormData({...formData, website_link: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, website_link: e.target.value })}
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">Link for testing the module (e.g., staging or local URL).</p>
                 </div>
@@ -359,7 +360,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
             </div>
           </div>
         </div>
-      , document.body)}
+        , document.body)}
     </>
   )
 }

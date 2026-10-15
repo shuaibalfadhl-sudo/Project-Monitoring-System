@@ -18,7 +18,7 @@ export default function SidebarNav({
   const currentForQaCount = navCounts?.forQaCount ?? 0;
   const currentQaRevisionCount = navCounts?.qaRevisionCount ?? 0;
   const currentPmReviewCount = navCounts?.pmReviewCount ?? 0;
-  const currentDevWorkspaceCount = (navCounts?.developmentCount ?? 0) + (navCounts?.revisingCount ?? 0);
+  const currentDevWorkspaceCount = (navCounts?.developmentCount ?? 0) + (navCounts?.revisionCount ?? 0) + (navCounts?.revisingCount ?? 0);
 
   const isManager = role === 'project_manager';
   const isAuditor = role === 'system_auditor';

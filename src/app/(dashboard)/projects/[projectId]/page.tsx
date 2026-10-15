@@ -59,7 +59,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const { data: allProfiles } = await supabase
     .from('profiles')
     .select('id, full_name')
-  
+
   const profilesMap = new Map(allProfiles?.map(p => [p.id, p.full_name]) || [])
 
   const mappedModules = modules?.map(m => ({
@@ -70,7 +70,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   })) || []
 
   const totalModules = mappedModules.length
-  
+
   let gradientString = '#f3f4f6 0% 100%';
   const statusCounts: Record<string, number> = {};
   const statusColors: Record<string, string> = {
@@ -85,7 +85,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
     deployment: '#6366f1',
     deployed: '#10b981'
   };
-  
+
   let presentStatuses: string[] = [];
   let pieChartData: any[] = [];
 
@@ -94,17 +94,17 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
       const status = m.status || 'pending';
       statusCounts[status] = (statusCounts[status] || 0) + 1;
     });
-    
+
     const order = ['deployed', 'deployment', 'qa_approved', 'auditing', 'for_qa', 'revising', 'revision', 'pm_review', 'development', 'pending'];
     presentStatuses = Object.keys(statusCounts).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-    
+
     pieChartData = presentStatuses.map(status => ({
       id: status,
       value: statusCounts[status] || 0,
       color: statusColors[status] || '#94a3b8'
     }));
   }
-  
+
   const p_approved = totalModules > 0 ? (currentStatus === 'all' ? 100 : ((statusCounts[currentStatus] || 0) / totalModules) * 100) : 0;
 
   return (
@@ -132,18 +132,18 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
             )}
           </div>
         </div>
-        
+
         <div className="mt-6 border-t border-gray-100 dark:border-slate-800 pt-6">
           <StatusFilter currentStatus={currentStatus} />
         </div>
-        
+
         <div className="grid lg:grid-cols-3 gap-8 mt-8">
           <div className="space-y-6">
             <div>
               <h3 className="text-sm font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">Description</h3>
               <p className="text-gray-700 dark:text-slate-300 font-medium leading-relaxed">{project.description || 'No description provided.'}</p>
             </div>
-            
+
             <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm dark:shadow-none flex flex-col">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-sm font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Project Members</h3>
@@ -156,23 +156,24 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
                   )}
                 </div>
               </div>
-              
+
               <div className="space-y-3 flex-1 overflow-y-auto">
                 {processedMembers.slice(0, 3).map((member: any) => {
                   return (
-                  <div key={member.user_id || member.id} className={`flex justify-between items-center p-3 rounded-xl border ${member.is_owner ? 'bg-blue-50/50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/40' : 'bg-gray-50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-700'}`}>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-[var(--sys-primary)]">{member.full_name || 'Unnamed member'}</p>
-                      {member.is_owner && (
-                        <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Owner</span>
+                    <div key={member.user_id || member.id} className={`flex justify-between items-center p-3 rounded-xl border ${member.is_owner ? 'bg-blue-50/50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/40' : 'bg-gray-50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-700'}`}>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-[var(--sys-primary)]">{member.full_name || 'Unnamed member'}</p>
+                        {member.is_owner && (
+                          <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Owner</span>
+                        )}
+                      </div>
+                      {isManager && !member.is_owner && (
+                        <RemoveMemberButton projectId={project.id} userId={member.user_id || member.id} />
                       )}
                     </div>
-                    {isManager && !member.is_owner && (
-                      <RemoveMemberButton projectId={project.id} userId={member.user_id || member.id} />
-                    )}
-                  </div>
-                )})}
-                
+                  )
+                })}
+
                 {processedMembers.length > 3 && (
                   <div className="text-center pt-2 border-t border-gray-100 dark:border-slate-800 mt-2">
                     <p className="text-xs font-bold text-gray-400 dark:text-slate-500 mt-2">+{processedMembers.length - 3} more members...</p>
@@ -181,7 +182,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm dark:shadow-none flex flex-col justify-center">
             <h3 className="text-sm font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-6">Module Status</h3>
             <div className="w-full space-y-3">
@@ -221,10 +222,10 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
       </div>
 
       {/* MODULES LIST */}
-      <ModuleList 
-        modules={mappedModules} 
-        projectId={project.id} 
-        isManager={isManager} 
+      <ModuleList
+        modules={mappedModules}
+        projectId={project.id}
+        isManager={isManager}
         isAuditor={isAuditor}
         isDeveloper={isDeveloper}
         isSuperAdmin={isSuperAdmin}

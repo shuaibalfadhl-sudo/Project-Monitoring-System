@@ -47,7 +47,7 @@ export default async function DevWorkspacePage() {
 
     data?.forEach((project: any) => {
       project.project_modules?.forEach((mod: any) => {
-        if (mod.status === "development" || mod.status === "revising") {
+        if (mod.status === "development" || mod.status === "revision" || mod.status === "revising") {
           devModules.push({
             ...mod,
             project: { id: project.id, name: project.name },
@@ -92,7 +92,7 @@ export default async function DevWorkspacePage() {
       project.project_modules?.forEach((mod: any) => {
         if (
           mod.assigned_developer_id === profile.id &&
-          (mod.status === "development" || mod.status === "revising")
+          (mod.status === "development" || mod.status === "revision" || mod.status === "revising")
         ) {
           devModules.push({
             ...mod,

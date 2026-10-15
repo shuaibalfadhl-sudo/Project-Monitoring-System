@@ -12,7 +12,7 @@ export default async function QaRevisionPage() {
   }
 
   const supabaseServer = await createClient()
-  
+
   // Fetch projects owned by PM (or all projects if Super Admin) with rework modules
   let projectsQuery = supabaseServer
     .from('projects')
@@ -57,8 +57,8 @@ export default async function QaRevisionPage() {
   if (projects) {
     projects.forEach((p: any) => {
       if (p.project_modules) {
-        const mods = p.project_modules.filter((m: any) => 
-          m.status === 'revision'
+        const mods = p.project_modules.filter((m: any) =>
+          m.status === 'for revision' || m.status === 'for_revision'
         )
         mods.forEach((m: any) => {
           reworkModules.push({
@@ -84,7 +84,7 @@ export default async function QaRevisionPage() {
         .from('profiles')
         .select('id, full_name')
         .in('id', userIds)
-      
+
       const userMap = new Map(profiles?.map((a: any) => [a.id, a.full_name]) || [])
       reworkModules.forEach((m) => {
         if (m.qa_acknowledged_by) {

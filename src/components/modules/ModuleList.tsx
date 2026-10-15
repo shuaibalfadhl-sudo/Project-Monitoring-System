@@ -178,10 +178,13 @@ export default function ModuleList({
         return "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300";
       case "auditing":
         return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+      case "for revision":
+      case "for_revision":
+        return "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300";
       case "revision":
         return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
       case "revising":
-        return "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300";
+        return "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300";
       case "qa_approved":
         return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300";
       case "deployment":
@@ -303,6 +306,7 @@ export default function ModuleList({
             <option value="pm_review">PM Review</option>
             <option value="for_qa">For QA</option>
             <option value="auditing">Auditing</option>
+            <option value="for revision">For Revision</option>
             <option value="revision">Revision</option>
             <option value="revising">Revising</option>
             <option value="qa_approved">QA Approved</option>
@@ -440,6 +444,7 @@ export default function ModuleList({
                                 <option value="deployed" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Deployed</option>
                               </>
                             )}
+                            <option value="for revision" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For Revision</option>
                             <option value="revision" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revision</option>
                             <option value="revising" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revising</option>
                           </select>
@@ -451,9 +456,9 @@ export default function ModuleList({
                         </div>
                       ) : (
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border-2 border-transparent ${module.status === 'qa_approved' || module.status === 'for_qa' ? '' : 'capitalize'} ${getStatusColor(module.status)}`}
+                          className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border-2 border-transparent ${module.status === 'qa_approved' || module.status === 'for_qa' || module.status === 'for revision' || module.status === 'for_revision' ? '' : 'capitalize'} ${getStatusColor(module.status)}`}
                         >
-                          {module.status === 'qa_approved' ? 'QA Approved' : module.status === 'for_qa' ? 'For QA' : (module.status === 'for data gathering' || module.status === 'for_data_gathering') ? 'For Data Gathering' : (module.status || "pending").replace("_", " ")}
+                          {module.status === 'qa_approved' ? 'QA Approved' : module.status === 'for_qa' ? 'For QA' : (module.status === 'for revision' || module.status === 'for_revision') ? 'For Revision' : (module.status === 'for data gathering' || module.status === 'for_data_gathering') ? 'For Data Gathering' : (module.status || "pending").replace("_", " ")}
                         </span>
                       )}
                     </td>
@@ -464,7 +469,7 @@ export default function ModuleList({
                           onClick={(e) => e.stopPropagation()}
                         >
                           <EditModuleModal module={module} isManager={isManager} isSuperAdmin={isSuperAdmin} />
-                          <button 
+                          <button
                             onClick={(e) => { e.stopPropagation(); setModuleToDelete(module); }}
                             className="text-sm font-semibold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                           >
@@ -564,11 +569,10 @@ export default function ModuleList({
                             <button
                               key={`page-${page}`}
                               onClick={() => setCurrentPage(page as number)}
-                              className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-bold transition-all ${
-                                currentPage === page
+                              className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-bold transition-all ${currentPage === page
                                   ? "bg-[#3b82f6] text-white shadow-sm"
                                   : "text-gray-500 hover:bg-gray-100"
-                              }`}
+                                }`}
                             >
                               {page}
                             </button>
@@ -605,11 +609,11 @@ export default function ModuleList({
 
       {/* Module Details Modal */}
       {selectedModule && mounted && createPortal(
-        <div 
+        <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
           onClick={() => setSelectedModule(null)}
         >
-          <div 
+          <div
             className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] border border-gray-100 dark:border-slate-800"
             onClick={(e) => e.stopPropagation()}
           >
@@ -782,60 +786,60 @@ export default function ModuleList({
 
               {(selectedModule.qa_acknowledged_at ||
                 selectedModule.qa_result_acknowledged_at) && (
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-                    Workflow Acknowledgements
-                  </h3>
-                  <div className="space-y-3">
-                    {selectedModule.qa_acknowledged_at && (
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">
-                          System Auditor QA
-                        </span>
-                        <span className="text-sm font-semibold text-[var(--sys-primary)]">
-                          {selectedModule.qa_acknowledged_by_name ||
-                            "Unknown Auditor"}{" "}
-                          —{" "}
-                          {new Intl.DateTimeFormat("en-US", {
-                            timeZone: "Asia/Manila",
-                            year: "numeric",
-                            month: "short",
-                            day: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                          }).format(
-                            new Date(selectedModule.qa_acknowledged_at),
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    {selectedModule.qa_result_acknowledged_at && (
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">
-                          Project Manager Rework
-                        </span>
-                        <span className="text-sm font-semibold text-[var(--sys-primary)]">
-                          {selectedModule.qa_result_acknowledged_by_name ||
-                            "Unknown PM"}{" "}
-                          —{" "}
-                          {new Intl.DateTimeFormat("en-US", {
-                            timeZone: "Asia/Manila",
-                            year: "numeric",
-                            month: "short",
-                            day: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                          }).format(
-                            new Date(selectedModule.qa_result_acknowledged_at),
-                          )}
-                        </span>
-                      </div>
-                    )}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                      Workflow Acknowledgements
+                    </h3>
+                    <div className="space-y-3">
+                      {selectedModule.qa_acknowledged_at && (
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase">
+                            System Auditor QA
+                          </span>
+                          <span className="text-sm font-semibold text-[var(--sys-primary)]">
+                            {selectedModule.qa_acknowledged_by_name ||
+                              "Unknown Auditor"}{" "}
+                            —{" "}
+                            {new Intl.DateTimeFormat("en-US", {
+                              timeZone: "Asia/Manila",
+                              year: "numeric",
+                              month: "short",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            }).format(
+                              new Date(selectedModule.qa_acknowledged_at),
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      {selectedModule.qa_result_acknowledged_at && (
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase">
+                            Project Manager Rework
+                          </span>
+                          <span className="text-sm font-semibold text-[var(--sys-primary)]">
+                            {selectedModule.qa_result_acknowledged_by_name ||
+                              "Unknown PM"}{" "}
+                            —{" "}
+                            {new Intl.DateTimeFormat("en-US", {
+                              timeZone: "Asia/Manila",
+                              year: "numeric",
+                              month: "short",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            }).format(
+                              new Date(selectedModule.qa_result_acknowledged_at),
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Document History — visible to all authorized users */}
               <DocumentHistorySection
@@ -957,13 +961,12 @@ export default function ModuleList({
                     <button
                       onClick={handleSave}
                       disabled={!newStatus || isSubmitting}
-                      className={`px-8 py-2.5 rounded-xl font-bold text-white transition-all shadow-lg ${
-                        !newStatus
+                      className={`px-8 py-2.5 rounded-xl font-bold text-white transition-all shadow-lg ${!newStatus
                           ? "bg-gray-300 cursor-not-allowed shadow-none"
                           : newStatus === "qa_approved"
                             ? "bg-green-500 hover:bg-green-600 hover:-translate-y-0.5 shadow-green-500/20"
                             : "bg-red-500 hover:bg-red-600 hover:-translate-y-0.5 shadow-red-500/20"
-                      }`}
+                        }`}
                     >
                       {isSubmitting ? "Saving..." : "Save Decision"}
                     </button>
@@ -1071,11 +1074,10 @@ export default function ModuleList({
                       <button
                         onClick={handleSave}
                         disabled={!newStatus || isSubmitting}
-                        className={`px-8 py-2.5 rounded-xl font-bold text-white transition-all shadow-lg ${
-                          !newStatus
+                        className={`px-8 py-2.5 rounded-xl font-bold text-white transition-all shadow-lg ${!newStatus
                             ? "bg-gray-300 cursor-not-allowed shadow-none"
                             : "bg-[var(--sys-primary)] hover:bg-[#1a2333] shadow-[var(--sys-primary)]/20"
-                        }`}
+                          }`}
                       >
                         {isSubmitting ? "Saving..." : "Update Status"}
                       </button>
@@ -1088,7 +1090,7 @@ export default function ModuleList({
         document.body
       )}
       {/* Delete Confirmation Modal */}
-      <ConfirmDeleteModal 
+      <ConfirmDeleteModal
         isOpen={!!moduleToDelete}
         onClose={() => setModuleToDelete(null)}
         moduleId={moduleToDelete?.id || ''}

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
+import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 
 interface DevModule {
   id: string;
@@ -39,6 +40,11 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [selectedModule, setSelectedModule] = useState<DevModule | null>(null);
+  const [statusChangeTarget, setStatusChangeTarget] = useState<{
+    module: DevModule;
+    newStatus: "revising" | "pm_review";
+    actionLabel: string;
+  } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -61,23 +67,37 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
     return () => { supabase.removeChannel(channel); };
   }, [supabase, router]);
 
-  const handleMarkPmReview = async (mod: DevModule, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
+  const handleConfirmStatusChange = async () => {
+    if (!statusChangeTarget) return;
+    const { module: mod, newStatus, actionLabel } = statusChangeTarget;
     setSubmittingId(mod.id);
     try {
       const { error } = await supabase
         .from("project_modules")
-        .update({ status: "pm_review" })
+        .update({ status: newStatus })
         .eq("id", mod.id);
 
       if (error) throw error;
 
-      setModules((prev) => prev.filter((m) => m.id !== mod.id));
-      setSelectedModule(null);
-      toast.success(`"${mod.name}" submitted for PM Review`);
+      if (newStatus === "pm_review") {
+        setModules((prev) => prev.filter((m) => m.id !== mod.id));
+        if (selectedModule?.id === mod.id) setSelectedModule(null);
+        toast.success(`"${mod.name}" submitted for PM Review`);
+      } else {
+        setModules((prev) =>
+          prev.map((m) => (m.id === mod.id ? { ...m, status: newStatus } : m))
+        );
+        if (selectedModule?.id === mod.id) {
+          setSelectedModule((prev) => (prev ? { ...prev, status: newStatus } : null));
+        }
+        toast.success(`"${mod.name}" status updated to Revising`);
+      }
+
+      setStatusChangeTarget(null);
       router.refresh();
     } catch (err: any) {
-      toast.error(err.message || "Failed to update status.");
+      toast.error(err.message || `Failed to ${actionLabel.toLowerCase()}.`);
+      setStatusChangeTarget(null);
     } finally {
       setSubmittingId(null);
     }
@@ -86,16 +106,17 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
       case "critical": return "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50";
-      case "high":     return "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-400 border-orange-200 dark:border-orange-800/50";
-      case "medium":   return "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50";
-      case "low":      return "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800/50";
-      default:         return "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
+      case "high": return "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-400 border-orange-200 dark:border-orange-800/50";
+      case "medium": return "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50";
+      case "low": return "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800/50";
+      default: return "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
     }
   };
 
   const getStatusBadge = (status: string) => {
     if (status === "development") return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50";
-    if (status === "revising")   return "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50";
+    if (status === "revision") return "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50";
+    if (status === "revising") return "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50";
     return "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700";
   };
 
@@ -107,17 +128,18 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
   };
 
   const filtered = modules.filter((m) => {
-    const matchSearch   = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatus   = statusFilter === "all"   || m.status === statusFilter;
+    const matchSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchStatus = statusFilter === "all" || m.status === statusFilter;
     const matchPriority = priorityFilter === "all" || m.priority === priorityFilter;
     return matchSearch && matchStatus && matchPriority;
   });
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated  = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const devCount   = modules.filter((m) => m.status === "development").length;
-  const revCount   = modules.filter((m) => m.status === "revising").length;
+  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const devCount = modules.filter((m) => m.status === "development").length;
+  const revisionCount = modules.filter((m) => m.status === "revision").length;
+  const revCount = modules.filter((m) => m.status === "revising").length;
 
   return (
     <div className="w-full bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
@@ -128,6 +150,10 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 p-5 rounded-2xl shadow-sm min-w-44">
             <h3 className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">In Development</h3>
             <p className="text-4xl font-black text-blue-600 dark:text-blue-400">{devCount}</p>
+          </div>
+          <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/30 p-5 rounded-2xl shadow-sm min-w-44">
+            <h3 className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider mb-1">Revision</h3>
+            <p className="text-4xl font-black text-rose-600 dark:text-rose-400">{revisionCount}</p>
           </div>
           <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-900/30 p-5 rounded-2xl shadow-sm min-w-44">
             <h3 className="text-xs font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wider mb-1">Revising</h3>
@@ -169,6 +195,7 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
           >
             <option value="all">All Statuses</option>
             <option value="development">Development</option>
+            <option value="revision">Revision</option>
             <option value="revising">Revising</option>
           </select>
 
@@ -248,17 +275,41 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
                       </td>
                       <td className="py-4 px-6">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border capitalize ${getStatusBadge(mod.status)}`}>
-                          {mod.status === "revising" ? "Revising" : "Development"}
+                          {mod.status === "revision" ? "Revision" : mod.status === "revising" ? "Revising" : "Development"}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-right">
-                        <button
-                          onClick={(e) => handleMarkPmReview(mod, e)}
-                          disabled={isSubmitting}
-                          className="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:opacity-50 whitespace-nowrap"
-                        >
-                          {isSubmitting ? "Submitting..." : "For PM Review"}
-                        </button>
+                        {mod.status === "revision" ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setStatusChangeTarget({
+                                module: mod,
+                                newStatus: "revising",
+                                actionLabel: "Start Revision"
+                              });
+                            }}
+                            disabled={isSubmitting}
+                            className="py-2 px-4 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {isSubmitting ? "Starting..." : "Start Revision"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setStatusChangeTarget({
+                                module: mod,
+                                newStatus: "pm_review",
+                                actionLabel: "Submit for PM Review"
+                              });
+                            }}
+                            disabled={isSubmitting}
+                            className="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {isSubmitting ? "Submitting..." : "For PM Review"}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -392,7 +443,7 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
                 <div>
                   <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Status</p>
                   <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-bold ${getStatusBadge(selectedModule.status)}`}>
-                    {selectedModule.status === "revising" ? "Revising" : "Development"}
+                    {selectedModule.status === "revision" ? "Revision" : selectedModule.status === "revising" ? "Revising" : "Development"}
                   </span>
                 </div>
                 <div>
@@ -471,11 +522,10 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
                             setTimeout(() => setCopiedLink(false), 2000);
                           }
                         }}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                          copiedLink
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${copiedLink
                             ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
                             : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800"
-                        }`}
+                          }`}
                         title="Copy website link"
                       >
                         {copiedLink ? (
@@ -547,18 +597,73 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
               >
                 Close
               </button>
-              <button
-                onClick={() => handleMarkPmReview(selectedModule)}
-                disabled={submittingId === selectedModule.id}
-                className="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-xl transition-all shadow-md disabled:opacity-50"
-              >
-                {submittingId === selectedModule.id ? "Submitting..." : "For PM Review"}
-              </button>
+              {selectedModule.status === "revision" ? (
+                <button
+                  onClick={() => {
+                    setStatusChangeTarget({
+                      module: selectedModule,
+                      newStatus: "revising",
+                      actionLabel: "Start Revision"
+                    });
+                  }}
+                  disabled={submittingId === selectedModule.id}
+                  className="px-5 py-2.5 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 active:scale-95 rounded-xl transition-all shadow-md disabled:opacity-50"
+                >
+                  {submittingId === selectedModule.id ? "Starting..." : "Start Revision"}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setStatusChangeTarget({
+                      module: selectedModule,
+                      newStatus: "pm_review",
+                      actionLabel: "Submit for PM Review"
+                    });
+                  }}
+                  disabled={submittingId === selectedModule.id}
+                  className="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-xl transition-all shadow-md disabled:opacity-50"
+                >
+                  {submittingId === selectedModule.id ? "Submitting..." : "For PM Review"}
+                </button>
+              )}
             </div>
           </div>
         </div>,
         document.body
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmStatusModal
+        isOpen={!!statusChangeTarget}
+        onClose={() => setStatusChangeTarget(null)}
+        onConfirm={handleConfirmStatusChange}
+        isLoading={!!submittingId}
+        title={statusChangeTarget?.actionLabel === "Start Revision" ? "Start Revision" : "Submit for PM Review"}
+        message={
+          <>
+            Are you sure you want to{" "}
+            {statusChangeTarget?.newStatus === "revising" ? (
+              <>
+                start revision for{" "}
+                <span className="font-bold text-slate-800 dark:text-white">"{statusChangeTarget.module.name}"</span>?
+                Status will change to <span className="font-bold text-purple-600 dark:text-purple-400">Revising</span>.
+              </>
+            ) : (
+              <>
+                submit{" "}
+                <span className="font-bold text-slate-800 dark:text-white">"{statusChangeTarget?.module.name}"</span> for{" "}
+                <span className="font-bold text-indigo-600 dark:text-indigo-400">PM Review</span>?
+              </>
+            )}
+          </>
+        }
+        confirmText={statusChangeTarget?.actionLabel === "Start Revision" ? "Start Revision" : "Submit"}
+        confirmButtonClass={
+          statusChangeTarget?.newStatus === "revising"
+            ? "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20"
+            : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20"
+        }
+      />
     </div>
   );
 }

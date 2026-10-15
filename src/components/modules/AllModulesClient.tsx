@@ -100,10 +100,13 @@ export default function AllModulesClient({
         return "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300";
       case "auditing":
         return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+      case "for revision":
+      case "for_revision":
+        return "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300";
       case "revision":
         return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
       case "revising":
-        return "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300";
+        return "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300";
       case "qa_approved":
         return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300";
       case "deployment":
@@ -119,6 +122,7 @@ export default function AllModulesClient({
   const formatStatus = (status?: string) => {
     if (!status) return "Pending";
     if (status === "for_qa") return "For QA";
+    if (status === "for revision" || status === "for_revision") return "For Revision";
     if (status === "qa_approved") return "QA Approved";
     if (status === "for data gathering" || status === "for_data_gathering") return "For Data Gathering";
     if (status === "pm_review") return "PM Review";
@@ -212,6 +216,7 @@ export default function AllModulesClient({
           <option value="pm_review">PM Review</option>
           <option value="for_qa">For QA</option>
           <option value="auditing">Auditing</option>
+          <option value="for revision">For Revision</option>
           <option value="revision">Revision</option>
           <option value="revising">Revising</option>
           <option value="qa_approved">QA Approved</option>
@@ -319,6 +324,7 @@ export default function AllModulesClient({
                           <option value="pm_review" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">PM Review</option>
                           <option value="for_qa" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For QA</option>
                           <option value="auditing" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Auditing</option>
+                          <option value="for revision" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For Revision</option>
                           <option value="revision" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revision</option>
                           <option value="revising" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revising</option>
                           <option value="qa_approved" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">QA Approved</option>
@@ -474,11 +480,11 @@ export default function AllModulesClient({
       </div>
 
       {selectedModule && mounted && createPortal(
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
           onClick={() => setSelectedModule(null)}
         >
-          <div 
+          <div
             className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] border border-slate-200 dark:border-slate-700"
             onClick={(e) => e.stopPropagation()}
           >

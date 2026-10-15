@@ -9,6 +9,7 @@ const STATUSES = [
   { value: "for_qa", label: "For QA" },
   { value: "auditing", label: "Auditing" },
   { value: "revising", label: "Revising" },
+  { value: "for revision", label: "For Revision" },
   { value: "revision", label: "Revision" },
   { value: "pm_review", label: "PM Review" },
   { value: "development", label: "Development" },

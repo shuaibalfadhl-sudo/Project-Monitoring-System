@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
+import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -23,7 +24,7 @@ export default function QaRevisionClient({
   initialModules: any[];
 }) {
   const [modules, setModules] = useState(initialModules);
-  
+
   useEffect(() => {
     setModules(initialModules);
   }, [initialModules]);
@@ -35,7 +36,7 @@ export default function QaRevisionClient({
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedModule, setSelectedModule] = useState<any | null>(null);
-  const [reviewStatus, setReviewStatus] = useState<"revising" | "for_qa">("revising");
+  const [reviewStatus, setReviewStatus] = useState<"pm_review" | "revising" | "for_qa">("pm_review");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -43,6 +44,8 @@ export default function QaRevisionClient({
   const [newDeadline, setNewDeadline] = useState<string>("");
   const [projectDevs, setProjectDevs] = useState<{ id: string; full_name: string }[]>([]);
   const [loadingDevs, setLoadingDevs] = useState(false);
+
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const supabase = createClient();
   const router = useRouter();
@@ -63,7 +66,8 @@ export default function QaRevisionClient({
 
   const handleOpenReview = async (mod: any) => {
     setSelectedModule(mod);
-    setReviewStatus(mod.status === "for_qa" ? "for_qa" : "revising");
+    // For revision modules → acknowledge → pm_review
+    setReviewStatus("pm_review");
     setAssignedDevId(mod.assigned_developer_id || "");
     const deadlineVal = mod.deadline
       ? mod.deadline.includes("T")
@@ -101,37 +105,19 @@ export default function QaRevisionClient({
     setIsSubmittingReview(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
 
       const updates: any = {
-        status: reviewStatus,
+        status: "pm_review",
+        qa_result_acknowledged_at: new Date().toISOString(),
+        qa_result_acknowledged_by: user?.id ?? null,
       };
 
-      if (!selectedModule.qa_result_acknowledged_at) {
-        updates.qa_result_acknowledged_at = new Date().toISOString();
-        if (user) {
-          updates.qa_result_acknowledged_by = user.id;
-        }
-      }
-
-      if (assignedDevId !== undefined) {
-        updates.assigned_developer_id = assignedDevId ? assignedDevId : null;
-      }
-
-      if (newDeadline) {
-        updates.deadline = newDeadline;
-      }
-
-      if (selectedModule.status === "revision") {
-        try {
-          await supabase.rpc("acknowledge_qa_result", {
-            p_module_id: selectedModule.id,
-          });
-        } catch (rpcErr) {
-          console.warn("acknowledge_qa_result RPC notice:", rpcErr);
-        }
+      // Try RPC acknowledgement (best-effort)
+      try {
+        await supabase.rpc("acknowledge_qa_result", { p_module_id: selectedModule.id });
+      } catch (rpcErr) {
+        console.warn("acknowledge_qa_result RPC notice:", rpcErr);
       }
 
       const { error } = await supabase
@@ -141,16 +127,15 @@ export default function QaRevisionClient({
 
       if (error) throw error;
 
-      toast.success(
-        `Review submitted: Status updated to "${reviewStatus === "for_qa" ? "For QA" : "Revising"}"`
-      );
+      toast.success(`"${selectedModule.name}" acknowledged — status set to PM Review.`);
 
       setModules((prev) => prev.filter((m) => m.id !== selectedModule.id));
-
+      setShowConfirmModal(false);
       setSelectedModule(null);
       router.refresh();
     } catch (err: any) {
-      toast.error(err.message || "Failed to submit review.");
+      toast.error(err.message || "Failed to acknowledge module.");
+      setShowConfirmModal(false);
     } finally {
       setIsSubmittingReview(false);
     }
@@ -276,7 +261,7 @@ export default function QaRevisionClient({
             const matchesSearch =
               m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
               m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesStatus = m.status === "revision";
+            const matchesStatus = m.status === "for revision" || m.status === "for_revision";
             const matchesPriority =
               priorityFilter === "all" || m.priority === priorityFilter;
             return matchesSearch && matchesStatus && matchesPriority;
@@ -331,8 +316,8 @@ export default function QaRevisionClient({
                         <span className="font-bold text-slate-900 dark:text-white block group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                           {module.name}
                         </span>
-                        <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
-                          REVISION
+                        <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
+                          FOR REVISION
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -376,12 +361,12 @@ export default function QaRevisionClient({
                       <td className="px-6 py-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => handleOpenReview(module)}
-                          className="py-2 px-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md whitespace-nowrap flex items-center gap-1.5"
+                          className="py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md whitespace-nowrap flex items-center gap-1.5"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                          Review Result
+                          Acknowledge
                         </button>
                       </td>
                     </tr>
@@ -532,13 +517,12 @@ export default function QaRevisionClient({
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Review Result</h2>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-bold capitalize ${
-                    selectedModule.status === "revision"
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-bold capitalize ${selectedModule.status === "revision"
                       ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
                       : selectedModule.status === "pm_review"
-                      ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
-                      : "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-                  }`}>
+                        ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                        : "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                    }`}>
                     {selectedModule.status === "pm_review" ? "PM Review" : selectedModule.status}
                   </span>
                 </div>
@@ -668,11 +652,10 @@ export default function QaRevisionClient({
                             setTimeout(() => setCopiedLink(false), 2000);
                           }
                         }}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                          copiedLink
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${copiedLink
                             ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
                             : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800"
-                        }`}
+                          }`}
                         title="Copy website link"
                       >
                         {copiedLink ? (
@@ -798,106 +781,20 @@ export default function QaRevisionClient({
                 </div>
               </div>
 
-              {/* Status Decision (Revising vs For QA only) */}
-              <div className="p-4 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
-                <h3 className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider mb-1">
-                  Review Decision: Set Next Status
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
-                  Select whether to return this module to the developer for fixes or proceed directly to QA testing:
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                  {/* Option 1: Revising */}
-                  <div
-                    onClick={() => setReviewStatus("revising")}
-                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
-                      reviewStatus === "revising"
-                        ? "border-blue-500 bg-white dark:bg-slate-800 shadow-sm ring-2 ring-blue-500/20"
-                        : "border-gray-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 hover:border-blue-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="reviewStatus"
-                      checked={reviewStatus === "revising"}
-                      onChange={() => setReviewStatus("revising")}
-                      className="mt-1 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-900 dark:text-white">Revising</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
-                          To Developer
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                        Send back to developer to resolve issues noted in the QA report.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Option 2: For QA */}
-                  <div
-                    onClick={() => setReviewStatus("for_qa")}
-                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
-                      reviewStatus === "for_qa"
-                        ? "border-emerald-500 bg-white dark:bg-slate-800 shadow-sm ring-2 ring-emerald-500/20"
-                        : "border-gray-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 hover:border-emerald-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="reviewStatus"
-                      checked={reviewStatus === "for_qa"}
-                      onChange={() => setReviewStatus("for_qa")}
-                      className="mt-1 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-900 dark:text-white">For QA</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
-                          To Auditor
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                        Fixes ready or verified. Send directly to System Auditor for QA re-testing.
-                      </p>
-                    </div>
-                  </div>
+              {/* Acknowledge Notice */}
+              <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 flex items-start gap-3">
+                <div className="mt-0.5 w-8 h-8 shrink-0 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
-
-                {/* Additional parameters when Revising */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-indigo-100 dark:border-indigo-900/30">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                      Assigned Developer
-                    </label>
-                    <select
-                      value={assignedDevId}
-                      onChange={(e) => setAssignedDevId(e.target.value)}
-                      disabled={loadingDevs}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                    >
-                      <option value="">Unassigned</option>
-                      {projectDevs.map((dev) => (
-                        <option key={dev.id} value={dev.id}>
-                          {dev.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                      Deadline
-                    </label>
-                    <input
-                      type="date"
-                      value={newDeadline}
-                      onChange={(e) => setNewDeadline(e.target.value)}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                    />
-                  </div>
+                <div>
+                  <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-300 mb-0.5">
+                    Acknowledge &amp; Forward to PM Review
+                  </h3>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                    Clicking <span className="font-bold">Acknowledge</span> will record your acknowledgement and move this module to <span className="font-bold">PM Review</span> status. The project manager will then take the next action on this module.
+                  </p>
                 </div>
               </div>
 
@@ -914,19 +811,24 @@ export default function QaRevisionClient({
                 Cancel
               </button>
               <button
-                onClick={handleSubmitReview}
+                onClick={() => setShowConfirmModal(true)}
                 disabled={isSubmittingReview}
-                className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-2"
+                className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-2"
               >
                 {isSubmittingReview ? (
                   <>
                     <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    Saving...
+                    Acknowledging...
                   </>
                 ) : (
-                  `Submit as ${reviewStatus === "for_qa" ? "For QA" : "Revising"}`
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Acknowledge
+                  </>
                 )}
               </button>
             </div>
@@ -934,6 +836,26 @@ export default function QaRevisionClient({
         </div>,
         document.body
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmStatusModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleSubmitReview}
+        isLoading={isSubmittingReview}
+        title="Acknowledge Module"
+        message={
+          <>
+            Acknowledge{" "}
+            <span className="font-bold text-slate-800 dark:text-white">"{selectedModule?.name}"</span>?{" "}
+            The status will be set to{" "}
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">PM Review</span>{" "}
+            and your acknowledgement will be recorded.
+          </>
+        }
+        confirmText="Acknowledge"
+        confirmButtonClass="bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20"
+      />
     </div>
   );
 }

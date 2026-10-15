@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
+import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -34,8 +35,9 @@ export default function ModuleReviewClient({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedModule, setSelectedModule] = useState<any | null>(null);
-  const [reviewStatus, setReviewStatus] = useState<"revising" | "for_qa">("for_qa");
+  const [reviewStatus, setReviewStatus] = useState<"revision" | "for_qa">("for_qa");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [assignedDevId, setAssignedDevId] = useState<string>("");
@@ -133,15 +135,17 @@ export default function ModuleReviewClient({
       if (error) throw error;
 
       toast.success(
-        `Review submitted: Module status updated to "${reviewStatus === "for_qa" ? "For QA" : "Revising"}"`
+        `Review submitted: Module status updated to "${reviewStatus === "for_qa" ? "For QA" : "Revision"}"`
       );
 
       // Remove from list since it left pm_review status
       setModules((prev) => prev.filter((m) => m.id !== selectedModule.id));
+      setShowConfirmModal(false);
       setSelectedModule(null);
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Failed to submit review.");
+      setShowConfirmModal(false);
     } finally {
       setIsSubmittingReview(false);
     }
@@ -480,11 +484,10 @@ export default function ModuleReviewClient({
                         <button
                           key={`page-${page}`}
                           onClick={() => setCurrentPage(page as number)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-bold transition-all ${
-                            currentPage === page
+                          className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-bold transition-all ${currentPage === page
                               ? "bg-purple-600 text-white shadow-sm"
                               : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
-                          }`}
+                            }`}
                         >
                           {page}
                         </button>
@@ -664,11 +667,10 @@ export default function ModuleReviewClient({
                             setTimeout(() => setCopiedLink(false), 2000);
                           }
                         }}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                          copiedLink
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${copiedLink
                             ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
                             : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800"
-                        }`}
+                          }`}
                         title="Copy website link"
                       >
                         {copiedLink ? (
@@ -804,25 +806,24 @@ export default function ModuleReviewClient({
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                  {/* Option 1: Revising */}
+                  {/* Option 1: Revision */}
                   <div
-                    onClick={() => setReviewStatus("revising")}
-                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
-                      reviewStatus === "revising"
+                    onClick={() => setReviewStatus("revision")}
+                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${reviewStatus === "revision"
                         ? "border-blue-500 bg-white dark:bg-slate-800 shadow-sm ring-2 ring-blue-500/20"
                         : "border-gray-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 hover:border-blue-300"
-                    }`}
+                      }`}
                   >
                     <input
                       type="radio"
                       name="reviewStatus"
-                      checked={reviewStatus === "revising"}
-                      onChange={() => setReviewStatus("revising")}
+                      checked={reviewStatus === "revision"}
+                      onChange={() => setReviewStatus("revision")}
                       className="mt-1 text-blue-600 focus:ring-blue-500 cursor-pointer"
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-900 dark:text-white">Revising</span>
+                        <span className="font-bold text-sm text-slate-900 dark:text-white">Revision</span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
                           To Developer
                         </span>
@@ -836,11 +837,10 @@ export default function ModuleReviewClient({
                   {/* Option 2: For QA */}
                   <div
                     onClick={() => setReviewStatus("for_qa")}
-                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
-                      reviewStatus === "for_qa"
+                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${reviewStatus === "for_qa"
                         ? "border-emerald-500 bg-white dark:bg-slate-800 shadow-sm ring-2 ring-emerald-500/20"
                         : "border-gray-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 hover:border-emerald-300"
-                    }`}
+                      }`}
                   >
                     <input
                       type="radio"
@@ -910,7 +910,7 @@ export default function ModuleReviewClient({
                 Cancel
               </button>
               <button
-                onClick={handleSubmitReview}
+                onClick={() => setShowConfirmModal(true)}
                 disabled={isSubmittingReview}
                 className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-2"
               >
@@ -922,7 +922,7 @@ export default function ModuleReviewClient({
                     Saving...
                   </>
                 ) : (
-                  `Submit as ${reviewStatus === "for_qa" ? "For QA" : "Revising"}`
+                  `Submit as ${reviewStatus === "for_qa" ? "For QA" : "Revision"}`
                 )}
               </button>
             </div>
@@ -930,6 +930,25 @@ export default function ModuleReviewClient({
         </div>,
         document.body
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmStatusModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleSubmitReview}
+        isLoading={isSubmittingReview}
+        title="Confirm Status Change"
+        message={
+          <>
+            Are you sure you want to change status of{" "}
+            <span className="font-bold text-slate-800 dark:text-white">"{selectedModule?.name}"</span> to{" "}
+            <span className="font-bold text-indigo-600 dark:text-indigo-400">
+              {reviewStatus === "for_qa" ? "For QA" : "Revision"}
+            </span>?
+          </>
+        }
+        confirmText="Confirm Status Change"
+      />
     </div>
   );
 }
