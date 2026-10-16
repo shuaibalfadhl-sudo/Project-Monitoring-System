@@ -63,6 +63,22 @@ export default function QaMonitoringClient({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [corgiNonce, setCorgiNonce] = useState(0);
+  const corgiLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startCorgiLoop = () => {
+    setCorgiNonce((n) => n + 1);
+    if (corgiLoopRef.current) clearInterval(corgiLoopRef.current);
+    corgiLoopRef.current = setInterval(() => setCorgiNonce((n) => n + 1), 2500);
+  };
+
+  const stopCorgiLoop = () => {
+    if (corgiLoopRef.current) {
+      clearInterval(corgiLoopRef.current);
+      corgiLoopRef.current = null;
+    }
+  };
+
+  useEffect(() => stopCorgiLoop, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -314,7 +330,8 @@ export default function QaMonitoringClient({
               src={`/images/qa-corgi.gif?v=${corgiNonce}`}
               alt=""
               aria-hidden="true"
-              onMouseEnter={() => setCorgiNonce((n) => n + 1)}
+              onMouseEnter={startCorgiLoop}
+              onMouseLeave={stopCorgiLoop}
               className="h-16 w-16 object-contain cursor-pointer"
             />
           </div>
