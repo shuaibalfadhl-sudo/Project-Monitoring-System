@@ -62,6 +62,7 @@ export default function QaMonitoringClient({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [corgiNonce, setCorgiNonce] = useState(0);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -304,9 +305,19 @@ export default function QaMonitoringClient({
           <h3 className="text-sm font-bold text-amber-700 dark:text-amber-500 uppercase tracking-wider mb-2">
             Total Modules Pending QA
           </h3>
-          <p className="text-5xl font-black text-amber-600 dark:text-amber-400">
-            {filteredModules.length}
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-5xl font-black text-amber-600 dark:text-amber-400">
+              {filteredModules.length}
+            </p>
+            <img
+              key={corgiNonce}
+              src={`/images/qa-corgi.gif?v=${corgiNonce}`}
+              alt=""
+              aria-hidden="true"
+              onMouseEnter={() => setCorgiNonce((n) => n + 1)}
+              className="h-16 w-16 object-contain cursor-pointer"
+            />
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row w-full gap-3 items-center sm:justify-end">
