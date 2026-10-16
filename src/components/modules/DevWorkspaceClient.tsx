@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -28,13 +28,18 @@ interface DevModule {
 
 interface DevWorkspaceClientProps {
   initialModules: DevModule[];
+  isSuperAdmin?: boolean;
 }
 
-export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClientProps) {
+export default function DevWorkspaceClient({ initialModules, isSuperAdmin = false }: DevWorkspaceClientProps) {
   const [modules, setModules] = useState<DevModule[]>(initialModules);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const [projectSearch, setProjectSearch] = useState("");
+  const projectDropdownRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -66,6 +71,19 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [supabase, router]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        projectDropdownRef.current &&
+        !projectDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsProjectDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleConfirmStatusChange = async () => {
     if (!statusChangeTarget) return;
@@ -127,19 +145,26 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
     return [1, "...", current - 1, current, current + 1, "...", total];
   };
 
+  const projectOptions = Array.from(
+    new Map(modules.map((m) => [m.project.id, m.project.name] as [string, string])).entries(),
+  )
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const filtered = modules.filter((m) => {
     const matchSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = statusFilter === "all" || m.status === statusFilter;
     const matchPriority = priorityFilter === "all" || m.priority === priorityFilter;
-    return matchSearch && matchStatus && matchPriority;
+    const matchProject = projectFilter === "all" || m.project.id === projectFilter;
+    return matchSearch && matchStatus && matchPriority && matchProject;
   });
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const devCount = modules.filter((m) => m.status === "development").length;
-  const revisionCount = modules.filter((m) => m.status === "revision").length;
-  const revCount = modules.filter((m) => m.status === "revising").length;
+  const devCount = filtered.filter((m) => m.status === "development").length;
+  const revisionCount = filtered.filter((m) => m.status === "revision").length;
+  const revCount = filtered.filter((m) => m.status === "revising").length;
 
   return (
     <div className="w-full bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
@@ -186,6 +211,79 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             />
+          </div>
+
+          {/* Project Filter (searchable) */}
+          <div ref={projectDropdownRef} className="relative w-full sm:w-64">
+            <button
+              type="button"
+              onClick={() => setIsProjectDropdownOpen((o) => !o)}
+              className="w-full px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors flex justify-between items-center gap-2 text-left"
+            >
+              <span className="truncate">
+                {projectFilter === "all"
+                  ? "All Projects"
+                  : projectOptions.find((p) => p.id === projectFilter)?.name || "All Projects"}
+              </span>
+              <svg
+                className={`w-4 h-4 shrink-0 text-gray-500 dark:text-slate-400 transition-transform ${isProjectDropdownOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {isProjectDropdownOpen && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 flex flex-col overflow-hidden">
+                <div className="p-2 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800">
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm dark:text-white"
+                    placeholder="Search projects..."
+                    value={projectSearch}
+                    onChange={(e) => setProjectSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="overflow-y-auto p-1 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectFilter("all");
+                      setIsProjectDropdownOpen(false);
+                      setProjectSearch("");
+                      setCurrentPage(1);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium ${projectFilter === "all" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"}`}
+                  >
+                    All Projects
+                  </button>
+                  {projectOptions
+                    .filter((p) => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
+                    .map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setProjectFilter(p.id);
+                          setIsProjectDropdownOpen(false);
+                          setProjectSearch("");
+                          setCurrentPage(1);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium truncate ${projectFilter === p.id ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"}`}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  {projectOptions.filter((p) => p.name.toLowerCase().includes(projectSearch.toLowerCase())).length === 0 && (
+                    <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-slate-400 font-medium">
+                      No projects found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <select
@@ -236,7 +334,9 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
                   <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider text-center w-24">Priority</th>
                   <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">Module Name</th>
                   <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">Project</th>
-                  <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">Assigned Dev</th>
+                  {isSuperAdmin && (
+                    <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">Assigned Dev</th>
+                  )}
                   <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                   <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider text-right">Action</th>
                 </tr>
@@ -261,18 +361,20 @@ export default function DevWorkspaceClient({ initialModules }: DevWorkspaceClien
                       <td className="py-4 px-6">
                         <span className="font-semibold text-gray-600 dark:text-slate-300">{mod.project.name}</span>
                       </td>
-                      <td className="py-4 px-6">
-                        {mod.assigned_developer_name ? (
-                          <span className="inline-flex items-center gap-1.5">
-                            <span className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 text-[10px] font-black flex items-center justify-center uppercase">
-                              {mod.assigned_developer_name.charAt(0)}
+                      {isSuperAdmin && (
+                        <td className="py-4 px-6">
+                          {mod.assigned_developer_name ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 text-[10px] font-black flex items-center justify-center uppercase">
+                                {mod.assigned_developer_name.charAt(0)}
+                              </span>
+                              <span className="text-sm font-semibold text-gray-600 dark:text-slate-300">{mod.assigned_developer_name}</span>
                             </span>
-                            <span className="text-sm font-semibold text-gray-600 dark:text-slate-300">{mod.assigned_developer_name}</span>
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400 dark:text-slate-500 italic">Unassigned</span>
-                        )}
-                      </td>
+                          ) : (
+                            <span className="text-xs text-gray-400 dark:text-slate-500 italic">Unassigned</span>
+                          )}
+                        </td>
+                      )}
                       <td className="py-4 px-6">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border capitalize ${getStatusBadge(mod.status)}`}>
                           {mod.status === "revision" ? "Revision" : mod.status === "revising" ? "Revising" : "Development"}

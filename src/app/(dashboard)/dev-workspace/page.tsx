@@ -119,7 +119,10 @@ export default async function DevWorkspacePage() {
 
   return (
     <div className="w-full space-y-6">
-      <DevWorkspaceClient initialModules={devModules} />
+      <DevWorkspaceClient
+        initialModules={devModules}
+        isSuperAdmin={profile.role === "super_admin"}
+      />
     </div>
   );
 }
