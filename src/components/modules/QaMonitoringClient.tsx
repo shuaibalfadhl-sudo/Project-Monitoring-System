@@ -242,6 +242,19 @@ export default function QaMonitoringClient({
     }
   };
 
+  const filteredModules = modules.filter((m) => {
+    const matchesSearch =
+      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || m.status === statusFilter;
+    const matchesPriority =
+      priorityFilter === "all" || m.priority === priorityFilter;
+    const matchesProject =
+      projectFilter === "all" || m.project.id === projectFilter;
+    return matchesSearch && matchesStatus && matchesPriority && matchesProject;
+  });
+
   return (
     <div className="w-full bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
       <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-6">
@@ -254,7 +267,7 @@ export default function QaMonitoringClient({
             Total Modules Pending QA
           </h3>
           <p className="text-5xl font-black text-amber-600 dark:text-amber-400">
-            {modules.length}
+            {filteredModules.length}
           </p>
         </div>
 
@@ -418,19 +431,6 @@ export default function QaMonitoringClient({
 
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden transition-colors duration-300">
         {(() => {
-          const filteredModules = modules.filter((m) => {
-            const matchesSearch =
-              m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesStatus =
-              statusFilter === "all" || m.status === statusFilter;
-            const matchesPriority =
-              priorityFilter === "all" || m.priority === priorityFilter;
-            const matchesProject =
-              projectFilter === "all" || m.project.id === projectFilter;
-            return matchesSearch && matchesStatus && matchesPriority && matchesProject;
-          });
-
           const totalPages = Math.ceil(filteredModules.length / itemsPerPage);
           const paginatedModules = filteredModules.slice(
             (currentPage - 1) * itemsPerPage,
