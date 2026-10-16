@@ -110,6 +110,8 @@ export default function QaMonitoringClient({
   const [reworkLink, setReworkLink] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showAckConfirm, setShowAckConfirm] = useState(false);
+  const [ackTarget, setAckTarget] = useState<QaModule | null>(null);
   const [error, setError] = useState("");
 
   const router = useRouter();
@@ -149,13 +151,22 @@ export default function QaMonitoringClient({
       if (selectedModule && selectedModule.id === moduleId) {
         setSelectedModule({ ...selectedModule, status: "auditing" });
       }
+      const ackedName = modules.find((m) => m.id === moduleId)?.name;
+      toast.success(`"${ackedName || "Module"}" acknowledged — status set to Auditing.`);
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Failed to acknowledge module.");
       setError(err.message || "Failed to acknowledge module.");
     } finally {
       setIsSubmitting(false);
+      setShowAckConfirm(false);
+      setAckTarget(null);
     }
+  };
+
+  const requestAcknowledge = (mod: QaModule) => {
+    setAckTarget(mod);
+    setShowAckConfirm(true);
   };
 
   const validateAndPromptConfirm = () => {
@@ -288,7 +299,7 @@ export default function QaMonitoringClient({
         QA Monitoring
       </h1>
 
-      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="mb-8 flex flex-col items-start gap-4">
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 p-6 rounded-2xl shadow-sm inline-block min-w-64">
           <h3 className="text-sm font-bold text-amber-700 dark:text-amber-500 uppercase tracking-wider mb-2">
             Total Modules Pending QA
@@ -298,7 +309,7 @@ export default function QaMonitoringClient({
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3 items-center">
+        <div className="flex flex-col sm:flex-row w-full gap-3 items-center sm:justify-end">
           {/* Refresh Button */}
           <button
             onClick={() => {
@@ -612,7 +623,7 @@ export default function QaMonitoringClient({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleAcknowledge(mod.id);
+                              requestAcknowledge(mod);
                             }}
                             disabled={isSubmitting}
                             className="py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-colors shadow-md disabled:opacity-50 whitespace-nowrap"
@@ -911,7 +922,7 @@ export default function QaMonitoringClient({
                     before you can submit a QA judgment.
                   </p>
                   <button
-                    onClick={() => handleAcknowledge(selectedModule.id)}
+                    onClick={() => requestAcknowledge(selectedModule)}
                     disabled={isSubmitting}
                     className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-md transition-all disabled:opacity-50"
                   >
@@ -1088,6 +1099,30 @@ export default function QaMonitoringClient({
             ? "bg-green-500 hover:bg-green-600 text-white shadow-green-500/20"
             : "bg-red-500 hover:bg-red-600 text-white shadow-red-500/20"
         }
+      />
+
+      {/* Acknowledgement Confirmation Modal */}
+      <ConfirmStatusModal
+        isOpen={showAckConfirm}
+        onClose={() => {
+          setShowAckConfirm(false);
+          setAckTarget(null);
+        }}
+        onConfirm={() => {
+          if (ackTarget) handleAcknowledge(ackTarget.id);
+        }}
+        isLoading={isSubmitting}
+        title="Acknowledge QA Module"
+        message={
+          <>
+            Are you sure you want to acknowledge{" "}
+            <span className="font-bold text-slate-800 dark:text-white">"{ackTarget?.name}"</span>?{" "}
+            This records your receipt and moves the module to{" "}
+            <span className="font-bold text-amber-600 dark:text-amber-400">Auditing</span> status.
+          </>
+        }
+        confirmText="Acknowledge"
+        confirmButtonClass="bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20"
       />
     </div>
   );

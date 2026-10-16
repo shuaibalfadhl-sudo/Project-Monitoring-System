@@ -219,7 +219,7 @@ export default function ModuleReviewClient({
   return (
     <div className="w-full space-y-6">
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3 items-center justify-between">
+      <div className="flex flex-col items-start gap-4">
         <div className="flex items-center gap-3">
           <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-900/30 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-sm">
             <span className="text-xs font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wider">
@@ -231,7 +231,7 @@ export default function ModuleReviewClient({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3 items-center">
+        <div className="flex flex-col sm:flex-row w-full gap-3 items-center sm:justify-end">
           {/* Refresh Button */}
           <button
             onClick={() => {

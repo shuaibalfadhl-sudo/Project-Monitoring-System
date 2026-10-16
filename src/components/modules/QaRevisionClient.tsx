@@ -206,9 +206,31 @@ export default function QaRevisionClient({
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const filteredModules = modules.filter((m: any) => {
+    const matchesSearch =
+      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = m.status === "for revision" || m.status === "for_revision";
+    const matchesPriority =
+      priorityFilter === "all" || m.priority === priorityFilter;
+    const matchesProject =
+      projectFilter === "all" || m.project.id === projectFilter;
+    return matchesSearch && matchesStatus && matchesPriority && matchesProject;
+  });
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3 items-center justify-end">
+      <div className="flex flex-col items-start gap-4">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-sm">
+          <span className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
+            For Revision
+          </span>
+          <span className="text-2xl font-black text-blue-600 dark:text-blue-300">
+            {filteredModules.length}
+          </span>
+        </div>
+
+        <div className="flex flex-col sm:flex-row w-full gap-3 items-center sm:justify-end">
         {/* Refresh Button */}
         <button
           onClick={() => {
@@ -351,22 +373,11 @@ export default function QaRevisionClient({
           <option value="medium">Medium</option>
           <option value="low">Low</option>
         </select>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-700 overflow-hidden">
         {(() => {
-          const filteredModules = modules.filter((m: any) => {
-            const matchesSearch =
-              m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesStatus = m.status === "for revision" || m.status === "for_revision";
-            const matchesPriority =
-              priorityFilter === "all" || m.priority === priorityFilter;
-            const matchesProject =
-              projectFilter === "all" || m.project.id === projectFilter;
-            return matchesSearch && matchesStatus && matchesPriority && matchesProject;
-          });
-
           const totalPages = Math.ceil(filteredModules.length / itemsPerPage);
           const paginatedModules = filteredModules.slice(
             (currentPage - 1) * itemsPerPage,

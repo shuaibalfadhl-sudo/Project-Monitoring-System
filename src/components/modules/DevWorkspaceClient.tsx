@@ -170,7 +170,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
     <div className="w-full bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
       <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-6">Dev Workspace</h1>
 
-      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="mb-8 flex flex-col items-start gap-4">
         <div className="flex gap-4 flex-wrap">
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 p-5 rounded-2xl shadow-sm min-w-44">
             <h3 className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">In Development</h3>
@@ -186,7 +186,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3 items-center">
+        <div className="flex flex-col sm:flex-row w-full gap-3 items-center sm:justify-end">
           <button
             onClick={() => { setIsRefreshing(true); router.refresh(); setTimeout(() => setIsRefreshing(false), 1000); }}
             disabled={isRefreshing}
