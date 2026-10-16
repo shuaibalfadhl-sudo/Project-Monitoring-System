@@ -35,7 +35,8 @@ export default async function QaMonitoringPage() {
           status,
           module_document_url,
           qa_result_document_url,
-          website_link
+          website_link,
+          qa_acknowledged_by
         )
       `)
       
@@ -63,7 +64,8 @@ export default async function QaMonitoringPage() {
             status,
             module_document_url,
             qa_result_document_url,
-            website_link
+            website_link,
+            qa_acknowledged_by
           )
         )
       `)
@@ -96,6 +98,7 @@ export default async function QaMonitoringPage() {
             module_document_url: m.module_document_url,
             qa_result_document_url: m.qa_result_document_url,
             website_link: m.website_link,
+            qa_acknowledged_by: m.qa_acknowledged_by,
             project: {
               id: p.id,
               name: p.name,
@@ -120,6 +123,9 @@ export default async function QaMonitoringPage() {
   allQaModules.forEach((m: any) => {
     if (m.project && m.project.created_by) {
       m.project.creator_name = profilesMap.get(m.project.created_by)
+    }
+    if (m.qa_acknowledged_by) {
+      m.auditor_name = profilesMap.get(m.qa_acknowledged_by) || null
     }
   })
 

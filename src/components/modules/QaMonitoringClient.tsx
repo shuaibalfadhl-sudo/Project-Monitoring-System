@@ -16,6 +16,8 @@ interface QaModule {
   module_document_url?: string | null;
   qa_result_document_url?: string | null;
   website_link?: string | null;
+  qa_acknowledged_by?: string | null;
+  auditor_name?: string | null;
   project: {
     id: string;
     name: string;
@@ -53,6 +55,10 @@ export default function QaMonitoringClient({
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
   const projectDropdownRef = useRef<HTMLDivElement>(null);
+  const [ackFilter, setAckFilter] = useState("all");
+  const [isAckDropdownOpen, setIsAckDropdownOpen] = useState(false);
+  const [ackSearch, setAckSearch] = useState("");
+  const ackDropdownRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -64,6 +70,12 @@ export default function QaMonitoringClient({
         !projectDropdownRef.current.contains(event.target as Node)
       ) {
         setIsProjectDropdownOpen(false);
+      }
+      if (
+        ackDropdownRef.current &&
+        !ackDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsAckDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -242,6 +254,19 @@ export default function QaMonitoringClient({
     }
   };
 
+  const acknowledgerOptions = Array.from(
+    new Map(
+      modules
+        .filter((m) => m.qa_acknowledged_by)
+        .map(
+          (m) =>
+            [m.qa_acknowledged_by as string, m.auditor_name || "Unknown"] as [string, string],
+        ),
+    ).entries(),
+  )
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const filteredModules = modules.filter((m) => {
     const matchesSearch =
       m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -252,7 +277,9 @@ export default function QaMonitoringClient({
       priorityFilter === "all" || m.priority === priorityFilter;
     const matchesProject =
       projectFilter === "all" || m.project.id === projectFilter;
-    return matchesSearch && matchesStatus && matchesPriority && matchesProject;
+    const matchesAcknowledger =
+      ackFilter === "all" || m.qa_acknowledged_by === ackFilter;
+    return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesAcknowledger;
   });
 
   return (
@@ -399,6 +426,79 @@ export default function QaMonitoringClient({
             )}
           </div>
 
+          {/* Acknowledged By Filter (searchable) */}
+          <div ref={ackDropdownRef} className="relative w-full sm:w-64">
+            <button
+              type="button"
+              onClick={() => setIsAckDropdownOpen((o) => !o)}
+              className="w-full px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors flex justify-between items-center gap-2 text-left"
+            >
+              <span className="truncate">
+                {ackFilter === "all"
+                  ? "All Auditors"
+                  : acknowledgerOptions.find((a) => a.id === ackFilter)?.name || "All Auditors"}
+              </span>
+              <svg
+                className={`w-4 h-4 shrink-0 text-gray-500 dark:text-slate-400 transition-transform ${isAckDropdownOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {isAckDropdownOpen && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 flex flex-col overflow-hidden">
+                <div className="p-2 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800">
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm dark:text-white"
+                    placeholder="Search auditors..."
+                    value={ackSearch}
+                    onChange={(e) => setAckSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="overflow-y-auto p-1 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAckFilter("all");
+                      setIsAckDropdownOpen(false);
+                      setAckSearch("");
+                      setCurrentPage(1);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium ${ackFilter === "all" ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"}`}
+                  >
+                    All Auditors
+                  </button>
+                  {acknowledgerOptions
+                    .filter((a) => a.name.toLowerCase().includes(ackSearch.toLowerCase()))
+                    .map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => {
+                          setAckFilter(a.id);
+                          setIsAckDropdownOpen(false);
+                          setAckSearch("");
+                          setCurrentPage(1);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium truncate ${ackFilter === a.id ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"}`}
+                      >
+                        {a.name}
+                      </button>
+                    ))}
+                  {acknowledgerOptions.filter((a) => a.name.toLowerCase().includes(ackSearch.toLowerCase())).length === 0 && (
+                    <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-slate-400 font-medium">
+                      No auditors found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <select
             className="w-full sm:w-40 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
             value={statusFilter}
@@ -460,6 +560,9 @@ export default function QaMonitoringClient({
                     <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Status
                     </th>
+                    <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                      Acknowledged By
+                    </th>
                     <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider text-right">
                       Actions
                     </th>
@@ -494,6 +597,15 @@ export default function QaMonitoringClient({
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 ${mod.status === 'qa_approved' || mod.status === 'for_qa' ? '' : 'capitalize'}`}>
                           {mod.status === 'qa_approved' ? 'QA Approved' : mod.status === 'for_qa' ? 'For QA' : mod.status.replace("_", " ")}
                         </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        {mod.qa_acknowledged_by ? (
+                          <span className="font-semibold text-gray-700 dark:text-slate-200 text-sm">
+                            {mod.auditor_name || "Unknown"}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-slate-500 italic">Not acknowledged</span>
+                        )}
                       </td>
                       <td className="py-4 px-6 text-right">
                         {mod.status === "for_qa" ? (
