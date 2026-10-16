@@ -36,7 +36,8 @@ export default async function QaMonitoringPage() {
           module_document_url,
           qa_result_document_url,
           website_link,
-          qa_acknowledged_by
+          qa_acknowledged_by,
+          updated_at
         )
       `)
       
@@ -65,7 +66,8 @@ export default async function QaMonitoringPage() {
             module_document_url,
             qa_result_document_url,
             website_link,
-            qa_acknowledged_by
+            qa_acknowledged_by,
+            updated_at
           )
         )
       `)
@@ -99,6 +101,7 @@ export default async function QaMonitoringPage() {
             qa_result_document_url: m.qa_result_document_url,
             website_link: m.website_link,
             qa_acknowledged_by: m.qa_acknowledged_by,
+            updated_at: m.updated_at,
             project: {
               id: p.id,
               name: p.name,
@@ -110,8 +113,13 @@ export default async function QaMonitoringPage() {
     })
   }
 
-  // Sort by priority (1 is highest, assuming numerical priority)
-  allQaModules.sort((a, b) => a.priority - b.priority)
+  // Auditing modules first, then newest to oldest by updated_at
+  allQaModules.sort((a, b) => {
+    const aRank = a.status === 'auditing' ? 0 : 1
+    const bRank = b.status === 'auditing' ? 0 : 1
+    if (aRank !== bRank) return aRank - bRank
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  })
 
   // Fetch all profiles to map creator names
   const { data: allProfiles } = await supabaseServer
