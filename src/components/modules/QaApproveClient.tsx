@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -22,6 +22,24 @@ export default function QaApproveClient({
 
   const supabase = createClient();
   const router = useRouter();
+
+  // Resync local state whenever the server re-renders with fresh data
+  useEffect(() => {
+    setModules(initialModules);
+  }, [initialModules]);
+
+  // Realtime: any project_modules change re-fetches the server data
+  useEffect(() => {
+    const channel = supabase
+      .channel("qa-approve-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "project_modules" }, () => {
+        router.refresh();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router]);
 
   const generatePagination = (currentPage: number, totalPages: number) => {
     if (totalPages <= 7)
