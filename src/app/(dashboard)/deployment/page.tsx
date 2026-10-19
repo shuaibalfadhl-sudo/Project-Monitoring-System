@@ -7,7 +7,7 @@ import DeploymentClient from '@/components/modules/DeploymentClient'
 export default async function DeploymentPage() {
   const profile = await getUserProfile()
 
-  if (!profile || (profile.role !== 'project_manager' && profile.role !== 'super_admin')) {
+  if (!profile || (profile.role !== 'devops' && profile.role !== 'super_admin')) {
     redirect('/dashboard')
   }
 
@@ -43,7 +43,9 @@ export default async function DeploymentPage() {
     projectsQuery = projectsQuery.eq('company_id', activeCompanyId)
   }
 
-  if (profile.role !== 'super_admin') {
+  // DevOps sees every project in their company (RLS scopes to their companies),
+  // so only non-privileged, non-devops roles are restricted to their own projects.
+  if (profile.role !== 'super_admin' && profile.role !== 'devops') {
     projectsQuery = projectsQuery.eq('created_by', profile.id)
   }
 
@@ -54,9 +56,7 @@ export default async function DeploymentPage() {
   if (projects) {
     projects.forEach((p: any) => {
       if (p.project_modules) {
-        const mods = p.project_modules.filter((m: any) => 
-          m.status === 'qa_approved' || m.status === 'deployment' || m.status === 'deployed'
-        )
+        const mods = p.project_modules.filter((m: any) => m.status === 'deployment')
         mods.forEach((m: any) => {
           deploymentModules.push({
             ...m,
@@ -89,7 +89,7 @@ export default async function DeploymentPage() {
     <div className="w-full space-y-6">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
-          Deployment Status
+          For Deployment
         </h1>
       </div>
 

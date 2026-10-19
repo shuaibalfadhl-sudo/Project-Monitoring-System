@@ -15,6 +15,8 @@ interface NavCountsContextType {
   forQaCount: number
   qaRevisionCount: number
   pmReviewCount: number
+  qaApproveCount: number
+  deploymentCount: number
   notificationCount: number
   developmentCount: number
   revisionCount: number
@@ -27,6 +29,8 @@ const NavCountsContext = createContext<NavCountsContextType>({
   forQaCount: 0,
   qaRevisionCount: 0,
   pmReviewCount: 0,
+  qaApproveCount: 0,
+  deploymentCount: 0,
   developmentCount: 0,
   revisionCount: 0,
   revisingCount: 0,
@@ -59,6 +63,8 @@ interface NavCountsProviderProps {
   initialForQaCount: number
   initialQaRevisionCount: number
   initialPmReviewCount?: number
+  initialQaApproveCount?: number
+  initialDeploymentCount?: number
   initialDevelopmentCount?: number
   initialRevisionCount?: number
   initialRevisingCount?: number
@@ -76,6 +82,8 @@ export function NavCountsProvider({
   initialForQaCount,
   initialQaRevisionCount,
   initialPmReviewCount = 0,
+  initialQaApproveCount = 0,
+  initialDeploymentCount = 0,
   initialDevelopmentCount = 0,
   initialRevisionCount = 0,
   initialRevisingCount = 0,
@@ -87,6 +95,8 @@ export function NavCountsProvider({
   const [forQaCount, setForQaCount] = useState(initialForQaCount);
   const [qaRevisionCount, setQaRevisionCount] = useState(initialQaRevisionCount);
   const [pmReviewCount, setPmReviewCount] = useState(initialPmReviewCount);
+  const [qaApproveCount, setQaApproveCount] = useState(initialQaApproveCount);
+  const [deploymentCount, setDeploymentCount] = useState(initialDeploymentCount);
   const [notificationCount, setNotificationCount] = useState(initialNotificationCount);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const [developmentCount, setDevelopmentCount] = useState(initialDevelopmentCount);
@@ -103,6 +113,8 @@ export function NavCountsProvider({
     setForQaCount(initialForQaCount)
     setQaRevisionCount(initialQaRevisionCount)
     setPmReviewCount(initialPmReviewCount)
+    setQaApproveCount(initialQaApproveCount)
+    setDeploymentCount(initialDeploymentCount)
     setDevelopmentCount(initialDevelopmentCount)
     setRevisionCount(initialRevisionCount)
     setRevisingCount(initialRevisingCount)
@@ -112,6 +124,8 @@ export function NavCountsProvider({
     initialForQaCount,
     initialQaRevisionCount,
     initialPmReviewCount,
+    initialQaApproveCount,
+    initialDeploymentCount,
     initialDevelopmentCount,
     initialRevisionCount,
     initialRevisingCount,
@@ -129,6 +143,8 @@ export function NavCountsProvider({
       let fQaCount = 0
       let qRevCount = 0
       let pmRevCount = 0
+      let qaApprCount = 0
+      let depCount = 0
 
       // System auditor or Super Admin QA count
       if (profile.role === 'system_auditor' || profile.role === 'super_admin') {
@@ -193,6 +209,9 @@ export function NavCountsProvider({
             if (m.status === 'pm_review') {
               pmRevCount++
             }
+            if (m.status === 'qa_approved') {
+              qaApprCount++
+            }
           })
         })
         if (count > 0) {
@@ -203,6 +222,10 @@ export function NavCountsProvider({
         if (pmRevCount > 0) {
           notifCount += pmRevCount
           notifs.push({ label: 'Module Review', count: pmRevCount, href: '/module-review' })
+        }
+        if (qaApprCount > 0) {
+          notifCount += qaApprCount
+          notifs.push({ label: 'QA Approved', count: qaApprCount, href: '/qa-approve' })
         }
       }
 
@@ -280,6 +303,29 @@ export function NavCountsProvider({
         }
       }
 
+      // DevOps (and Super Admin) "For Deployment" count — modules in 'deployment' status.
+      // DevOps sees all projects in their companies (RLS-scoped); not filtered by created_by.
+      if (profile.role === 'devops' || profile.role === 'super_admin') {
+        let query = supabase
+          .from('projects')
+          .select('project_modules(id, status)')
+        if (activeCompanyId) {
+          query = query.eq('company_id', activeCompanyId)
+        }
+        const { data } = await query
+        let count = 0
+        data?.forEach((p: any) => {
+          p.project_modules?.forEach((m: any) => {
+            if (m.status === 'deployment') count++
+          })
+        })
+        if (count > 0) {
+          notifCount += count
+          notifs.push({ label: 'For Deployment', count, href: '/deployment' })
+        }
+        depCount = count
+      }
+
       // Check for toast notification on count increase
       if (notifCount > prevNotifCountRef.current) {
         toast.info('You have new tasks that need your attention!')
@@ -290,6 +336,8 @@ export function NavCountsProvider({
       setForQaCount(fQaCount)
       setQaRevisionCount(qRevCount)
       setPmReviewCount(pmRevCount)
+      setQaApproveCount(qaApprCount)
+      setDeploymentCount(depCount)
       setNotificationCount(notifCount)
       setNotifications(notifs)
     } catch (err) {
@@ -369,6 +417,8 @@ export function NavCountsProvider({
         forQaCount,
         qaRevisionCount,
         pmReviewCount,
+        qaApproveCount,
+        deploymentCount,
         notificationCount,
         developmentCount,
         revisionCount,

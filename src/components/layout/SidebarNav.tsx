@@ -18,12 +18,15 @@ export default function SidebarNav({
   const currentForQaCount = navCounts?.forQaCount ?? 0;
   const currentQaRevisionCount = navCounts?.qaRevisionCount ?? 0;
   const currentPmReviewCount = navCounts?.pmReviewCount ?? 0;
+  const currentQaApproveCount = navCounts?.qaApproveCount ?? 0;
+  const currentDeploymentCount = navCounts?.deploymentCount ?? 0;
   const currentDevWorkspaceCount = (navCounts?.developmentCount ?? 0) + (navCounts?.revisionCount ?? 0) + (navCounts?.revisingCount ?? 0);
 
   const isManager = role === 'project_manager';
   const isAuditor = role === 'system_auditor';
   const isDeveloper = role === 'developer';
   const isSuperAdmin = role === 'super_admin';
+  const isDevOps = role === 'devops';
 
   const getLinkClasses = (path: string) => {
     // Exact match for dashboard to prevent it from matching /dashboard/projects if that existed
@@ -70,8 +73,13 @@ export default function SidebarNav({
               )}
             </span>
           </Link>
-          <Link href="/deployment" className={getLinkClasses('/deployment')}>
-            Deployment Status
+          <Link href="/qa-approve" className={getLinkClasses('/qa-approve')}>
+            <span className="flex items-center justify-between">
+              <span>QA Approved</span>
+              {currentQaApproveCount > 0 && (
+                <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentQaApproveCount}</span>
+              )}
+            </span>
           </Link>
         </>
       )}
@@ -108,6 +116,19 @@ export default function SidebarNav({
         </>
       )}
 
+      {isDevOps && (
+        <>
+          <Link href="/deployment" className={getLinkClasses('/deployment')}>
+            <span className="flex items-center justify-between">
+              <span>For Deployment</span>
+              {currentDeploymentCount > 0 && (
+                <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDeploymentCount}</span>
+              )}
+            </span>
+          </Link>
+        </>
+      )}
+
       {isSuperAdmin && (
         <>
           <Link href="/projects" className={getLinkClasses('/projects')}>
@@ -137,6 +158,14 @@ export default function SidebarNav({
               )}
             </span>
           </Link>
+          <Link href="/qa-approve" className={getLinkClasses('/qa-approve')}>
+            <span className="flex items-center justify-between">
+              <span>QA Approved</span>
+              {currentQaApproveCount > 0 && (
+                <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentQaApproveCount}</span>
+              )}
+            </span>
+          </Link>
           <Link href="/dev-workspace" className={getLinkClasses('/dev-workspace')}>
             <span className="flex items-center justify-between">
               <span>Dev Workspace</span>
@@ -146,7 +175,12 @@ export default function SidebarNav({
             </span>
           </Link>
           <Link href="/deployment" className={getLinkClasses('/deployment')}>
-            Deployment Status
+            <span className="flex items-center justify-between">
+              <span>For Deployment</span>
+              {currentDeploymentCount > 0 && (
+                <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDeploymentCount}</span>
+              )}
+            </span>
           </Link>
           <Link href="/users" className={getLinkClasses('/users')}>
             Users

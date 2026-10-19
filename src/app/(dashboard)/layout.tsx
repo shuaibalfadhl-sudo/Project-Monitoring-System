@@ -52,6 +52,8 @@ export default async function DashboardLayout({
   let forQaCount = 0
   let qaRevisionCount = 0
   let pmReviewCount = 0
+  let qaApprovedCount = 0
+  let deploymentCount = 0
   let developmentCount = 0
   let revisionCount = 0
   let revisingCount = 0
@@ -112,6 +114,7 @@ export default async function DashboardLayout({
     const { data } = await query
     let count = 0
     let pmRevCount = 0
+    let qaApprCount = 0
     data?.forEach((p: any) => {
       p.project_modules?.forEach((m: any) => {
         if (m.status === 'for revision' || m.status === 'for_revision') {
@@ -119,6 +122,9 @@ export default async function DashboardLayout({
         }
         if (m.status === 'pm_review') {
           pmRevCount++
+        }
+        if (m.status === 'qa_approved') {
+          qaApprCount++
         }
       })
     })
@@ -131,6 +137,11 @@ export default async function DashboardLayout({
       notificationCount += pmRevCount
       pmReviewCount = pmRevCount
       notifications.push({ label: 'Module Review', count: pmRevCount, href: '/module-review' })
+    }
+    if (qaApprCount > 0) {
+      notificationCount += qaApprCount
+      qaApprovedCount = qaApprCount
+      notifications.push({ label: 'QA Approved', count: qaApprCount, href: '/qa-approve' })
     }
   }
 
@@ -202,6 +213,29 @@ export default async function DashboardLayout({
     }
   }
 
+  // DevOps (and Super Admin) "For Deployment" count — modules in 'deployment' status.
+  // DevOps sees all projects in their companies (RLS-scoped); not filtered by created_by.
+  if (profile.role === 'devops' || profile.role === 'super_admin') {
+    let query = supabaseServer
+      .from('projects')
+      .select('project_modules(id, status)')
+    if (activeCompanyId) {
+      query = query.eq('company_id', activeCompanyId)
+    }
+    const { data } = await query
+    let count = 0
+    data?.forEach((p: any) => {
+      p.project_modules?.forEach((m: any) => {
+        if (m.status === 'deployment') count++
+      })
+    })
+    if (count > 0) {
+      notificationCount += count
+      deploymentCount = count
+      notifications.push({ label: 'For Deployment', count, href: '/deployment' })
+    }
+  }
+
   return (
     <NavCountsProvider
       profile={profile}
@@ -209,6 +243,8 @@ export default async function DashboardLayout({
       initialForQaCount={forQaCount}
       initialQaRevisionCount={qaRevisionCount}
       initialPmReviewCount={pmReviewCount}
+      initialQaApproveCount={qaApprovedCount}
+      initialDeploymentCount={deploymentCount}
       initialDevelopmentCount={developmentCount}
       initialRevisionCount={revisionCount}
       initialRevisingCount={revisingCount}
