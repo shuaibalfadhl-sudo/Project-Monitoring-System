@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -14,6 +14,10 @@ export default function QaApproveClient({
   const [modules, setModules] = useState(initialModules);
   const [searchTerm, setSearchTerm] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const [projectSearch, setProjectSearch] = useState("");
+  const projectDropdownRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -40,6 +44,20 @@ export default function QaApproveClient({
       supabase.removeChannel(channel);
     };
   }, [supabase, router]);
+
+  // Close the project dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        projectDropdownRef.current &&
+        !projectDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsProjectDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const generatePagination = (currentPage: number, totalPages: number) => {
     if (totalPages <= 7)
@@ -87,12 +105,19 @@ export default function QaApproveClient({
     }
   };
 
+  const projectOptions = Array.from(
+    new Map(modules.map((m: any) => [m.project.id, m.project.name] as [string, string])).entries(),
+  )
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const filteredModules = modules.filter((m: any) => {
     const matchesSearch =
       m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPriority = priorityFilter === "all" || m.priority === priorityFilter;
-    return matchesSearch && matchesPriority;
+    const matchesProject = projectFilter === "all" || m.project.id === projectFilter;
+    return matchesSearch && matchesPriority && matchesProject;
   });
 
   const totalPages = Math.ceil(filteredModules.length / itemsPerPage);
@@ -160,6 +185,79 @@ export default function QaApproveClient({
                 setCurrentPage(1);
               }}
             />
+          </div>
+
+          {/* Project Filter (searchable) */}
+          <div ref={projectDropdownRef} className="relative w-full sm:w-64">
+            <button
+              type="button"
+              onClick={() => setIsProjectDropdownOpen((o) => !o)}
+              className="w-full px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors flex justify-between items-center gap-2 text-left"
+            >
+              <span className="truncate">
+                {projectFilter === "all"
+                  ? "All Projects"
+                  : projectOptions.find((p) => p.id === projectFilter)?.name || "All Projects"}
+              </span>
+              <svg
+                className={`w-4 h-4 shrink-0 text-gray-500 dark:text-slate-400 transition-transform ${isProjectDropdownOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {isProjectDropdownOpen && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 flex flex-col overflow-hidden">
+                <div className="p-2 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800">
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm dark:text-white"
+                    placeholder="Search projects..."
+                    value={projectSearch}
+                    onChange={(e) => setProjectSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="overflow-y-auto p-1 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectFilter("all");
+                      setIsProjectDropdownOpen(false);
+                      setProjectSearch("");
+                      setCurrentPage(1);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium ${projectFilter === "all" ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"}`}
+                  >
+                    All Projects
+                  </button>
+                  {projectOptions
+                    .filter((p) => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
+                    .map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setProjectFilter(p.id);
+                          setIsProjectDropdownOpen(false);
+                          setProjectSearch("");
+                          setCurrentPage(1);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium truncate ${projectFilter === p.id ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"}`}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  {projectOptions.filter((p) => p.name.toLowerCase().includes(projectSearch.toLowerCase())).length === 0 && (
+                    <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-slate-400 font-medium">
+                      No projects found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <select
