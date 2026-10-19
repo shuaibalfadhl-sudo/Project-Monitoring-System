@@ -118,6 +118,14 @@ export default function SidebarNav({
 
       {isDevOps && (
         <>
+          <Link href="/dev-workspace" className={getLinkClasses('/dev-workspace')}>
+            <span className="flex items-center justify-between">
+              <span>Dev Workspace</span>
+              {currentDevWorkspaceCount > 0 && (
+                <span className="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDevWorkspaceCount}</span>
+              )}
+            </span>
+          </Link>
           <Link href="/deployment" className={getLinkClasses('/deployment')}>
             <span className="flex items-center justify-between">
               <span>For Deployment</span>

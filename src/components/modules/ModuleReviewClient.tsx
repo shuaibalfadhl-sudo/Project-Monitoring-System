@@ -100,7 +100,7 @@ export default function ModuleReviewClient({
           .from("project_members")
           .select("user_id, profiles!inner(id, full_name, role)")
           .eq("project_id", mod.project.id)
-          .eq("profiles.role", "developer");
+          .in("profiles.role", ["developer", "devops"]);
         if (!error && data) {
           const devs = data.map((d: any) => ({
             id: d.profiles.id,

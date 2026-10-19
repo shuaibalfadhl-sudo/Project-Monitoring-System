@@ -7,7 +7,12 @@ import DevWorkspaceClient from "@/components/modules/DevWorkspaceClient";
 export default async function DevWorkspacePage() {
   const profile = await getUserProfile();
 
-  if (!profile || (profile.role !== "developer" && profile.role !== "super_admin")) {
+  if (!profile) {
+    redirect("/dashboard");
+  }
+
+  const isPrivilegedViewer = profile.role === "super_admin" || profile.role === "devops";
+  if (!isPrivilegedViewer && profile.role !== "developer") {
     redirect("/dashboard");
   }
 
@@ -17,7 +22,10 @@ export default async function DevWorkspacePage() {
 
   const devModules: any[] = [];
 
-  if (profile.role === "super_admin") {
+  if (isPrivilegedViewer) {
+    // super_admin sees all dev modules; devops sees all modules assigned to them
+    // across every project in their companies (RLS-scoped). Both query projects
+    // directly rather than via project_members.
     let query = supabase
       .from("projects")
       .select(`
@@ -47,12 +55,14 @@ export default async function DevWorkspacePage() {
 
     data?.forEach((project: any) => {
       project.project_modules?.forEach((mod: any) => {
-        if (mod.status === "development" || mod.status === "revision" || mod.status === "revising") {
-          devModules.push({
-            ...mod,
-            project: { id: project.id, name: project.name },
-          });
-        }
+        const devStatus =
+          mod.status === "development" || mod.status === "revision" || mod.status === "revising";
+        if (!devStatus) return;
+        if (profile.role === "devops" && mod.assigned_developer_id !== profile.id) return;
+        devModules.push({
+          ...mod,
+          project: { id: project.id, name: project.name },
+        });
       });
     });
   } else {

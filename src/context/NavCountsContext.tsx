@@ -303,6 +303,37 @@ export function NavCountsProvider({
         }
       }
 
+      // DevOps Dev Workspace count — only modules assigned to them, across their
+      // companies' projects (RLS-scoped).
+      if (profile.role === 'devops') {
+        let query = supabase
+          .from('projects')
+          .select('project_modules(id, status, assigned_developer_id)')
+        if (activeCompanyId) {
+          query = query.eq('company_id', activeCompanyId)
+        }
+        const { data } = await query
+        let devCount = 0
+        let revCount = 0
+        let revisingCount = 0
+        data?.forEach((p: any) => {
+          p.project_modules?.forEach((m: any) => {
+            if (m.assigned_developer_id !== profile.id) return
+            if (m.status === 'development') devCount++
+            else if (m.status === 'revision') revCount++
+            else if (m.status === 'revising') revisingCount++
+          })
+        })
+        setDevelopmentCount(devCount)
+        setRevisionCount(revCount)
+        setRevisingCount(revisingCount)
+        const devWorkspaceCount = devCount + revCount + revisingCount
+        if (devWorkspaceCount > 0) {
+          notifs.push({ label: 'Dev Workspace', count: devWorkspaceCount, href: '/dev-workspace' })
+          notifCount += devWorkspaceCount
+        }
+      }
+
       // DevOps (and Super Admin) "For Deployment" count — modules in 'deployment' status.
       // DevOps sees all projects in their companies (RLS-scoped); not filtered by created_by.
       if (profile.role === 'devops' || profile.role === 'super_admin') {
