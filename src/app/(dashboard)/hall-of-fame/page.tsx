@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import WeeklyActivityChart from '@/components/dashboard/WeeklyActivityChart'
+import DevRevisionBoard, { type RevisionModuleRow } from '@/components/dashboard/DevRevisionBoard'
+import { TimeRangeProvider } from '@/components/dashboard/TimeRangeContext'
 import FullscreenButton from '@/components/dashboard/FullscreenButton'
 import AnimatedProgress from '@/components/dashboard/AnimatedProgress'
 
@@ -91,68 +93,52 @@ export default async function HallOfFamePage() {
     }
   }
 
-  // Fetch Developer Revision Leaderboard
-  let devRevisionLeaderboard: { devId: string; devName: string; devAvatar: string | null; totalRevisions: number; totalModules: number }[] = [];
+  // Fetch per-module, date-attributed revision data so the leaderboard can be
+  // filtered by the same time window as the Weekly Activity chart. Prefers a
+  // SECURITY DEFINER RPC (company-wide for every role); falls back to RLS-scoped reads.
+  let revisionModules: RevisionModuleRow[] = [];
 
-  const { data: devRpcData, error: devRpcError } = await supabaseServer.rpc('get_dev_revision_leaderboard', {
-    p_company_id: activeCompanyId
-  });
+  const { data: revRpcData, error: revRpcError } = await supabaseServer.rpc(
+    'get_dev_revisions_by_date',
+    { p_company_id: activeCompanyId }
+  );
 
-  if (devRpcError && devRpcError.code !== 'PGRST202') {
-    console.error("Dev RPC Error:", devRpcError);
+  if (revRpcError && revRpcError.code !== 'PGRST202') {
+    console.error("Dev revisions RPC Error:", revRpcError);
   }
 
-  if (!devRpcError && devRpcData) {
-    devRevisionLeaderboard = devRpcData.map((row: any) => ({
+  if (!revRpcError && revRpcData) {
+    revisionModules = revRpcData.map((row: any) => ({
       devId: row.dev_id,
       devName: row.dev_name,
       devAvatar: row.dev_avatar,
-      totalRevisions: Number(row.total_revisions),
-      totalModules: Number(row.total_modules)
+      revisionCount: Number(row.revision_count || 0),
+      revisionDate: row.revision_date,
     }));
   } else {
-    // Fallback logic for Developer Revisions
-    const [{ data: allModulesForLeaderboard }, { data: allProfiles }] = await Promise.all([
+    const [{ data: revMods }, { data: revProfiles }] = await Promise.all([
       supabaseServer
         .from('project_modules')
-        .select('id, assigned_developer_id, revision_count, projects!inner(company_id)'),
+        .select('assigned_developer_id, revision_count, revision_date, projects!inner(company_id)'),
       supabaseServer
         .from('profiles')
         .select('id, full_name, avatar_path')
     ]);
 
-    if (allModulesForLeaderboard && allProfiles) {
-      const profilesMap = new Map(allProfiles.map(p => [p.id, { name: p.full_name, avatar: p.avatar_path }]));
-      const devStats: Record<string, { name: string; avatar: string | null; totalRevisions: number; totalModules: number }> = {};
+    const revProfilesMap = new Map(revProfiles?.map(p => [p.id, { name: p.full_name, avatar: p.avatar_path }]) || []);
 
-      allModulesForLeaderboard.forEach((m: any) => {
-        if (activeCompanyId && m.projects?.company_id !== activeCompanyId) return;
-
-        if (m.assigned_developer_id) {
-          const devId = m.assigned_developer_id;
-          const devProfile = profilesMap.get(devId) || { name: 'Unknown Developer', avatar: null };
-
-          if (!devStats[devId]) {
-            devStats[devId] = { name: devProfile.name as string, avatar: devProfile.avatar as string | null, totalRevisions: 0, totalModules: 0 };
-          }
-
-          devStats[devId].totalModules += 1;
-          devStats[devId].totalRevisions += (m.revision_count || 0);
-        }
+    revMods?.forEach((m: any) => {
+      if (activeCompanyId && m.projects?.company_id !== activeCompanyId) return;
+      if (!m.assigned_developer_id) return;
+      const prof = revProfilesMap.get(m.assigned_developer_id) || { name: 'Unknown Developer', avatar: null };
+      revisionModules.push({
+        devId: m.assigned_developer_id,
+        devName: prof.name as string,
+        devAvatar: (prof.avatar as string | null) ?? null,
+        revisionCount: Number(m.revision_count || 0),
+        revisionDate: m.revision_date ?? null,
       });
-
-      devRevisionLeaderboard = Object.entries(devStats)
-        .filter(([_, stat]) => stat.totalRevisions > 0)
-        .map(([id, stat]) => ({
-          devId: id,
-          devName: stat.name,
-          devAvatar: stat.avatar,
-          totalRevisions: stat.totalRevisions,
-          totalModules: stat.totalModules
-        }))
-        .sort((a, b) => b.totalRevisions - a.totalRevisions)
-        .slice(0, 3);
-    }
+    });
   }
 
   // Fetch total deployments and revisions across ALL projects for Weekly Activity
@@ -190,7 +176,8 @@ export default async function HallOfFamePage() {
         <FullscreenButton />
       </div>
 
-      {(pmLeaderboard.length > 0 || devRevisionLeaderboard.length > 0) && (
+      {(pmLeaderboard.length > 0 || revisionModules.length > 0) && (
+        <TimeRangeProvider>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
 
           <div className="lg:col-span-1 flex flex-col gap-6 h-full">
@@ -245,50 +232,7 @@ export default async function HallOfFamePage() {
               </div>
             )}
 
-            {devRevisionLeaderboard.length > 0 && (
-              <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex-1 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex gap-3 items-start">
-                    <div className="w-10 h-10 shrink-0 bg-orange-50 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                      <svg className="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h2 className="text-base font-black text-gray-900 dark:text-gray-100 leading-tight">Highest Revision Counts</h2>
-                      <p className="text-xs font-medium text-gray-500 mt-1">Developers with the highest number of revisions.</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-900/30 dark:text-orange-400 px-3 py-1.5 rounded-full uppercase tracking-wider shrink-0 mt-1">Top 3 Devs</span>
-                </div>
-
-                <div className="flex flex-col gap-6">
-                  {devRevisionLeaderboard.map((dev, idx) => (
-                    <div key={dev.devId} className="flex items-center gap-4">
-                      <div className="w-8 h-8 shrink-0 bg-orange-50 dark:bg-orange-900/30 rounded-full flex items-center justify-center text-xs font-black text-orange-500">
-                        {idx + 1}
-                      </div>
-                      <div className="w-10 h-10 shrink-0 bg-amber-50 dark:bg-amber-900/30 rounded-full flex items-center justify-center text-sm font-black text-amber-500 dark:text-amber-400 overflow-hidden border-2 border-amber-100 dark:border-amber-800/50">
-                        {dev.devAvatar ? (
-                          <img src={dev.devAvatar} alt={dev.devName} className="w-full h-full object-cover" />
-                        ) : (
-                          dev.devName.charAt(0).toUpperCase()
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-none mb-1">{dev.devName}</h3>
-                        <p className="text-xs mb-1">
-                          <span className="text-lg font-black text-orange-500">{dev.totalRevisions}</span> <span className="text-gray-500 font-medium">revisions</span>
-                        </p>
-                        <p className="text-[10px] font-medium text-gray-400">
-                          Revisions across {dev.totalModules} modules
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <DevRevisionBoard revisionModules={revisionModules} />
           </div>
           <div className="lg:col-span-2 h-full animate-slide-up" style={{ animationDelay: '0.3s' }}>
             <WeeklyActivityChart
@@ -299,6 +243,7 @@ export default async function HallOfFamePage() {
           </div>
 
         </div>
+        </TimeRangeProvider>
       )}
     </div>
   )

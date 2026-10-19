@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -10,39 +10,30 @@ import {
   Tooltip,
   ResponsiveContainer
 } from "recharts";
+import { useTimeRange } from "@/components/dashboard/TimeRangeContext";
 
 export default function WeeklyActivityChart({ 
-  totalDeployments = 0, 
-  totalRevisions = 0,
   modulesActivity = []
 }: { 
   totalDeployments?: number; 
   totalRevisions?: number; 
   modulesActivity?: any[];
 }) {
-  const [timeRange, setTimeRange] = useState("This Week");
+  const ctx = useTimeRange();
+  const timeRange = ctx?.timeRange ?? "This Week";
+  const setTimeRange = ctx?.setTimeRange ?? (() => {});
+  const bounds = ctx?.bounds;
 
   const chartData = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-
-    let startDate = new Date(now);
-    let endDate = new Date(now);
-    endDate.setHours(23, 59, 59, 999); // End of the day
-
-    if (timeRange === "This Week") {
-      const day = now.getDay() || 7; 
-      startDate.setDate(now.getDate() - day + 1); 
-      endDate.setDate(startDate.getDate() + 6); 
-    } else if (timeRange === "Last Week") {
-      const day = now.getDay() || 7;
-      startDate.setDate(now.getDate() - day - 6); 
-      endDate.setDate(startDate.getDate() + 6); 
-    } else if (timeRange === "This Month") {
-      startDate.setDate(1); 
-      endDate.setMonth(startDate.getMonth() + 1);
-      endDate.setDate(0); 
-    }
+    // Prefer the shared bounds so the chart and the revision leaderboard use identical windows
+    const { startDate, endDate } = bounds ?? (() => {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const s = new Date(now);
+      const e = new Date(now);
+      e.setHours(23, 59, 59, 999);
+      return { startDate: s, endDate: e };
+    })();
 
     if (timeRange === "This Month") {
       const data = [
@@ -91,7 +82,11 @@ export default function WeeklyActivityChart({
       });
       return data;
     }
-  }, [timeRange, modulesActivity]);
+  }, [timeRange, modulesActivity, bounds]);
+
+  // Card totals follow the selected range so they stay consistent with the graph
+  const rangeDeployments = chartData.reduce((sum, d) => sum + d.deployments, 0);
+  const rangeRevisions = chartData.reduce((sum, d) => sum + d.revisions, 0);
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-8 rounded-3xl shadow-sm h-full flex flex-col">
@@ -112,8 +107,8 @@ export default function WeeklyActivityChart({
       </div>
 
       {(() => {
-        const total = totalDeployments + totalRevisions;
-        const rate = total > 0 ? Math.round((totalDeployments / total) * 100) : 0;
+        const total = rangeDeployments + rangeRevisions;
+        const rate = total > 0 ? Math.round((rangeDeployments / total) * 100) : 0;
         return (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="flex items-center gap-4 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
@@ -124,7 +119,7 @@ export default function WeeklyActivityChart({
               </div>
               <div>
                 <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-0.5">Deployed</p>
-                <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">{totalDeployments}</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">{rangeDeployments}</p>
               </div>
             </div>
 
@@ -136,7 +131,7 @@ export default function WeeklyActivityChart({
               </div>
               <div>
                 <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-0.5">Revisions</p>
-                <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">{totalRevisions}</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">{rangeRevisions}</p>
               </div>
             </div>
 
