@@ -118,6 +118,19 @@ export default function QaMonitoringClient({
   const router = useRouter();
   const supabase = createClient();
 
+  // Realtime: any project_modules change re-fetches the server data
+  useEffect(() => {
+    const channel = supabase
+      .channel("qa-monitoring-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "project_modules" }, () => {
+        router.refresh();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router]);
+
   const handleRowClick = (mod: QaModule) => {
     setSelectedModule(mod);
     setNewStatus("");
