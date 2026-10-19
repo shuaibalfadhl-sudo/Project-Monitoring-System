@@ -129,7 +129,8 @@ export default function DeploymentClient({
   const filteredModules = modules.filter((m: any) => {
     const matchesSearch =
       m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
+      m.project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (m.auditor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
     const matchesPriority =
       priorityFilter === "all" || m.priority === priorityFilter;
     const matchesProject =
@@ -180,7 +181,7 @@ export default function DeploymentClient({
             </svg>
             {isRefreshing ? "Refreshing..." : "Refresh"}
           </button>
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full sm:w-96">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
                 className="h-4 w-4 text-gray-400"
@@ -199,7 +200,7 @@ export default function DeploymentClient({
             <input
               type="text"
               className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
-              placeholder="Search modules..."
+              placeholder="Search modules, auditors..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);

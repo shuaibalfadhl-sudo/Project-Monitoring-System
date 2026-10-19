@@ -74,7 +74,8 @@ export default function AllModulesClient({
   const filteredModules = initialModules.filter((m: any) => {
     const matchesSearch =
       m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
+      m.project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (m.assigned_developer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
     const matchesStatus = statusFilter === "all" || m.status === statusFilter;
     const matchesPriority =
       priorityFilter === "all" || m.priority === priorityFilter;
@@ -173,7 +174,7 @@ export default function AllModulesClient({
           </svg>
           {isRefreshing ? "Refreshing..." : "Refresh"}
         </button>
-        <div className="relative w-full sm:w-64">
+        <div className="relative w-full sm:w-96">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg
               className="h-4 w-4 text-gray-400"
@@ -192,7 +193,7 @@ export default function AllModulesClient({
           <input
             type="text"
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-            placeholder="Search modules..."
+            placeholder="Search modules, projects, developers..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
