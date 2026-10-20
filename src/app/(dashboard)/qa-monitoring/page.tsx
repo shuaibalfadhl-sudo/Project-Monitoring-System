@@ -113,11 +113,23 @@ export default async function QaMonitoringPage() {
     })
   }
 
-  // Auditing modules first, then newest to oldest by updated_at
+  // Auditing modules first, then by priority (critical → low), then newest to oldest by updated_at
+  const priorityRank = (p?: string) => {
+    switch (p) {
+      case 'critical': return 0
+      case 'high': return 1
+      case 'medium': return 2
+      case 'low': return 3
+      default: return 4
+    }
+  }
   allQaModules.sort((a, b) => {
     const aRank = a.status === 'auditing' ? 0 : 1
     const bRank = b.status === 'auditing' ? 0 : 1
     if (aRank !== bRank) return aRank - bRank
+    const ap = priorityRank(a.priority)
+    const bp = priorityRank(b.priority)
+    if (ap !== bp) return ap - bp
     return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   })
 
