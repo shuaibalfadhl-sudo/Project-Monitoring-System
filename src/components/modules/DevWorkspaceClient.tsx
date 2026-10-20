@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
+import { statusLabel as registryStatusLabel, statusBadgeClass, STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
 
 interface DevModule {
   id: string;
@@ -47,7 +48,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
   const [selectedModule, setSelectedModule] = useState<DevModule | null>(null);
   const [statusChangeTarget, setStatusChangeTarget] = useState<{
     module: DevModule;
-    newStatus: "revising" | "pm_review";
+    newStatus: "revising" | "pm_review" | "developing";
     actionLabel: string;
   } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -108,7 +109,8 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
         if (selectedModule?.id === mod.id) {
           setSelectedModule((prev) => (prev ? { ...prev, status: newStatus } : null));
         }
-        toast.success(`"${mod.name}" status updated to Revising`);
+        const label = newStatus === "developing" ? "Developing" : "Revising";
+        toast.success(`"${mod.name}" status updated to ${label}`);
       }
 
       setStatusChangeTarget(null);
@@ -121,6 +123,30 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
     }
   };
 
+  // Map a module's current status to its next developer action
+  const nextAction = (mod: DevModule) => {
+    if (mod.status === "revision")
+      return { newStatus: "revising" as const, actionLabel: "Start Revision" };
+    if (mod.status === "development")
+      return { newStatus: "developing" as const, actionLabel: "Start Development" };
+    return { newStatus: "pm_review" as const, actionLabel: "Submit for PM Review" };
+  };
+
+  const actionButtonClass = (ns: "revising" | "developing" | "pm_review") =>
+    ns === "revising"
+      ? "bg-purple-600 hover:bg-purple-700 active:scale-95"
+      : ns === "developing"
+      ? "bg-blue-600 hover:bg-blue-700 active:scale-95"
+      : "bg-indigo-600 hover:bg-indigo-700 active:scale-95";
+
+  const actionButtonText = (ns: "revising" | "developing" | "pm_review") =>
+    ns === "pm_review" ? "For PM Review" : ns === "developing" ? "Start Development" : "Start Revision";
+
+  const actionBusyText = (ns: "revising" | "developing" | "pm_review") =>
+    ns === "pm_review" ? "Submitting..." : "Starting...";
+
+  const statusLabel = (s?: string) => registryStatusLabel(s);
+
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
       case "critical": return "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50";
@@ -131,12 +157,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    if (status === "development") return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50";
-    if (status === "revision") return "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50";
-    if (status === "revising") return "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50";
-    return "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700";
-  };
+  const getStatusBadge = (status: string) => statusBadgeClass(status);
 
   const generatePagination = (current: number, total: number) => {
     if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -165,6 +186,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const devCount = filtered.filter((m) => m.status === "development").length;
+  const developingCount = filtered.filter((m) => m.status === "developing").length;
   const revisionCount = filtered.filter((m) => m.status === "revision").length;
   const revCount = filtered.filter((m) => m.status === "revising").length;
 
@@ -177,6 +199,10 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 p-5 rounded-2xl shadow-sm min-w-44">
             <h3 className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">In Development</h3>
             <p className="text-4xl font-black text-blue-600 dark:text-blue-400">{devCount}</p>
+          </div>
+          <div className="bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-100 dark:border-cyan-900/30 p-5 rounded-2xl shadow-sm min-w-44">
+            <h3 className="text-xs font-bold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider mb-1">Developing</h3>
+            <p className="text-4xl font-black text-cyan-600 dark:text-cyan-400">{developingCount}</p>
           </div>
           <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/30 p-5 rounded-2xl shadow-sm min-w-44">
             <h3 className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider mb-1">Revision</h3>
@@ -294,9 +320,9 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
             onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
           >
             <option value="all">All Statuses</option>
-            <option value="development">Development</option>
-            <option value="revision">Revision</option>
-            <option value="revising">Revising</option>
+            {statusesIn(STATUS_GROUPS.devWorkspace).map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
           </select>
 
           <select
@@ -346,6 +372,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
               <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                 {paginated.map((mod) => {
                   const isSubmitting = submittingId === mod.id;
+                  const act = nextAction(mod);
                   return (
                     <tr
                       key={mod.id}
@@ -379,41 +406,24 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
                       )}
                       <td className="py-4 px-6">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border capitalize ${getStatusBadge(mod.status)}`}>
-                          {mod.status === "revision" ? "Revision" : mod.status === "revising" ? "Revising" : "Development"}
+                          {statusLabel(mod.status)}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-right">
-                        {mod.status === "revision" ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setStatusChangeTarget({
-                                module: mod,
-                                newStatus: "revising",
-                                actionLabel: "Start Revision"
-                              });
-                            }}
-                            disabled={isSubmitting}
-                            className="py-2 px-4 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {isSubmitting ? "Starting..." : "Start Revision"}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setStatusChangeTarget({
-                                module: mod,
-                                newStatus: "pm_review",
-                                actionLabel: "Submit for PM Review"
-                              });
-                            }}
-                            disabled={isSubmitting}
-                            className="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {isSubmitting ? "Submitting..." : "For PM Review"}
-                          </button>
-                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStatusChangeTarget({
+                              module: mod,
+                              newStatus: act.newStatus,
+                              actionLabel: act.actionLabel
+                            });
+                          }}
+                          disabled={isSubmitting}
+                          className={`py-2 px-4 ${actionButtonClass(act.newStatus)} text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:opacity-50 whitespace-nowrap`}
+                        >
+                          {isSubmitting ? actionBusyText(act.newStatus) : actionButtonText(act.newStatus)}
+                        </button>
                       </td>
                     </tr>
                   );
@@ -547,7 +557,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
                 <div>
                   <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Status</p>
                   <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-bold ${getStatusBadge(selectedModule.status)}`}>
-                    {selectedModule.status === "revision" ? "Revision" : selectedModule.status === "revising" ? "Revising" : "Development"}
+                    {statusLabel(selectedModule.status)}
                   </span>
                 </div>
                 <div>
@@ -701,35 +711,24 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
               >
                 Close
               </button>
-              {selectedModule.status === "revision" ? (
-                <button
-                  onClick={() => {
-                    setStatusChangeTarget({
-                      module: selectedModule,
-                      newStatus: "revising",
-                      actionLabel: "Start Revision"
-                    });
-                  }}
-                  disabled={submittingId === selectedModule.id}
-                  className="px-5 py-2.5 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 active:scale-95 rounded-xl transition-all shadow-md disabled:opacity-50"
-                >
-                  {submittingId === selectedModule.id ? "Starting..." : "Start Revision"}
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setStatusChangeTarget({
-                      module: selectedModule,
-                      newStatus: "pm_review",
-                      actionLabel: "Submit for PM Review"
-                    });
-                  }}
-                  disabled={submittingId === selectedModule.id}
-                  className="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-xl transition-all shadow-md disabled:opacity-50"
-                >
-                  {submittingId === selectedModule.id ? "Submitting..." : "For PM Review"}
-                </button>
-              )}
+              {(() => {
+                const selAct = nextAction(selectedModule);
+                return (
+                  <button
+                    onClick={() => {
+                      setStatusChangeTarget({
+                        module: selectedModule,
+                        newStatus: selAct.newStatus,
+                        actionLabel: selAct.actionLabel
+                      });
+                    }}
+                    disabled={submittingId === selectedModule.id}
+                    className={`px-5 py-2.5 text-sm font-bold text-white ${actionButtonClass(selAct.newStatus)} rounded-xl transition-all shadow-md disabled:opacity-50`}
+                  >
+                    {submittingId === selectedModule.id ? actionBusyText(selAct.newStatus) : actionButtonText(selAct.newStatus)}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>,
@@ -742,15 +741,21 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
         onClose={() => setStatusChangeTarget(null)}
         onConfirm={handleConfirmStatusChange}
         isLoading={!!submittingId}
-        title={statusChangeTarget?.actionLabel === "Start Revision" ? "Start Revision" : "Submit for PM Review"}
+        title={statusChangeTarget?.actionLabel ?? "Confirm"}
         message={
           <>
             Are you sure you want to{" "}
             {statusChangeTarget?.newStatus === "revising" ? (
               <>
                 start revision for{" "}
-                <span className="font-bold text-slate-800 dark:text-white">"{statusChangeTarget.module.name}"</span>?
+                <span className="font-bold text-slate-800 dark:text-white">"{statusChangeTarget?.module.name}"</span>?
                 Status will change to <span className="font-bold text-purple-600 dark:text-purple-400">Revising</span>.
+              </>
+            ) : statusChangeTarget?.newStatus === "developing" ? (
+              <>
+                start development for{" "}
+                <span className="font-bold text-slate-800 dark:text-white">"{statusChangeTarget?.module.name}"</span>?
+                Status will change to <span className="font-bold text-blue-600 dark:text-blue-400">Developing</span>.
               </>
             ) : (
               <>
@@ -761,10 +766,12 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
             )}
           </>
         }
-        confirmText={statusChangeTarget?.actionLabel === "Start Revision" ? "Start Revision" : "Submit"}
+        confirmText={statusChangeTarget?.newStatus === "pm_review" ? "Submit" : statusChangeTarget?.actionLabel ?? "Confirm"}
         confirmButtonClass={
           statusChangeTarget?.newStatus === "revising"
             ? "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20"
+            : statusChangeTarget?.newStatus === "developing"
+            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"
             : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20"
         }
       />

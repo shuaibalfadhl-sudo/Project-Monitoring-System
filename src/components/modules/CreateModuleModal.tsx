@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { STATUS_GROUPS, statusesIn } from '@/lib/moduleStatuses'
 
 export default function CreateModuleModal({ projectId, isManager }: { projectId: string, isManager?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -155,25 +156,9 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     >
-                      <option value="pending">Pending</option>
-                      <option value="for data gathering">For Data Gathering</option>
-                      <option value="development">Development</option>
-                      <option value="pm_review">PM Review</option>
-                      <option value="for_qa">For QA</option>
-                      {isManager && (
-                        <option value="deployed">Deployed</option>
-                      )}
-                      {!isManager && (
-                        <>
-                          <option value="auditing">Auditing</option>
-                          <option value="for revision">For Revision</option>
-                          <option value="revision">Revision</option>
-                          <option value="revising">Revising</option>
-                          <option value="qa_approved">QA Approved</option>
-                          <option value="deployment">Deployment</option>
-                          <option value="deployed">Deployed</option>
-                        </>
-                      )}
+                      {statusesIn(isManager ? STATUS_GROUPS.createManager : STATUS_GROUPS.createAll).map((s) => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
                     </select>
                   </div>
                   <div>

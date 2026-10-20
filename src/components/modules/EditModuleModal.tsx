@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { ProjectModule, ModuleStatus } from '@/types/project'
+import { STATUS_GROUPS, statusesIn } from '@/lib/moduleStatuses'
 
 export default function EditModuleModal({ module, isManager, isQaRevisionMode, isSuperAdmin }: { module: ProjectModule, isManager?: boolean, isQaRevisionMode?: boolean, isSuperAdmin?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -227,31 +228,18 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                           {formData.status === "revision" && (
                             <option value="revision">Revision</option>
                           )}
-                          <option value="revising">Revising</option>
-                          <option value="pm_review">PM Review</option>
-                          <option value="for_qa">For QA</option>
+                          {statusesIn(STATUS_GROUPS.editQaRevision).map((s) => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                          ))}
                         </>
                       ) : (
-                        <>
-                          <option value="pending">Pending</option>
-                          <option value="for data gathering">For Data Gathering</option>
-                          <option value="development">Development</option>
-                          <option value="pm_review">PM Review</option>
-                          <option value="for_qa">For QA</option>
-                          {(!isManager || isSuperAdmin) && (
-                            <option value="auditing">Auditing</option>
-                          )}
-                          <option value="for revision">For Revision</option>
-                          <option value="revision">Revision</option>
-                          <option value="revising">Revising</option>
-                          {(!isManager || isSuperAdmin) && (
-                            <>
-                              <option value="qa_approved">QA Approved</option>
-                              <option value="deployment">Deployment</option>
-                              <option value="deployed">Deployed</option>
-                            </>
-                          )}
-                        </>
+                        statusesIn(
+                          (!isManager || isSuperAdmin)
+                            ? [...STATUS_GROUPS.editBase, ...STATUS_GROUPS.editExtra]
+                            : STATUS_GROUPS.editBase,
+                        ).map((s) => (
+                          <option key={s.value} value={s.value}>{s.label}</option>
+                        ))
                       )}
                     </select>
                   </div>

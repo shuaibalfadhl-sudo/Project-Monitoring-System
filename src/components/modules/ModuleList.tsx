@@ -11,6 +11,15 @@ import EditModuleModal from "@/components/modules/EditModuleModal";
 import ConfirmDeleteModal from "@/components/modules/ConfirmDeleteModal";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import ExcelJS from "exceljs";
+import SearchableSelect from "@/components/ui/SearchableSelect";
+import {
+  STATUS_GROUPS,
+  statusesIn,
+  statusLabel,
+  statusBadgeClass,
+  statusGanttClass,
+  statusExcelColors,
+} from "@/lib/moduleStatuses";
 
 interface ModuleListProps {
   modules: ProjectModule[];
@@ -169,37 +178,7 @@ export default function ModuleList({
     ];
   };
 
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case "for data gathering":
-      case "for_data_gathering":
-        return "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300";
-      case "development":
-        return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
-      case "pm_review":
-        return "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300";
-      case "for_qa":
-        return "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300";
-      case "auditing":
-        return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
-      case "for revision":
-      case "for_revision":
-        return "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300";
-      case "revision":
-        return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
-      case "revising":
-        return "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300";
-      case "qa_approved":
-        return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300";
-      case "deployment":
-        return "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300";
-      case "deployed":
-        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
-      case "pending":
-      default:
-        return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300";
-    }
-  };
+  const getStatusColor = (status?: string) => statusBadgeClass(status);
 
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
@@ -233,46 +212,9 @@ export default function ModuleList({
     currentPage * itemsPerPage,
   );
 
-  const getGanttBarColor = (status?: string) => {
-    switch (status) {
-      case "for data gathering":
-      case "for_data_gathering":
-        return "bg-teal-500";
-      case "development":
-        return "bg-blue-500";
-      case "pm_review":
-        return "bg-purple-500";
-      case "for_qa":
-        return "bg-orange-500";
-      case "auditing":
-        return "bg-amber-500";
-      case "for revision":
-      case "for_revision":
-      case "revision":
-        return "bg-rose-500";
-      case "revising":
-        return "bg-fuchsia-500";
-      case "qa_approved":
-        return "bg-green-500";
-      case "deployment":
-        return "bg-indigo-500";
-      case "deployed":
-        return "bg-emerald-500";
-      case "pending":
-      default:
-        return "bg-slate-400";
-    }
-  };
+  const getGanttBarColor = (status?: string) => statusGanttClass(status);
 
-  const formatStatusLabel = (status?: string) => {
-    if (!status) return "Pending";
-    if (status === "for_qa") return "For QA";
-    if (status === "for revision" || status === "for_revision") return "For Revision";
-    if (status === "qa_approved") return "QA Approved";
-    if (status === "for data gathering" || status === "for_data_gathering") return "For Data Gathering";
-    if (status === "pm_review") return "PM Review";
-    return status.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  };
+  const formatStatusLabel = (status?: string) => statusLabel(status);
 
   const ganttDomain = (() => {
     const rows = filteredModules;
@@ -338,22 +280,7 @@ export default function ModuleList({
     return fallback;
   };
 
-  // { fill, font } ARGB per raw status, mirroring the badge tints used in the list UI
-  const statusColors: Record<string, { fill: string; font: string }> = {
-    pending: { fill: "FFF3F4F6", font: "FF374151" },
-    "for data gathering": { fill: "FFCCFBF1", font: "FF0F766E" },
-    development: { fill: "FFDBEAFE", font: "FF1D4ED8" },
-    pm_review: { fill: "FFEDE9FE", font: "FF6D28D9" },
-    for_qa: { fill: "FFFFEDD5", font: "FFC2410C" },
-    auditing: { fill: "FFFEF3C7", font: "FFB45309" },
-    "for revision": { fill: "FFFFE4E6", font: "FFBE123C" },
-    revision: { fill: "FFB91C1C", font: "FFFFFFFF" },
-    revising: { fill: "FFEDE9FE", font: "FF6D28D9" },
-    qa_approved: { fill: "FFDCFCE7", font: "FF15803D" },
-    deployment: { fill: "FFE0E7FF", font: "FF4338CA" },
-    deployed: { fill: "FFD1FAE5", font: "FF047857" },
-  };
-
+  // Priority tints for Excel export (priorities are not part of the status registry)
   const priorityColors: Record<string, { fill: string; font: string }> = {
     critical: { fill: "FFFEE2E2", font: "FFB91C1C" },
     high: { fill: "FFFFEDD5", font: "FFC2410C" },
@@ -373,8 +300,7 @@ export default function ModuleList({
       badge?: (m: (typeof filteredModules)[number]) => { fill: string; font: string } | null;
     };
 
-    const statusBadge = (m: (typeof filteredModules)[number]) =>
-      statusColors[m.status] ?? { fill: "FFF3F4F6", font: "FF374151" };
+    const statusBadge = (m: (typeof filteredModules)[number]) => statusExcelColors(m.status);
 
     let cols: Cell[];
     let fileName: string;
@@ -618,28 +544,19 @@ export default function ModuleList({
           </div>
 
           {/* Status Filter */}
-          <select
-            className="w-full sm:w-40 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:text-white"
+          <SearchableSelect
+            className="w-full sm:w-44"
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(v) => {
+              setStatusFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="all">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="for data gathering">For Data Gathering</option>
-            <option value="development">Development</option>
-            <option value="pm_review">PM Review</option>
-            <option value="for_qa">For QA</option>
-            <option value="auditing">Auditing</option>
-            <option value="for revision">For Revision</option>
-            <option value="revision">Revision</option>
-            <option value="revising">Revising</option>
-            <option value="qa_approved">QA Approved</option>
-            <option value="deployment">Deployment</option>
-            <option value="deployed">Deployed</option>
-          </select>
+            options={statusesIn(STATUS_GROUPS.full).map((s) => ({ value: s.value, label: s.label }))}
+            allValue="all"
+            allLabel="All Statuses"
+            placeholder="All Statuses"
+            searchPlaceholder="Search statuses..."
+          />
 
           {/* Priority Filter */}
           <select
@@ -869,22 +786,15 @@ export default function ModuleList({
                             value={module.status || 'pending'}
                             onChange={(e) => handleQuickStatusChange(module.id, e.target.value)}
                           >
-                            <option value="pending" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Pending</option>
-                            <option value="for data gathering" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For Data Gathering</option>
-                            <option value="development" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Development</option>
-                            <option value="pm_review" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">PM Review</option>
-                            <option value="for_qa" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For QA</option>
-                            {isSuperAdmin && (
-                              <>
-                                <option value="auditing" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Auditing</option>
-                                <option value="qa_approved" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">QA Approved</option>
-                                <option value="deployment" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Deployment</option>
-                                <option value="deployed" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Deployed</option>
-                              </>
-                            )}
-                            <option value="for revision" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">For Revision</option>
-                            <option value="revision" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revision</option>
-                            <option value="revising" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">Revising</option>
+                            {statusesIn(
+                              isSuperAdmin
+                                ? [...STATUS_GROUPS.quickBase, ...STATUS_GROUPS.quickSuperExtra]
+                                : STATUS_GROUPS.quickBase
+                            ).map((s) => (
+                              <option key={s.value} value={s.value} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">
+                                {s.label}
+                              </option>
+                            ))}
                           </select>
                           <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-current opacity-50 group-hover:opacity-100 transition-opacity z-10">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

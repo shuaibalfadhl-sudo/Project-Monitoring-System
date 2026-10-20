@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
+import { STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
 
 interface QaModule {
   id: string;
@@ -543,8 +544,9 @@ export default function QaMonitoringClient({
             }}
           >
             <option value="all">All Statuses</option>
-            <option value="for_qa">For QA</option>
-            <option value="auditing">Auditing</option>
+            {statusesIn(STATUS_GROUPS.qaMonitoring).map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
           </select>
 
           <select
