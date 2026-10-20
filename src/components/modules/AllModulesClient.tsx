@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import EditModuleModal from "@/components/modules/EditModuleModal";
+import ExcelJS from "exceljs";
 
 export default function AllModulesClient({
   initialModules,
@@ -22,6 +23,7 @@ export default function AllModulesClient({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "gantt">("table");
 
   const [selectedModule, setSelectedModule] = useState<any | null>(null);
 
@@ -145,9 +147,297 @@ export default function AllModulesClient({
     }
   };
 
+  const getGanttBarColor = (status?: string) => {
+    switch (status) {
+      case "for data gathering":
+      case "for_data_gathering":
+        return "bg-teal-500";
+      case "development":
+        return "bg-blue-500";
+      case "pm_review":
+        return "bg-purple-500";
+      case "for_qa":
+        return "bg-orange-500";
+      case "auditing":
+        return "bg-amber-500";
+      case "for revision":
+      case "for_revision":
+      case "revision":
+        return "bg-rose-500";
+      case "revising":
+        return "bg-fuchsia-500";
+      case "qa_approved":
+        return "bg-green-500";
+      case "deployment":
+        return "bg-indigo-500";
+      case "deployed":
+        return "bg-emerald-500";
+      case "pending":
+      default:
+        return "bg-slate-400";
+    }
+  };
+
+  const ganttDomain = (() => {
+    const rows = filteredModules;
+    if (rows.length === 0) return null;
+    let start = Infinity;
+    let end = -Infinity;
+    rows.forEach((m) => {
+      const s = new Date(m.development_date || m.created_at).getTime();
+      if (!Number.isNaN(s)) start = Math.min(start, s);
+      const e = m.deadline ? new Date(m.deadline).getTime() : s;
+      if (!Number.isNaN(e)) end = Math.max(end, e);
+    });
+    const today = Date.now();
+    start = Math.min(start, today);
+    end = Math.max(end, today);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+      end = start + 86400000;
+    }
+    const total = end - start;
+    const pos = (ms: number) => Math.min(100, Math.max(0, ((ms - start) / total) * 100));
+    return { start, end, total, pos };
+  })();
+
+  const ganttTicks = ganttDomain
+    ? Array.from({ length: 5 }, (_, i) => {
+        const ms = ganttDomain.start + (ganttDomain.total * i) / 4;
+        return {
+          pct: (i / 4) * 100,
+          label: new Date(ms).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "2-digit",
+          }),
+        };
+      })
+    : [];
+
+  const fmtDate = (v?: string | null) =>
+    v
+      ? new Date(v).toLocaleDateString("en-US", {
+          month: "2-digit",
+          day: "2-digit",
+          year: "numeric",
+        })
+      : "";
+
+  const hexToArgb = (input: string, fallback: string): string => {
+    const s = input.trim();
+    if (s.startsWith("#")) {
+      let h = s.slice(1);
+      if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+      if (/^[0-9a-fA-F]{6}$/.test(h)) return `FF${h.toUpperCase()}`;
+      return fallback;
+    }
+    const m = s.match(/rgba?\(([^)]+)\)/i);
+    if (m) {
+      const [r, g, b] = m[1].split(",").map((n) => parseInt(n.trim(), 10));
+      if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
+        const to = (n: number) => n.toString(16).padStart(2, "0").toUpperCase();
+        return `FF${to(r)}${to(g)}${to(b)}`;
+      }
+    }
+    return fallback;
+  };
+
+  const statusColors: Record<string, { fill: string; font: string }> = {
+    pending: { fill: "FFF3F4F6", font: "FF374151" },
+    "for data gathering": { fill: "FFCCFBF1", font: "FF0F766E" },
+    development: { fill: "FFDBEAFE", font: "FF1D4ED8" },
+    pm_review: { fill: "FFEDE9FE", font: "FF6D28D9" },
+    for_qa: { fill: "FFFFEDD5", font: "FFC2410C" },
+    auditing: { fill: "FFFEF3C7", font: "FFB45309" },
+    "for revision": { fill: "FFFFE4E6", font: "FFBE123C" },
+    revision: { fill: "FFFEE2E2", font: "FFBE123C" },
+    revising: { fill: "FFEDE9FE", font: "FF6D28D9" },
+    qa_approved: { fill: "FFDCFCE7", font: "FF15803D" },
+    deployment: { fill: "FFE0E7FF", font: "FF4338CA" },
+    deployed: { fill: "FFD1FAE5", font: "FF047857" },
+  };
+
+  const priorityColors: Record<string, { fill: string; font: string }> = {
+    critical: { fill: "FFFEE2E2", font: "FFB91C1C" },
+    high: { fill: "FFFFEDD5", font: "FFC2410C" },
+    medium: { fill: "FFFEF9C3", font: "FFA16207" },
+    low: { fill: "FFDCFCE7", font: "FF15803D" },
+  };
+
+  const handleExportExcel = async () => {
+    type Cell = {
+      header: string;
+      width: number;
+      value: (m: any) => string;
+      badge?: (m: any) => { fill: string; font: string } | null;
+    };
+
+    const statusBadge = (m: any) =>
+      statusColors[m.status] ?? { fill: "FFF3F4F6", font: "FF374151" };
+
+    let cols: Cell[];
+    let fileName: string;
+    let sheetName: string;
+
+    if (viewMode === "gantt") {
+      cols = [
+        { header: "Module Name", width: 34, value: (m) => m.name },
+        { header: "Project", width: 26, value: (m) => m.project?.name || "" },
+        { header: "Developer", width: 22, value: (m) => m.assigned_developer_name || "Unassigned" },
+        { header: "Status", width: 18, value: (m) => formatStatus(m.status), badge: statusBadge },
+        { header: "Start (Development Date)", width: 22, value: (m) => fmtDate(m.development_date || m.created_at) },
+        { header: "End (Deadline)", width: 18, value: (m) => fmtDate(m.deadline) },
+        {
+          header: "Duration (Days)",
+          width: 16,
+          value: (m) => {
+            const startMs = new Date(m.development_date || m.created_at).getTime();
+            const endMs = m.deadline ? new Date(m.deadline).getTime() : null;
+            return endMs != null && Number.isFinite(startMs)
+              ? String(Math.max(0, Math.ceil((endMs - startMs) / 86400000)))
+              : "";
+          },
+        },
+        {
+          header: "Overdue",
+          width: 12,
+          value: (m) => {
+            const endMs = m.deadline ? new Date(m.deadline).getTime() : null;
+            return endMs != null && endMs < Date.now() && m.status !== "deployed" ? "Yes" : "No";
+          },
+          badge: (m) => {
+            const endMs = m.deadline ? new Date(m.deadline).getTime() : null;
+            const overdue = endMs != null && endMs < Date.now() && m.status !== "deployed";
+            return overdue ? { fill: "FFFEE2E2", font: "FFB91C1C" } : null;
+          },
+        },
+      ];
+      fileName = "all-modules-gantt.xlsx";
+      sheetName = "Gantt";
+    } else {
+      cols = [
+        { header: "Module Name", width: 34, value: (m) => m.name },
+        { header: "Project", width: 26, value: (m) => m.project?.name || "" },
+        {
+          header: "Priority",
+          width: 14,
+          value: (m) => m.priority,
+          badge: (m) => priorityColors[m.priority] ?? null,
+        },
+        { header: "Developer", width: 22, value: (m) => m.assigned_developer_name || "Unassigned" },
+        { header: "Status", width: 18, value: (m) => formatStatus(m.status), badge: statusBadge },
+        { header: "Development Date", width: 20, value: (m) => fmtDate(m.development_date) },
+        { header: "Deadline", width: 16, value: (m) => fmtDate(m.deadline) },
+        { header: "Revision Count", width: 16, value: (m) => String(m.revision_count ?? 0) },
+        { header: "Website Link", width: 30, value: (m) => m.website_link || "" },
+        { header: "Description", width: 50, value: (m) => m.description || "" },
+      ];
+      fileName = "all-modules.xlsx";
+      sheetName = "Modules";
+    }
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "Project Monitoring System";
+    const ws = wb.addWorksheet(sheetName, {
+      views: [{ state: "frozen", ySplit: 2 }],
+    });
+
+    const brandArgb = hexToArgb(
+      getComputedStyle(document.documentElement).getPropertyValue("--sys-primary") || "",
+      "FF1A2333",
+    );
+    ws.mergeCells(1, 1, 1, cols.length);
+    const titleCell = ws.getCell(1, 1);
+    titleCell.value = "All Modules";
+    titleCell.font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+    titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: brandArgb } };
+    titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+    ws.getRow(1).height = 28;
+
+    const headerRow = ws.getRow(2);
+    cols.forEach((c, i) => {
+      const cell = headerRow.getCell(i + 1);
+      cell.value = c.header;
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: brandArgb } };
+      cell.alignment = { vertical: "middle", horizontal: "left" };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFFFFFFF" } },
+        left: { style: "thin", color: { argb: "FFFFFFFF" } },
+        bottom: { style: "thin", color: { argb: "FFD1D5DB" } },
+        right: { style: "thin", color: { argb: "FFD1D5DB" } },
+      };
+    });
+    headerRow.height = 22;
+    ws.columns = cols.map((c) => ({ width: c.width }));
+
+    filteredModules.forEach((m) => {
+      const row = ws.addRow(cols.map((c) => c.value(m)));
+      cols.forEach((c, i) => {
+        const cell = row.getCell(i + 1);
+        cell.alignment = { vertical: "middle", horizontal: "left", wrapText: c.width >= 40 };
+        cell.border = {
+          bottom: { style: "hair", color: { argb: "FFE5E7EB" } },
+          left: { style: "thin", color: { argb: "FFF3F4F6" } },
+          right: { style: "thin", color: { argb: "FFF3F4F6" } },
+        };
+        const badge = c.badge?.(m);
+        if (badge) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: badge.fill } };
+          cell.font = { bold: true, color: { argb: badge.font } };
+        }
+      });
+      row.height = 20;
+    });
+
+    ws.autoFilter = {
+      from: { row: 2, column: 1 },
+      to: { row: 2, column: cols.length },
+    };
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3 items-center justify-end">
+        {/* View toggle */}
+        <div className="inline-flex rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1">
+          <button
+            onClick={() => setViewMode("table")}
+            className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${
+              viewMode === "table"
+                ? "bg-[var(--sys-primary)] text-white shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+            }`}
+          >
+            Table
+          </button>
+          <button
+            onClick={() => {
+              setViewMode("gantt");
+              setCurrentPage(1);
+            }}
+            className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${
+              viewMode === "gantt"
+                ? "bg-[var(--sys-primary)] text-white shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+            }`}
+          >
+            Gantt
+          </button>
+        </div>
         {/* Refresh Button */}
         <button
           onClick={() => {
@@ -239,9 +529,120 @@ export default function AllModulesClient({
           <option value="medium">Medium</option>
           <option value="low">Low</option>
         </select>
+
+        <button
+          onClick={handleExportExcel}
+          disabled={filteredModules.length === 0}
+          title={`Download the current ${viewMode === "gantt" ? "Gantt" : "table"} data as Excel`}
+          className="flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-medium bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+        >
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3"
+            />
+          </svg>
+          Export
+        </button>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-700 overflow-hidden">
+        {viewMode === "gantt" ? (
+          ganttDomain ? (
+            <div className="overflow-x-auto p-8">
+              <div className="min-w-[640px]">
+                <div className="flex items-center mb-3 border-b border-gray-100 dark:border-slate-700 pb-2">
+                  <div className="w-56 shrink-0 px-1 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                    Module
+                  </div>
+                  <div className="relative flex-1 h-5">
+                    {ganttTicks.map((t, i) => (
+                      <span
+                        key={i}
+                        className="absolute -translate-x-1/2 text-[10px] font-bold text-gray-400 dark:text-slate-500 whitespace-nowrap"
+                        style={{ left: `${t.pct}%` }}
+                      >
+                        {t.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {filteredModules.map((module: any) => {
+                    const s = new Date(module.development_date || module.created_at).getTime();
+                    const e = module.deadline ? new Date(module.deadline).getTime() : s;
+                    const left = ganttDomain.pos(s);
+                    const width = Math.max(ganttDomain.pos(e) - left, 0.8);
+                    const overdue =
+                      !!module.deadline && e < Date.now() && module.status !== "deployed";
+                    return (
+                      <div
+                        key={module.id}
+                        onClick={() => setSelectedModule(module)}
+                        className="flex items-center cursor-pointer group"
+                      >
+                        <div className="w-56 shrink-0 px-1 pr-3">
+                          <span className="block truncate text-sm font-bold text-[var(--sys-primary)]">
+                            {module.name}
+                          </span>
+                          <span className="block truncate text-[11px] text-gray-400 dark:text-slate-500">
+                            {module.project?.name} · {formatStatus(module.status)}
+                          </span>
+                        </div>
+                        <div className="relative flex-1 h-9 rounded-lg bg-gray-50 dark:bg-slate-900/60">
+                          {ganttTicks.map((t, i) => (
+                            <span
+                              key={i}
+                              className="absolute top-0 bottom-0 w-px bg-gray-100 dark:bg-slate-700/60"
+                              style={{ left: `${t.pct}%` }}
+                            />
+                          ))}
+                          <span
+                            className="absolute top-0 bottom-0 w-px bg-gray-400/70 dark:bg-slate-500"
+                            style={{ left: `${ganttDomain.pos(Date.now())}%` }}
+                            title="Today"
+                          />
+                          <div
+                            className={`absolute top-1/2 -translate-y-1/2 h-5 rounded-full ${getGanttBarColor(
+                              module.status,
+                            )} shadow-sm transition-all group-hover:h-6 ${
+                              overdue ? "ring-2 ring-red-400" : ""
+                            }`}
+                            style={{ left: `${left}%`, width: `${width}%` }}
+                            title={`${module.name} · ${formatStatus(module.status)}${
+                              module.deadline
+                                ? ` · due ${new Date(module.deadline).toLocaleDateString()}`
+                                : " · no deadline"
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <p className="mt-4 text-xs text-gray-400 dark:text-slate-500 font-medium">
+                  Bars span development date to deadline · vertical line is today · red ring marks overdue.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-slate-400 font-medium">
+                No timeline data.
+              </p>
+            </div>
+          )
+        ) : (
+          <>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -483,6 +884,8 @@ export default function AllModulesClient({
               </div>
             )}
           </div>
+        )}
+          </>
         )}
       </div>
 

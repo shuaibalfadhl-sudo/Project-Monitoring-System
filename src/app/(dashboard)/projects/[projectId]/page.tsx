@@ -225,6 +225,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
       <ModuleList
         modules={mappedModules}
         projectId={project.id}
+        projectName={project.name}
         isManager={isManager}
         isAuditor={isAuditor}
         isDeveloper={isDeveloper}

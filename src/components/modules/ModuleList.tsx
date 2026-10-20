@@ -10,10 +10,12 @@ import CreateModuleModal from "@/components/modules/CreateModuleModal";
 import EditModuleModal from "@/components/modules/EditModuleModal";
 import ConfirmDeleteModal from "@/components/modules/ConfirmDeleteModal";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
+import ExcelJS from "exceljs";
 
 interface ModuleListProps {
   modules: ProjectModule[];
   projectId: string;
+  projectName?: string;
   isManager: boolean;
   isAuditor: boolean;
   isDeveloper?: boolean;
@@ -23,6 +25,7 @@ interface ModuleListProps {
 export default function ModuleList({
   modules,
   projectId,
+  projectName,
   isManager,
   isAuditor,
   isDeveloper,
@@ -307,6 +310,226 @@ export default function ModuleList({
       })
     : [];
 
+  const fmtDate = (v?: string | null) =>
+    v
+      ? new Date(v).toLocaleDateString("en-US", {
+          month: "2-digit",
+          day: "2-digit",
+          year: "numeric",
+        })
+      : "";
+
+  const hexToArgb = (input: string, fallback: string): string => {
+    const s = input.trim();
+    if (s.startsWith("#")) {
+      let h = s.slice(1);
+      if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+      if (/^[0-9a-fA-F]{6}$/.test(h)) return `FF${h.toUpperCase()}`;
+      return fallback;
+    }
+    const m = s.match(/rgba?\(([^)]+)\)/i);
+    if (m) {
+      const [r, g, b] = m[1].split(",").map((n) => parseInt(n.trim(), 10));
+      if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
+        const to = (n: number) => n.toString(16).padStart(2, "0").toUpperCase();
+        return `FF${to(r)}${to(g)}${to(b)}`;
+      }
+    }
+    return fallback;
+  };
+
+  // { fill, font } ARGB per raw status, mirroring the badge tints used in the list UI
+  const statusColors: Record<string, { fill: string; font: string }> = {
+    pending: { fill: "FFF3F4F6", font: "FF374151" },
+    "for data gathering": { fill: "FFCCFBF1", font: "FF0F766E" },
+    development: { fill: "FFDBEAFE", font: "FF1D4ED8" },
+    pm_review: { fill: "FFEDE9FE", font: "FF6D28D9" },
+    for_qa: { fill: "FFFFEDD5", font: "FFC2410C" },
+    auditing: { fill: "FFFEF3C7", font: "FFB45309" },
+    "for revision": { fill: "FFFFE4E6", font: "FFBE123C" },
+    revision: { fill: "FFB91C1C", font: "FFFFFFFF" },
+    revising: { fill: "FFEDE9FE", font: "FF6D28D9" },
+    qa_approved: { fill: "FFDCFCE7", font: "FF15803D" },
+    deployment: { fill: "FFE0E7FF", font: "FF4338CA" },
+    deployed: { fill: "FFD1FAE5", font: "FF047857" },
+  };
+
+  const priorityColors: Record<string, { fill: string; font: string }> = {
+    critical: { fill: "FFFEE2E2", font: "FFB91C1C" },
+    high: { fill: "FFFFEDD5", font: "FFC2410C" },
+    medium: { fill: "FFFEF9C3", font: "FFA16207" },
+    low: { fill: "FFDCFCE7", font: "FF15803D" },
+  };
+
+  const handleExportExcel = async () => {
+    const safeName = (projectName || projectId || "project")
+      .replace(/[^\w.-]+/g, "_")
+      .slice(0, 60);
+
+    type Cell = {
+      header: string;
+      width: number;
+      value: (m: (typeof filteredModules)[number]) => string;
+      badge?: (m: (typeof filteredModules)[number]) => { fill: string; font: string } | null;
+    };
+
+    const statusBadge = (m: (typeof filteredModules)[number]) =>
+      statusColors[m.status] ?? { fill: "FFF3F4F6", font: "FF374151" };
+
+    let cols: Cell[];
+    let fileName: string;
+    let sheetName: string;
+
+    if (viewMode === "gantt") {
+      cols = [
+        { header: "Module Name", width: 36, value: (m) => m.name },
+        { header: "Developer", width: 22, value: (m) => m.assigned_developer_name || "Unassigned" },
+        {
+          header: "Status",
+          width: 18,
+          value: (m) => formatStatusLabel(m.status),
+          badge: statusBadge,
+        },
+        {
+          header: "Start (Development Date)",
+          width: 22,
+          value: (m) => fmtDate(m.development_date || m.created_at),
+        },
+        { header: "End (Deadline)", width: 18, value: (m) => fmtDate(m.deadline) },
+        {
+          header: "Duration (Days)",
+          width: 16,
+          value: (m) => {
+            const startMs = new Date(m.development_date || m.created_at).getTime();
+            const endMs = m.deadline ? new Date(m.deadline).getTime() : null;
+            return endMs != null && Number.isFinite(startMs)
+              ? String(Math.max(0, Math.ceil((endMs - startMs) / 86400000)))
+              : "";
+          },
+        },
+        {
+          header: "Overdue",
+          width: 12,
+          value: (m) => {
+            const endMs = m.deadline ? new Date(m.deadline).getTime() : null;
+            return endMs != null && endMs < Date.now() && m.status !== "deployed" ? "Yes" : "No";
+          },
+          badge: (m) => {
+            const endMs = m.deadline ? new Date(m.deadline).getTime() : null;
+            const overdue = endMs != null && endMs < Date.now() && m.status !== "deployed";
+            return overdue ? { fill: "FFFEE2E2", font: "FFB91C1C" } : null;
+          },
+        },
+      ];
+      fileName = `${safeName}-gantt.xlsx`;
+      sheetName = "Gantt";
+    } else {
+      cols = [
+        { header: "Module Name", width: 36, value: (m) => m.name },
+        {
+          header: "Category",
+          width: 18,
+          value: (m) => (m.category ? m.category.replace("_", " ") : "New Module"),
+        },
+        {
+          header: "Priority",
+          width: 14,
+          value: (m) => m.priority,
+          badge: (m) => priorityColors[m.priority] ?? null,
+        },
+        { header: "Developer", width: 22, value: (m) => m.assigned_developer_name || "Unassigned" },
+        {
+          header: "Status",
+          width: 18,
+          value: (m) => formatStatusLabel(m.status),
+          badge: statusBadge,
+        },
+        { header: "Development Date", width: 20, value: (m) => fmtDate(m.development_date) },
+        { header: "Deadline", width: 16, value: (m) => fmtDate(m.deadline) },
+        { header: "Revision Count", width: 16, value: (m) => String(m.revision_count ?? 0) },
+        { header: "Website Link", width: 30, value: (m) => m.website_link || "" },
+        { header: "Description", width: 50, value: (m) => m.description || "" },
+      ];
+      fileName = `${safeName}-modules.xlsx`;
+      sheetName = "Modules";
+    }
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "Project Monitoring System";
+    const ws = wb.addWorksheet(sheetName, {
+      views: [{ state: "frozen", ySplit: 2 }],
+    });
+
+    // Title row spanning the full width, tinted with the live brand color
+    const brandArgb = hexToArgb(
+      getComputedStyle(document.documentElement).getPropertyValue("--sys-primary") || "",
+      "FF1A2333",
+    );
+    ws.mergeCells(1, 1, 1, cols.length);
+    const titleCell = ws.getCell(1, 1);
+    titleCell.value = projectName || "Project Modules";
+    titleCell.font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+    titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: brandArgb } };
+    titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+    ws.getRow(1).height = 28;
+
+    // Header row
+    const headerRow = ws.getRow(2);
+    cols.forEach((c, i) => {
+      const cell = headerRow.getCell(i + 1);
+      cell.value = c.header;
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: brandArgb } };
+      cell.alignment = { vertical: "middle", horizontal: "left" };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFFFFFFF" } },
+        left: { style: "thin", color: { argb: "FFFFFFFF" } },
+        bottom: { style: "thin", color: { argb: "FFD1D5DB" } },
+        right: { style: "thin", color: { argb: "FFD1D5DB" } },
+      };
+    });
+    headerRow.height = 22;
+    ws.columns = cols.map((c) => ({ width: c.width }));
+
+    // Data rows
+    filteredModules.forEach((m) => {
+      const row = ws.addRow(cols.map((c) => c.value(m)));
+      cols.forEach((c, i) => {
+        const cell = row.getCell(i + 1);
+        cell.alignment = { vertical: "middle", horizontal: "left", wrapText: c.width >= 40 };
+        cell.border = {
+          bottom: { style: "hair", color: { argb: "FFE5E7EB" } },
+          left: { style: "thin", color: { argb: "FFF3F4F6" } },
+          right: { style: "thin", color: { argb: "FFF3F4F6" } },
+        };
+        const badge = c.badge?.(m);
+        if (badge) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: badge.fill } };
+          cell.font = { bold: true, color: { argb: badge.font } };
+        }
+      });
+      row.height = 20;
+    });
+
+    ws.autoFilter = {
+      from: { row: 2, column: 1 },
+      to: { row: 2, column: cols.length },
+    };
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-800 overflow-hidden">
       <div className="p-6 sm:p-8 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -433,6 +656,28 @@ export default function ModuleList({
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+
+          <button
+            onClick={handleExportExcel}
+            disabled={filteredModules.length === 0}
+            title={`Download the current ${viewMode === "gantt" ? "Gantt" : "table"} data as Excel`}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-medium bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3"
+              />
+            </svg>
+            Export
+          </button>
 
           <CreateModuleModal projectId={projectId} isManager={isManager} />
         </div>
