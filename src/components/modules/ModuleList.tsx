@@ -43,6 +43,7 @@ export default function ModuleList({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "gantt">("table");
 
   const [newStatus, setNewStatus] = useState<string>("");
   const [reworkLink, setReworkLink] = useState<string>("");
@@ -229,12 +230,115 @@ export default function ModuleList({
     currentPage * itemsPerPage,
   );
 
+  const getGanttBarColor = (status?: string) => {
+    switch (status) {
+      case "for data gathering":
+      case "for_data_gathering":
+        return "bg-teal-500";
+      case "development":
+        return "bg-blue-500";
+      case "pm_review":
+        return "bg-purple-500";
+      case "for_qa":
+        return "bg-orange-500";
+      case "auditing":
+        return "bg-amber-500";
+      case "for revision":
+      case "for_revision":
+      case "revision":
+        return "bg-rose-500";
+      case "revising":
+        return "bg-fuchsia-500";
+      case "qa_approved":
+        return "bg-green-500";
+      case "deployment":
+        return "bg-indigo-500";
+      case "deployed":
+        return "bg-emerald-500";
+      case "pending":
+      default:
+        return "bg-slate-400";
+    }
+  };
+
+  const formatStatusLabel = (status?: string) => {
+    if (!status) return "Pending";
+    if (status === "for_qa") return "For QA";
+    if (status === "for revision" || status === "for_revision") return "For Revision";
+    if (status === "qa_approved") return "QA Approved";
+    if (status === "for data gathering" || status === "for_data_gathering") return "For Data Gathering";
+    if (status === "pm_review") return "PM Review";
+    return status.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+  const ganttDomain = (() => {
+    const rows = filteredModules;
+    if (rows.length === 0) return null;
+    let start = Infinity;
+    let end = -Infinity;
+    rows.forEach((m) => {
+      const s = new Date(m.development_date || m.created_at).getTime();
+      if (!Number.isNaN(s)) start = Math.min(start, s);
+      const e = m.deadline ? new Date(m.deadline).getTime() : s;
+      if (!Number.isNaN(e)) end = Math.max(end, e);
+    });
+    const today = Date.now();
+    start = Math.min(start, today);
+    end = Math.max(end, today);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+      end = start + 86400000;
+    }
+    const total = end - start;
+    const pos = (ms: number) => Math.min(100, Math.max(0, ((ms - start) / total) * 100));
+    return { start, end, total, pos };
+  })();
+
+  const ganttTicks = ganttDomain
+    ? Array.from({ length: 5 }, (_, i) => {
+        const ms = ganttDomain.start + (ganttDomain.total * i) / 4;
+        return {
+          pct: (i / 4) * 100,
+          label: new Date(ms).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "2-digit",
+          }),
+        };
+      })
+    : [];
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-800 overflow-hidden">
       <div className="p-6 sm:p-8 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-xl font-bold text-[var(--sys-primary)]">Modules</h2>
 
         <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3 items-center">
+          {/* View toggle */}
+          <div className="inline-flex rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1">
+            <button
+              onClick={() => setViewMode("table")}
+              className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${
+                viewMode === "table"
+                  ? "bg-[var(--sys-primary)] text-white shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+            >
+              Table
+            </button>
+            <button
+              onClick={() => {
+                setViewMode("gantt");
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${
+                viewMode === "gantt"
+                  ? "bg-[var(--sys-primary)] text-white shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+            >
+              Gantt
+            </button>
+          </div>
           {/* Refresh Button */}
           <button
             onClick={() => {
@@ -347,6 +451,95 @@ export default function ModuleList({
               No modules match your filters.
             </p>
           </div>
+        ) : viewMode === "gantt" ? (
+          ganttDomain ? (
+            <div className="overflow-x-auto">
+              <div className="min-w-[640px]">
+                <div className="flex items-center mb-3 border-b border-gray-100 dark:border-slate-800 pb-2">
+                  <div className="w-56 shrink-0 px-1 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                    Module
+                  </div>
+                  <div className="relative flex-1 h-5">
+                    {ganttTicks.map((t, i) => (
+                      <span
+                        key={i}
+                        className="absolute -translate-x-1/2 text-[10px] font-bold text-gray-400 dark:text-slate-500 whitespace-nowrap"
+                        style={{ left: `${t.pct}%` }}
+                      >
+                        {t.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {filteredModules.map((module) => {
+                    const s = new Date(module.development_date || module.created_at).getTime();
+                    const e = module.deadline
+                      ? new Date(module.deadline).getTime()
+                      : s;
+                    const left = ganttDomain.pos(s);
+                    const width = Math.max(ganttDomain.pos(e) - left, 0.8);
+                    const overdue =
+                      !!module.deadline && e < Date.now() && module.status !== "deployed";
+                    return (
+                      <div
+                        key={module.id}
+                        onClick={() => openModal(module)}
+                        className="flex items-center cursor-pointer group"
+                      >
+                        <div className="w-56 shrink-0 px-1 pr-3">
+                          <span className="block truncate text-sm font-bold text-[var(--sys-primary)]">
+                            {module.name}
+                          </span>
+                          <span className="block truncate text-[11px] text-gray-400 dark:text-slate-500">
+                            {formatStatusLabel(module.status)}
+                          </span>
+                        </div>
+                        <div className="relative flex-1 h-9 rounded-lg bg-gray-50 dark:bg-slate-800/60">
+                          {ganttTicks.map((t, i) => (
+                            <span
+                              key={i}
+                              className="absolute top-0 bottom-0 w-px bg-gray-100 dark:bg-slate-700/60"
+                              style={{ left: `${t.pct}%` }}
+                            />
+                          ))}
+                          <span
+                            className="absolute top-0 bottom-0 w-px bg-gray-400/70 dark:bg-slate-500"
+                            style={{ left: `${ganttDomain.pos(Date.now())}%` }}
+                            title="Today"
+                          />
+                          <div
+                            className={`absolute top-1/2 -translate-y-1/2 h-5 rounded-full ${getGanttBarColor(
+                              module.status,
+                            )} shadow-sm transition-all group-hover:h-6 ${
+                              overdue ? "ring-2 ring-red-400" : ""
+                            }`}
+                            style={{ left: `${left}%`, width: `${width}%` }}
+                            title={`${module.name} · ${formatStatusLabel(module.status)}${
+                              module.deadline
+                                ? ` · due ${new Date(module.deadline).toLocaleDateString()}`
+                                : " · no deadline"
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <p className="mt-4 text-xs text-gray-400 dark:text-slate-500 font-medium">
+                  Bars span development date to deadline · vertical line is today · red ring marks overdue.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-slate-400 font-medium">
+                No timeline data.
+              </p>
+            </div>
+          )
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -704,6 +897,24 @@ export default function ModuleList({
                   ) : (
                     <span className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
                       No deadline set
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Development Date
+                  </h3>
+                  {selectedModule.development_date ? (
+                    <span className="inline-flex items-center text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      {new Date(selectedModule.development_date).toLocaleDateString("en-US", {
+                        month: "2-digit",
+                        day: "2-digit",
+                        year: "numeric",
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
+                      Not set
                     </span>
                   )}
                 </div>

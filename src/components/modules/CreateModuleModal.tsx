@@ -21,6 +21,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
     module_document_url: '',
     category: 'new_module',
     deadline: '',
+    development_date: '',
     website_link: ''
   })
 
@@ -38,12 +39,17 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
 
     setIsLoading(true)
 
+    const payload: Record<string, any> = {
+      ...formData,
+      project_id: projectId,
+    }
+    if (payload.development_date === '') {
+      payload.development_date = null
+    }
+
     const { error } = await supabase
       .from('project_modules')
-      .insert({
-        ...formData,
-        project_id: projectId
-      })
+      .insert(payload)
 
     if (error) {
       toast.error(error.message)
@@ -59,6 +65,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
         module_document_url: '',
         category: 'new_module',
         deadline: '',
+        development_date: '',
         website_link: ''
       })
       router.refresh()
@@ -176,6 +183,18 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                       value={formData.deadline}
                       onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Development Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
+                      value={formData.development_date}
+                      onChange={(e) => setFormData({ ...formData, development_date: e.target.value })}
                     />
                   </div>
                 </div>

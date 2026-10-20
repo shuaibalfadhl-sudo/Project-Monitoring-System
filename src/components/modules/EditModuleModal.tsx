@@ -27,6 +27,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
     assigned_developer_id: module.assigned_developer_id || '',
     category: module.category || 'new_module',
     deadline: module.deadline || '',
+    development_date: module.development_date || '',
     website_link: module.website_link || ''
   })
 
@@ -51,6 +52,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
         assigned_developer_id: module.assigned_developer_id || '',
         category: module.category || 'new_module',
         deadline: formatDeadline(module.deadline),
+        development_date: formatDeadline(module.development_date),
         website_link: module.website_link || ''
       })
 
@@ -72,6 +74,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
             assigned_developer_id: data.assigned_developer_id || '',
             category: data.category || 'new_module',
             deadline: formatDeadline(data.deadline),
+            development_date: formatDeadline(data.development_date),
             website_link: data.website_link || ''
           })
         }
@@ -116,6 +119,9 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
     }
     if (dataToSubmit.deadline === '') {
       dataToSubmit.deadline = null as any;
+    }
+    if (dataToSubmit.development_date === '') {
+      dataToSubmit.development_date = null as any;
     }
 
     const { error } = await supabase
@@ -256,6 +262,18 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
                       value={formData.deadline}
                       onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Development Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
+                      value={formData.development_date}
+                      onChange={(e) => setFormData({ ...formData, development_date: e.target.value })}
                     />
                   </div>
                 </div>

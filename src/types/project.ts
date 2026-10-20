@@ -34,6 +34,7 @@ export interface ProjectModule {
   category?: string | null
   revision_count?: number
   deadline?: string | null
+  development_date?: string | null
   website_link?: string | null
 }
 
