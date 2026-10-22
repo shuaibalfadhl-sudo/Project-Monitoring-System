@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
+import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
+import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import { STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
 
 interface QaModule {
@@ -19,6 +21,8 @@ interface QaModule {
   website_link?: string | null;
   qa_acknowledged_by?: string | null;
   auditor_name?: string | null;
+  assigned_developer_id?: string | null;
+  assigned_developer_name?: string | null;
   project: {
     id: string;
     name: string;
@@ -861,6 +865,26 @@ export default function QaMonitoringClient({
                 )}
               </div>
 
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                  Assigned Developer
+                </h3>
+                {selectedModule.assigned_developer_name ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 text-xs font-black flex items-center justify-center uppercase">
+                      {selectedModule.assigned_developer_name.charAt(0)}
+                    </span>
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      {selectedModule.assigned_developer_name}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-sm font-medium text-gray-400 dark:text-slate-500 italic">
+                    Unassigned
+                  </span>
+                )}
+              </div>
+
               {/* Document and Testing Links */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
@@ -1073,6 +1097,10 @@ export default function QaMonitoringClient({
                   {error}
                 </div>
               )}
+
+              {/* QA Document History */}
+              <DocumentHistorySection moduleId={selectedModule.id} />
+              <StatusHistorySection moduleId={selectedModule.id} />
             </div>
 
             <div className="p-6 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-end gap-3">

@@ -37,6 +37,7 @@ export default async function QaMonitoringPage() {
           qa_result_document_url,
           website_link,
           qa_acknowledged_by,
+          assigned_developer_id,
           updated_at
         )
       `)
@@ -101,6 +102,7 @@ export default async function QaMonitoringPage() {
             qa_result_document_url: m.qa_result_document_url,
             website_link: m.website_link,
             qa_acknowledged_by: m.qa_acknowledged_by,
+            assigned_developer_id: m.assigned_developer_id,
             updated_at: m.updated_at,
             project: {
               id: p.id,
@@ -146,6 +148,9 @@ export default async function QaMonitoringPage() {
     }
     if (m.qa_acknowledged_by) {
       m.auditor_name = profilesMap.get(m.qa_acknowledged_by) || null
+    }
+    if (m.assigned_developer_id) {
+      m.assigned_developer_name = profilesMap.get(m.assigned_developer_id) || null
     }
   })
 
