@@ -10,6 +10,7 @@ import CreateModuleModal from "@/components/modules/CreateModuleModal";
 import EditModuleModal from "@/components/modules/EditModuleModal";
 import ConfirmDeleteModal from "@/components/modules/ConfirmDeleteModal";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
+import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import ExcelJS from "exceljs";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import {
@@ -1211,6 +1212,9 @@ export default function ModuleList({
               <DocumentHistorySection
                 moduleId={selectedModule.id}
               />
+
+              {/* Status History — full record of every status change */}
+              <StatusHistorySection moduleId={selectedModule.id} />
 
               {isAuditor && selectedModule.status === "for_qa" && (
                 <div className="border-t border-gray-100 pt-6 mt-6">

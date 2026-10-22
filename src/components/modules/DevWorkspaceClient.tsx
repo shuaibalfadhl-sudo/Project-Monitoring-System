@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
+import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 import { statusLabel as registryStatusLabel, statusBadgeClass, STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
 
@@ -701,6 +702,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
 
               {/* QA Document History */}
               <DocumentHistorySection moduleId={selectedModule.id} />
+              <StatusHistorySection moduleId={selectedModule.id} />
             </div>
 
             {/* Modal Footer */}

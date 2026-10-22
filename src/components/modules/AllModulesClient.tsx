@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
+import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import EditModuleModal from "@/components/modules/EditModuleModal";
 import ExcelJS from "exceljs";
 import SearchableSelect from "@/components/ui/SearchableSelect";
@@ -1029,6 +1030,7 @@ export default function AllModulesClient({
 
               {/* Document History */}
               <DocumentHistorySection moduleId={selectedModule.id} />
+              <StatusHistorySection moduleId={selectedModule.id} />
             </div>
 
             <div className="p-6 border-t border-slate-100 dark:border-slate-700 flex justify-end">

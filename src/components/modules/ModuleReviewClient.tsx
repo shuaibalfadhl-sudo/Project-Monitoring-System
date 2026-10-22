@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
+import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
@@ -1001,6 +1002,7 @@ export default function ModuleReviewClient({
 
               {/* QA Document History */}
               <DocumentHistorySection moduleId={selectedModule.id} />
+              <StatusHistorySection moduleId={selectedModule.id} />
             </div>
 
             {/* Modal Footer */}
