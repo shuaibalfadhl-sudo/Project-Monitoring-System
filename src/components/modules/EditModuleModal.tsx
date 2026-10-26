@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { ProjectModule, ModuleStatus } from '@/types/project'
-import { STATUS_GROUPS, statusesIn } from '@/lib/moduleStatuses'
+import { STATUS_GROUPS, statusesIn, statusLabel, statusBadgeClass } from '@/lib/moduleStatuses'
 
 export default function EditModuleModal({ module, isManager, isQaRevisionMode, isSuperAdmin }: { module: ProjectModule, isManager?: boolean, isQaRevisionMode?: boolean, isSuperAdmin?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -141,6 +141,8 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
     }
   }
 
+  const statusLocked = isManager && !isSuperAdmin && !isQaRevisionMode;
+
   return (
     <>
       <button
@@ -218,30 +220,44 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Status</label>
-                    <select
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as ModuleStatus })}
-                    >
-                      {isQaRevisionMode ? (
-                        <>
-                          {formData.status === "revision" && (
-                            <option value="revision">Revision</option>
-                          )}
-                          {statusesIn(STATUS_GROUPS.editQaRevision).map((s) => (
+                    {statusLocked ? (
+                      <>
+                        <div className="w-full px-4 py-3 bg-gray-100 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl flex items-center justify-between gap-2 cursor-not-allowed">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold border border-transparent ${statusBadgeClass(formData.status)}`}>
+                            {statusLabel(formData.status)}
+                          </span>
+                          <svg className="w-4 h-4 text-gray-400 dark:text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                        </div>
+                        <p className="text-xs text-gray-400 dark:text-slate-500 mt-1.5">Status is managed through workflow actions, not editing.</p>
+                      </>
+                    ) : (
+                      <select
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value as ModuleStatus })}
+                      >
+                        {isQaRevisionMode ? (
+                          <>
+                            {formData.status === "revision" && (
+                              <option value="revision">Revision</option>
+                            )}
+                            {statusesIn(STATUS_GROUPS.editQaRevision).map((s) => (
+                              <option key={s.value} value={s.value}>{s.label}</option>
+                            ))}
+                          </>
+                        ) : (
+                          statusesIn(
+                            (!isManager || isSuperAdmin)
+                              ? [...STATUS_GROUPS.editBase, ...STATUS_GROUPS.editExtra]
+                              : STATUS_GROUPS.editBase,
+                          ).map((s) => (
                             <option key={s.value} value={s.value}>{s.label}</option>
-                          ))}
-                        </>
-                      ) : (
-                        statusesIn(
-                          (!isManager || isSuperAdmin)
-                            ? [...STATUS_GROUPS.editBase, ...STATUS_GROUPS.editExtra]
-                            : STATUS_GROUPS.editBase,
-                        ).map((s) => (
-                          <option key={s.value} value={s.value}>{s.label}</option>
-                        ))
-                      )}
-                    </select>
+                          ))
+                        )}
+                      </select>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Deadline</label>

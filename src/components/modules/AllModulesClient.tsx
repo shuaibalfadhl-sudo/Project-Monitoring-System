@@ -631,7 +631,9 @@ export default function AllModulesClient({
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    {role === 'project_manager' || role === 'super_admin' ? (
+                    {role === 'super_admin' ||
+                    (role === 'project_manager' &&
+                      !(STATUS_GROUPS.quickSuperExtra as readonly string[]).includes(mod.status || '')) ? (
                       <div onClick={(e) => e.stopPropagation()} className="relative inline-block group">
                         <select
                           className={`pl-2.5 pr-7 py-1 rounded-lg text-xs font-bold border-2 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] cursor-pointer ${getStatusColor(mod.status)} border-transparent hover:border-gray-300 dark:hover:border-slate-600 transition-colors appearance-none relative z-0`}
