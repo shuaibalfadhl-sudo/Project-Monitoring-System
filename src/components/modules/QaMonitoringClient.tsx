@@ -329,7 +329,7 @@ export default function QaMonitoringClient({
             </p>
             <img
               key={corgiNonce}
-              src={`/images/qa-corgi.gif?v=${corgiNonce}`}
+              src={`/images/qa-corgi.gif?v=${corgiNonce % 2}`}
               alt=""
               aria-hidden="true"
               onMouseEnter={() => setCorgiNonce((n) => n + 1)}

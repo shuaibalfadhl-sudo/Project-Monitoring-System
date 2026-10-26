@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -30,6 +30,7 @@ export default function AllModulesClient({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -83,6 +84,16 @@ export default function AllModulesClient({
     ];
   };
 
+  const projectOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    initialModules.forEach((m: any) => {
+      if (m.project?.id) map.set(m.project.id, m.project.name || "Unnamed Project");
+    });
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [initialModules]);
+
   const filteredModules = initialModules.filter((m: any) => {
     const matchesSearch =
       m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -91,7 +102,9 @@ export default function AllModulesClient({
     const matchesStatus = statusFilter === "all" || m.status === statusFilter;
     const matchesPriority =
       priorityFilter === "all" || m.priority === priorityFilter;
-    return matchesSearch && matchesStatus && matchesPriority;
+    const matchesProject =
+      projectFilter === "all" || m.project?.id === projectFilter;
+    return matchesSearch && matchesStatus && matchesPriority && matchesProject;
   });
 
   const totalPages = Math.ceil(filteredModules.length / itemsPerPage);
@@ -447,6 +460,20 @@ export default function AllModulesClient({
           <option value="medium">Medium</option>
           <option value="low">Low</option>
         </select>
+
+        <SearchableSelect
+          className="w-full sm:w-52"
+          value={projectFilter}
+          onChange={(v) => {
+            setProjectFilter(v);
+            setCurrentPage(1);
+          }}
+          options={projectOptions}
+          allValue="all"
+          allLabel="All Projects"
+          placeholder="All Projects"
+          searchPlaceholder="Search projects..."
+        />
 
         <button
           onClick={handleExportExcel}
