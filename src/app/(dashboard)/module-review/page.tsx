@@ -1,13 +1,114 @@
-import { getUserProfile } from "@/lib/auth-utils"
-import { redirect } from "next/navigation"
-import ModuleReviewView from "@/components/session/views/ModuleReviewView"
+import { createClient } from '@/lib/supabase/server'
+import { getUserProfile } from '@/lib/auth-utils'
+import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
+import ModuleReviewClient from '@/components/modules/ModuleReviewClient'
 
 export default async function ModuleReviewPage() {
   const profile = await getUserProfile()
 
-  if (!profile || (profile.role !== "project_manager" && profile.role !== "super_admin")) {
-    redirect("/dashboard")
+  if (!profile || (profile.role !== 'project_manager' && profile.role !== 'super_admin')) {
+    redirect('/dashboard')
   }
 
-  return <ModuleReviewView />;
+  const supabaseServer = await createClient()
+
+  // Fetch projects owned by PM (or all projects if Super Admin) with PM review modules
+  let projectsQuery = supabaseServer
+    .from('projects')
+    .select(`
+      id,
+      name,
+      company_id,
+      project_modules (
+        id,
+        name,
+        description,
+        priority,
+        status,
+        module_document_url,
+        qa_result_document_url,
+        qa_acknowledged_at,
+        qa_acknowledged_by,
+        qa_result_acknowledged_at,
+        qa_result_acknowledged_by,
+        assigned_developer_id,
+        website_link,
+        deadline,
+        category,
+        developer_feedback
+      )
+    `)
+
+  const cookieStore = await cookies()
+  const activeCompanyId = cookieStore.get('activeCompanyId')?.value || null;
+
+  if (activeCompanyId) {
+    projectsQuery = projectsQuery.eq('company_id', activeCompanyId)
+  }
+
+  if (profile.role !== 'super_admin') {
+    projectsQuery = projectsQuery.eq('created_by', profile.id)
+  }
+
+  const { data: projects } = await projectsQuery
+
+  const reviewModules: any[] = []
+
+  if (projects) {
+    projects.forEach((p: any) => {
+      if (p.project_modules) {
+        const mods = p.project_modules.filter((m: any) => m.status === 'pm_review')
+        mods.forEach((m: any) => {
+          reviewModules.push({
+            ...m,
+            project: { id: p.id, name: p.name }
+          })
+        })
+      }
+    })
+  }
+
+  // Resolve profile names for auditors, PM acknowledgements, and assigned developers
+  if (reviewModules.length > 0) {
+    const userIds = [
+      ...new Set(
+        reviewModules
+          .flatMap((m) => [m.qa_acknowledged_by, m.qa_result_acknowledged_by, m.assigned_developer_id])
+          .filter(Boolean)
+      ),
+    ]
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabaseServer
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', userIds)
+
+      const userMap = new Map(profiles?.map((a: any) => [a.id, a.full_name]) || [])
+      reviewModules.forEach((m) => {
+        if (m.qa_acknowledged_by) {
+          m.auditor_name = userMap.get(m.qa_acknowledged_by) || null
+          m.qa_acknowledged_by_name = userMap.get(m.qa_acknowledged_by) || null
+        }
+        if (m.qa_result_acknowledged_by) {
+          m.qa_result_acknowledged_by_name = userMap.get(m.qa_result_acknowledged_by) || null
+        }
+        if (m.assigned_developer_id) {
+          m.assigned_developer_name = userMap.get(m.assigned_developer_id) || null
+        }
+      })
+    }
+  }
+
+  return (
+    <div className="w-full space-y-6">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
+          Module Review
+        </h1>
+      </div>
+
+      <ModuleReviewClient initialModules={reviewModules} />
+    </div>
+  )
 }
