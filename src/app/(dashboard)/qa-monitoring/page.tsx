@@ -38,6 +38,7 @@ export default async function QaMonitoringPage() {
           website_link,
           qa_acknowledged_by,
           assigned_developer_id,
+          developer_feedback,
           updated_at
         )
       `)
@@ -68,6 +69,7 @@ export default async function QaMonitoringPage() {
             qa_result_document_url,
             website_link,
             qa_acknowledged_by,
+            developer_feedback,
             updated_at
           )
         )
@@ -103,6 +105,7 @@ export default async function QaMonitoringPage() {
             website_link: m.website_link,
             qa_acknowledged_by: m.qa_acknowledged_by,
             assigned_developer_id: m.assigned_developer_id,
+            developer_feedback: m.developer_feedback,
             updated_at: m.updated_at,
             project: {
               id: p.id,

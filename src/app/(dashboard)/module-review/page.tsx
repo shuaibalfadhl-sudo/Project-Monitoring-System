@@ -35,7 +35,8 @@ export default async function ModuleReviewPage() {
         assigned_developer_id,
         website_link,
         deadline,
-        category
+        category,
+        developer_feedback
       )
     `)
 

@@ -12,6 +12,7 @@ interface ConfirmStatusModalProps {
   confirmText?: string
   confirmButtonClass?: string
   isLoading?: boolean
+  children?: React.ReactNode
 }
 
 export default function ConfirmStatusModal({
@@ -22,7 +23,8 @@ export default function ConfirmStatusModal({
   message,
   confirmText = "Confirm",
   confirmButtonClass = "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20",
-  isLoading = false
+  isLoading = false,
+  children
 }: ConfirmStatusModalProps) {
   const [mounted, setMounted] = useState(false)
 
@@ -53,6 +55,7 @@ export default function ConfirmStatusModal({
           <div className="text-sm text-gray-500 dark:text-slate-400 mb-6 leading-relaxed">
             {message}
           </div>
+          {children}
           <div className="flex gap-3 justify-center">
             <button
               type="button"

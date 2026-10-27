@@ -23,6 +23,7 @@ interface QaModule {
   auditor_name?: string | null;
   assigned_developer_id?: string | null;
   assigned_developer_name?: string | null;
+  developer_feedback?: string | null;
   project: {
     id: string;
     name: string;
@@ -960,6 +961,28 @@ export default function QaMonitoringClient({
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* Developer Feedback (read-only) */}
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                  Developer Feedback
+                </h3>
+                {selectedModule.developer_feedback ? (
+                  <div className="bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-900/30 space-y-2">
+                    {String(selectedModule.developer_feedback).split("\n").map((line: string, i: number) =>
+                      line.trim() === "" ? (
+                        <div key={i} className="h-2" />
+                      ) : (
+                        <p key={i} className="text-sm text-slate-700 dark:text-slate-300 leading-7">{line}</p>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm font-medium text-gray-400 dark:text-slate-500 italic">
+                    No developer feedback provided.
+                  </p>
+                )}
               </div>
 
               {selectedModule.status === "for_qa" ? (

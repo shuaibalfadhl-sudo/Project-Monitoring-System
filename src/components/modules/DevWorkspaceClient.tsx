@@ -22,6 +22,7 @@ interface DevModule {
   module_document_url?: string | null;
   website_link?: string | null;
   qa_result_document_url?: string | null;
+  developer_feedback?: string | null;
   project: {
     id: string;
     name: string;
@@ -31,9 +32,10 @@ interface DevModule {
 interface DevWorkspaceClientProps {
   initialModules: DevModule[];
   isSuperAdmin?: boolean;
+  canSubmitFeedback?: boolean;
 }
 
-export default function DevWorkspaceClient({ initialModules, isSuperAdmin = false }: DevWorkspaceClientProps) {
+export default function DevWorkspaceClient({ initialModules, isSuperAdmin = false, canSubmitFeedback = false }: DevWorkspaceClientProps) {
   const [modules, setModules] = useState<DevModule[]>(initialModules);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -54,6 +56,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
   } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [feedbackDraft, setFeedbackDraft] = useState("");
 
   const router = useRouter();
   const supabase = createClient();
@@ -92,12 +95,25 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
     const { module: mod, newStatus, actionLabel } = statusChangeTarget;
     setSubmittingId(mod.id);
     try {
+      const payload: Record<string, any> = { status: newStatus };
+      if (newStatus === "pm_review" && canSubmitFeedback) {
+        const trimmed = feedbackDraft.trim();
+        payload.developer_feedback = trimmed === "" ? null : trimmed;
+      }
+
       const { error } = await supabase
         .from("project_modules")
-        .update({ status: newStatus })
+        .update(payload)
         .eq("id", mod.id);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === "42703" && String(error.message).toLowerCase().includes("developer_feedback")) {
+          throw new Error(
+            "The database rejected the update: the developer_feedback column is missing from project_modules. Ask an admin to run the schema change, then retry."
+          );
+        }
+        throw error;
+      }
 
       if (newStatus === "pm_review") {
         setModules((prev) => prev.filter((m) => m.id !== mod.id));
@@ -115,13 +131,21 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
       }
 
       setStatusChangeTarget(null);
+      setFeedbackDraft("");
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || `Failed to ${actionLabel.toLowerCase()}.`);
       setStatusChangeTarget(null);
+      setFeedbackDraft("");
     } finally {
       setSubmittingId(null);
     }
+  };
+
+  const openStatusModal = (mod: DevModule) => {
+    const act = nextAction(mod);
+    setFeedbackDraft(act.newStatus === "pm_review" ? mod.developer_feedback ?? "" : "");
+    setStatusChangeTarget({ module: mod, newStatus: act.newStatus, actionLabel: act.actionLabel });
   };
 
   // Map a module's current status to its next developer action
@@ -414,11 +438,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setStatusChangeTarget({
-                              module: mod,
-                              newStatus: act.newStatus,
-                              actionLabel: act.actionLabel
-                            });
+                            openStatusModal(mod);
                           }}
                           disabled={isSubmitting}
                           className={`py-2 px-4 ${actionButtonClass(act.newStatus)} text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:opacity-50 whitespace-nowrap`}
@@ -717,13 +737,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
                 const selAct = nextAction(selectedModule);
                 return (
                   <button
-                    onClick={() => {
-                      setStatusChangeTarget({
-                        module: selectedModule,
-                        newStatus: selAct.newStatus,
-                        actionLabel: selAct.actionLabel
-                      });
-                    }}
+                    onClick={() => openStatusModal(selectedModule)}
                     disabled={submittingId === selectedModule.id}
                     className={`px-5 py-2.5 text-sm font-bold text-white ${actionButtonClass(selAct.newStatus)} rounded-xl transition-all shadow-md disabled:opacity-50`}
                   >
@@ -740,7 +754,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
       {/* Confirmation Modal */}
       <ConfirmStatusModal
         isOpen={!!statusChangeTarget}
-        onClose={() => setStatusChangeTarget(null)}
+        onClose={() => { setStatusChangeTarget(null); setFeedbackDraft(""); }}
         onConfirm={handleConfirmStatusChange}
         isLoading={!!submittingId}
         title={statusChangeTarget?.actionLabel ?? "Confirm"}
@@ -776,7 +790,25 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
             ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"
             : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20"
         }
-      />
+      >
+        {statusChangeTarget?.newStatus === "pm_review" && canSubmitFeedback && (
+          <div className="mb-6 text-left">
+            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+              Feedback for PM <span className="normal-case font-medium">(optional)</span>
+            </label>
+            <textarea
+              rows={4}
+              value={feedbackDraft}
+              onChange={(e) => setFeedbackDraft(e.target.value)}
+              placeholder="Notes for the project manager about this module..."
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            />
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+              Saved with this submission only. Leave empty to clear.
+            </p>
+          </div>
+        )}
+      </ConfirmStatusModal>
     </div>
   );
 }

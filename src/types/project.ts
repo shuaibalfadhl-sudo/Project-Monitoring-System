@@ -36,6 +36,7 @@ export interface ProjectModule {
   deadline?: string | null
   development_date?: string | null
   website_link?: string | null
+  developer_feedback?: string | null
 }
 
 export interface ProjectMember {

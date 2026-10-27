@@ -43,7 +43,8 @@ export default async function DevWorkspacePage() {
           assigned_developer_id,
           module_document_url,
           website_link,
-          qa_result_document_url
+          qa_result_document_url,
+          developer_feedback
         )
       `);
 
@@ -84,7 +85,8 @@ export default async function DevWorkspacePage() {
             assigned_developer_id,
             module_document_url,
             website_link,
-            qa_result_document_url
+            qa_result_document_url,
+            developer_feedback
           )
         )
       `)
@@ -132,6 +134,7 @@ export default async function DevWorkspacePage() {
       <DevWorkspaceClient
         initialModules={devModules}
         isSuperAdmin={profile.role === "super_admin"}
+        canSubmitFeedback={profile.role === "developer" || profile.role === "super_admin"}
       />
     </div>
   );
