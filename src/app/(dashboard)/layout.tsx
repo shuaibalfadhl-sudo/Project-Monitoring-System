@@ -8,6 +8,7 @@ import TopNavbar from '@/components/layout/TopNavbar'
 import DashboardRealtime from '@/components/dashboard/DashboardRealtime'
 import { cookies } from 'next/headers'
 import { NavCountsProvider } from '@/context/NavCountsContext'
+import SessionDataProvider from '@/components/session/SessionDataProvider'
 
 export default async function DashboardLayout({
   children,
@@ -308,7 +309,9 @@ export default async function DashboardLayout({
           />
 
           <main className="flex-1 p-4 md:p-6 overflow-y-auto">
-            {children}
+            <SessionDataProvider userId={profile.id} role={profile.role} activeCompanyId={activeCompanyId}>
+              {children}
+            </SessionDataProvider>
           </main>
         </div>
       </div>
