@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
+import ModuleClassChips from "@/components/modules/ModuleClassChips";
 
 export default function DeploymentClient({
   initialModules,
@@ -344,6 +345,7 @@ export default function DeploymentClient({
                     <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
                       DEPLOYMENT
                     </span>
+                    <ModuleClassChips platform={module.platform} workstream={module.workstream} />
                   </td>
                   <td className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
                     {module.project.name}

@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
+import ModuleClassChips from "@/components/modules/ModuleClassChips";
+import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -47,6 +49,8 @@ export default function ModuleReviewClient({
   const [mounted, setMounted] = useState(false);
   const [assignedDevId, setAssignedDevId] = useState<string>("");
   const [newDeadline, setNewDeadline] = useState<string>("");
+  const [websiteLinkDraft, setWebsiteLinkDraft] = useState<string>("");
+  const [moduleDocDraft, setModuleDocDraft] = useState<string>("");
   const [projectDevs, setProjectDevs] = useState<{ id: string; full_name: string }[]>([]);
   const [loadingDevs, setLoadingDevs] = useState(false);
 
@@ -92,6 +96,8 @@ export default function ModuleReviewClient({
         : mod.deadline
       : "";
     setNewDeadline(deadlineVal);
+    setWebsiteLinkDraft(mod.website_link || "");
+    setModuleDocDraft(mod.module_document_url || "");
     setCopiedLink(false);
 
     if (mod.project?.id) {
@@ -143,6 +149,31 @@ export default function ModuleReviewClient({
 
       if (newDeadline) {
         updates.deadline = newDeadline;
+      }
+
+      const trimmedLink = websiteLinkDraft.trim();
+      const trimmedDoc = moduleDocDraft.trim();
+      const isHttpUrl = (v: string) => {
+        try {
+          const protocol = new URL(v).protocol;
+          return protocol === "http:" || protocol === "https:";
+        } catch {
+          return false;
+        }
+      };
+      if (trimmedLink && !isHttpUrl(trimmedLink)) {
+        throw new Error("Website link must start with http:// or https://");
+      }
+      if (trimmedDoc && !isHttpUrl(trimmedDoc)) {
+        throw new Error("Module document link must start with http:// or https://");
+      }
+
+      // Only write when the PM actually changed the value, so untouched links are preserved.
+      if (trimmedLink !== (selectedModule.website_link || "")) {
+        updates.website_link = trimmedLink || null;
+      }
+      if (trimmedDoc !== (selectedModule.module_document_url || "")) {
+        updates.module_document_url = trimmedDoc || null;
       }
 
       const { error } = await supabase
@@ -420,6 +451,7 @@ export default function ModuleReviewClient({
                     <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
                       PM REVIEW
                     </span>
+                    <ModuleClassChips platform={module.platform} workstream={module.workstream} />
                   </td>
                   <td className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
                     {module.project.name}
@@ -668,6 +700,11 @@ export default function ModuleReviewClient({
                 <p className="text-lg font-extrabold text-slate-800 dark:text-white">
                   {selectedModule.name}
                 </p>
+                <ModuleClassChips
+                  platform={selectedModule.platform}
+                  workstream={selectedModule.workstream}
+                />
+                <OnHoldReasonNote remarks={selectedModule.on_hold_remarks} />
               </div>
 
               {/* Description */}
@@ -1017,6 +1054,30 @@ export default function ModuleReviewClient({
                       value={newDeadline}
                       onChange={(e) => setNewDeadline(e.target.value)}
                       className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Website Link (Testing)
+                    </label>
+                    <input
+                      type="url"
+                      value={websiteLinkDraft}
+                      onChange={(e) => setWebsiteLinkDraft(e.target.value)}
+                      placeholder="https://example.com/page"
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white placeholder:font-normal placeholder:text-gray-400 dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Module Document
+                    </label>
+                    <input
+                      type="url"
+                      value={moduleDocDraft}
+                      onChange={(e) => setModuleDocDraft(e.target.value)}
+                      placeholder="https://docs.google.com/..."
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white placeholder:font-normal placeholder:text-gray-400 dark:placeholder:text-slate-500"
                     />
                   </div>
                 </div>

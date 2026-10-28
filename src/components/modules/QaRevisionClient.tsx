@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
+import ModuleClassChips from "@/components/modules/ModuleClassChips";
+import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -431,6 +433,7 @@ export default function QaRevisionClient({
                         <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
                           FOR REVISION
                         </span>
+                        <ModuleClassChips platform={module.platform} workstream={module.workstream} />
                       </td>
                       <td className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
                         {module.project.name}
@@ -662,6 +665,11 @@ export default function QaRevisionClient({
                 <p className="text-lg font-extrabold text-slate-800 dark:text-white">
                   {selectedModule.name}
                 </p>
+                <ModuleClassChips
+                  platform={selectedModule.platform}
+                  workstream={selectedModule.workstream}
+                />
+                <OnHoldReasonNote remarks={selectedModule.on_hold_remarks} />
               </div>
 
               {/* Description */}

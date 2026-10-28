@@ -8,6 +8,9 @@ import { toast } from "sonner";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import EditModuleModal from "@/components/modules/EditModuleModal";
+import ModuleClassChips from "@/components/modules/ModuleClassChips";
+import OnHoldReasonModal from "@/components/modules/OnHoldReasonModal";
+import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import ExcelJS from "exceljs";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import {
@@ -18,6 +21,12 @@ import {
   statusGanttClass,
   statusExcelColors,
 } from "@/lib/moduleStatuses";
+import {
+  platformLabel,
+  workstreamLabel,
+  platformExcelColors,
+  workstreamExcelColors,
+} from "@/lib/moduleClassifications";
 
 export default function AllModulesClient({
   initialModules,
@@ -37,6 +46,8 @@ export default function AllModulesClient({
   const [viewMode, setViewMode] = useState<"table" | "gantt">("table");
 
   const [selectedModule, setSelectedModule] = useState<any | null>(null);
+  const [holdTarget, setHoldTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isHolding, setIsHolding] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -45,11 +56,15 @@ export default function AllModulesClient({
   const router = useRouter();
   const supabase = createClient();
 
-  const handleQuickStatusChange = async (moduleId: string, newStatus: string) => {
+  const applyQuickStatus = async (moduleId: string, newStatus: string, remarks?: string) => {
     try {
       const { error: updateError } = await supabase
         .from("project_modules")
-        .update({ status: newStatus })
+        .update(
+          remarks !== undefined
+            ? { status: newStatus, on_hold_remarks: remarks }
+            : { status: newStatus }
+        )
         .eq("id", moduleId);
 
       if (updateError) throw updateError;
@@ -58,6 +73,23 @@ export default function AllModulesClient({
     } catch (err: any) {
       toast.error(err.message || "An error occurred while updating the status.");
     }
+  };
+
+  // On hold is the one status that carries a mandatory reason, so it is collected in a modal.
+  const handleQuickStatusChange = (moduleId: string, newStatus: string, moduleName: string) => {
+    if (newStatus === "on_hold") {
+      setHoldTarget({ id: moduleId, name: moduleName });
+      return;
+    }
+    void applyQuickStatus(moduleId, newStatus);
+  };
+
+  const confirmOnHold = async (reason: string) => {
+    if (!holdTarget) return;
+    setIsHolding(true);
+    await applyQuickStatus(holdTarget.id, "on_hold", reason);
+    setIsHolding(false);
+    setHoldTarget(null);
   };
 
   const generatePagination = (currentPage: number, totalPages: number) => {
@@ -258,6 +290,18 @@ export default function AllModulesClient({
       cols = [
         { header: "Module Name", width: 34, value: (m) => m.name },
         { header: "Project", width: 26, value: (m) => m.project?.name || "" },
+        {
+          header: "Platform",
+          width: 14,
+          value: (m) => platformLabel(m.platform),
+          badge: (m) => platformExcelColors(m.platform),
+        },
+        {
+          header: "Workstream",
+          width: 16,
+          value: (m) => workstreamLabel(m.workstream),
+          badge: (m) => workstreamExcelColors(m.workstream),
+        },
         {
           header: "Priority",
           width: 14,
@@ -632,6 +676,7 @@ export default function AllModulesClient({
                     <span className="font-bold text-slate-900 dark:text-white block">
                       {mod.name}
                     </span>
+                    <ModuleClassChips platform={mod.platform} workstream={mod.workstream} />
                   </td>
                   <td className="px-6 py-4">
                     <span className="font-semibold text-slate-700 dark:text-slate-300 block">
@@ -665,7 +710,7 @@ export default function AllModulesClient({
                         <select
                           className={`pl-2.5 pr-7 py-1 rounded-lg text-xs font-bold border-2 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] cursor-pointer ${getStatusColor(mod.status)} border-transparent hover:border-gray-300 dark:hover:border-slate-600 transition-colors appearance-none relative z-0`}
                           value={mod.status || 'pending'}
-                          onChange={(e) => handleQuickStatusChange(mod.id, e.target.value)}
+                          onChange={(e) => handleQuickStatusChange(mod.id, e.target.value, mod.name)}
                         >
                           {statusesIn(
                             role === 'super_admin'
@@ -868,6 +913,11 @@ export default function AllModulesClient({
                 <p className="text-lg font-bold text-slate-900 dark:text-white">
                   {selectedModule.name}
                 </p>
+                <ModuleClassChips
+                  platform={selectedModule.platform}
+                  workstream={selectedModule.workstream}
+                />
+                <OnHoldReasonNote remarks={selectedModule.on_hold_remarks} />
               </div>
 
               <div>
@@ -1074,6 +1124,14 @@ export default function AllModulesClient({
         </div>,
         document.body
       )}
+
+      <OnHoldReasonModal
+        isOpen={!!holdTarget}
+        moduleName={holdTarget?.name}
+        isLoading={isHolding}
+        onClose={() => setHoldTarget(null)}
+        onConfirm={confirmOnHold}
+      />
     </div>
   );
 }

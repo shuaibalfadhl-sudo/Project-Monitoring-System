@@ -83,6 +83,13 @@ export const MODULE_STATUSES: StatusMeta[] = [
     excel: { fill: "FFEDE9FE", font: "FF6D28D9" },
   },
   {
+    value: "on_hold",
+    label: "On Hold",
+    badge: "bg-zinc-200 text-zinc-700 dark:bg-zinc-700/60 dark:text-zinc-300",
+    gantt: "bg-zinc-400",
+    excel: { fill: "FFE4E4E7", font: "FF3F3F46" },
+  },
+  {
     value: "qa_approved",
     label: "QA Approved",
     badge: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
@@ -147,12 +154,12 @@ export const STATUS_GROUPS = {
   ],
 
   // Edit-module modal (normal mode). Super/non-manager extras are appended at runtime.
-  editBase: ["pending", "for data gathering", "development", "developing", "pm_review", "for_qa", "for revision", "revision", "revising"],
+  editBase: ["pending", "for data gathering", "development", "developing", "pm_review", "for_qa", "for revision", "revision", "revising", "on_hold"],
   editExtra: ["auditing", "qa_approved", "deployment", "deployed"],
   // Edit-module modal (QA revision mode).
   editQaRevision: ["revising", "pm_review", "for_qa"],
 
   // Quick-status dropdown in the module lists. Super-admin extras appended at runtime.
-  quickBase: ["pending", "for data gathering", "development", "developing", "pm_review", "for_qa", "for revision", "revision", "revising"],
+  quickBase: ["pending", "for data gathering", "development", "developing", "pm_review", "for_qa", "for revision", "revision", "revising", "on_hold"],
   quickSuperExtra: ["auditing", "qa_approved", "deployment", "deployed"],
 } as const;

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { STATUS_GROUPS, statusesIn } from '@/lib/moduleStatuses'
+import { PLATFORM_OPTIONS, WORKSTREAM_OPTIONS } from '@/lib/moduleClassifications'
 
 export default function CreateModuleModal({ projectId, isManager }: { projectId: string, isManager?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -21,6 +22,8 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
     status: 'pending',
     module_document_url: '',
     category: 'new_module',
+    platform: '',
+    workstream: '',
     deadline: '',
     development_date: '',
     website_link: ''
@@ -47,6 +50,9 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
     if (payload.development_date === '') {
       payload.development_date = null
     }
+    // Empty selects must be stored as NULL; the DB CHECK constraints reject ''.
+    if (payload.platform === '') payload.platform = null
+    if (payload.workstream === '') payload.workstream = null
 
     const { error } = await supabase
       .from('project_modules')
@@ -65,6 +71,8 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
         status: 'pending',
         module_document_url: '',
         category: 'new_module',
+        platform: '',
+        workstream: '',
         deadline: '',
         development_date: '',
         website_link: ''
@@ -144,6 +152,35 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                     >
                       <option value="new_module">New Module</option>
                       <option value="revise_module">Revise Module</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Platform</label>
+                    <select
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
+                      value={formData.platform}
+                      onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
+                    >
+                      <option value="">Not set</option>
+                      {PLATFORM_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Workstream</label>
+                    <select
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
+                      value={formData.workstream}
+                      onChange={(e) => setFormData({ ...formData, workstream: e.target.value })}
+                    >
+                      <option value="">Not set</option>
+                      {WORKSTREAM_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
                     </select>
                   </div>
                 </div>

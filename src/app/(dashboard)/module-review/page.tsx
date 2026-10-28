@@ -36,6 +36,9 @@ export default async function ModuleReviewPage() {
         website_link,
         deadline,
         category,
+        platform,
+        workstream,
+        on_hold_remarks,
         developer_feedback
       )
     `)

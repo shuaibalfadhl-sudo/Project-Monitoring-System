@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
+import ModuleClassChips from "@/components/modules/ModuleClassChips";
+import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import { statusLabel as registryStatusLabel, statusBadgeClass, STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
 
 interface DevModule {
@@ -18,6 +20,9 @@ interface DevModule {
   status: string;
   deadline?: string | null;
   category?: string | null;
+  platform?: string | null;
+  workstream?: string | null;
+  on_hold_remarks?: string | null;
   assigned_developer_name?: string | null;
   module_document_url?: string | null;
   website_link?: string | null;
@@ -411,6 +416,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
                       </td>
                       <td className="py-4 px-6">
                         <span className="font-bold text-[var(--sys-primary)] group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors block">{mod.name}</span>
+                        <ModuleClassChips platform={mod.platform} workstream={mod.workstream} />
                       </td>
                       <td className="py-4 px-6">
                         <span className="font-semibold text-gray-600 dark:text-slate-300">{mod.project.name}</span>
@@ -549,6 +555,8 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
               <div>
                 <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Module Name</p>
                 <p className="text-lg font-extrabold text-slate-800 dark:text-white">{selectedModule.name}</p>
+                <ModuleClassChips platform={selectedModule.platform} workstream={selectedModule.workstream} />
+                <OnHoldReasonNote remarks={selectedModule.on_hold_remarks} />
               </div>
 
               {/* Description */}

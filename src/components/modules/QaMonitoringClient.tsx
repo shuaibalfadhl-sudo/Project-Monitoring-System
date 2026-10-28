@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import StatusHistorySection from "@/components/modules/StatusHistorySection";
+import ModuleClassChips from "@/components/modules/ModuleClassChips";
+import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import { STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
 
 interface QaModule {
@@ -24,6 +26,9 @@ interface QaModule {
   assigned_developer_id?: string | null;
   assigned_developer_name?: string | null;
   developer_feedback?: string | null;
+  platform?: string | null;
+  workstream?: string | null;
+  on_hold_remarks?: string | null;
   project: {
     id: string;
     name: string;
@@ -625,7 +630,8 @@ export default function QaMonitoringClient({
                         </span>
                       </td>
                       <td className="py-4 px-6 font-bold text-[var(--sys-primary)] group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
-                        {mod.name}
+                        <span className="block">{mod.name}</span>
+                        <ModuleClassChips platform={mod.platform} workstream={mod.workstream} />
                       </td>
                       <td className="py-4 px-6">
                         <span className="font-semibold text-gray-600 dark:text-slate-300 block">
@@ -840,6 +846,11 @@ export default function QaMonitoringClient({
                 <p className="text-lg font-bold text-[var(--sys-primary)]">
                   {selectedModule.name}
                 </p>
+                <ModuleClassChips
+                  platform={selectedModule.platform}
+                  workstream={selectedModule.workstream}
+                />
+                <OnHoldReasonNote remarks={selectedModule.on_hold_remarks} />
               </div>
 
               <div>

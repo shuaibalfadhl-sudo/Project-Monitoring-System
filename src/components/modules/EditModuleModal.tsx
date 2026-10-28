@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { ProjectModule, ModuleStatus } from '@/types/project'
 import { STATUS_GROUPS, statusesIn, statusLabel, statusBadgeClass } from '@/lib/moduleStatuses'
+import { PLATFORM_OPTIONS, WORKSTREAM_OPTIONS } from '@/lib/moduleClassifications'
 
 export default function EditModuleModal({ module, isManager, isQaRevisionMode, isSuperAdmin }: { module: ProjectModule, isManager?: boolean, isQaRevisionMode?: boolean, isSuperAdmin?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -27,9 +28,12 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
     module_document_url: module.module_document_url || '',
     assigned_developer_id: module.assigned_developer_id || '',
     category: module.category || 'new_module',
+    platform: module.platform || '',
+    workstream: module.workstream || '',
     deadline: module.deadline || '',
     development_date: module.development_date || '',
-    website_link: module.website_link || ''
+    website_link: module.website_link || '',
+    on_hold_remarks: module.on_hold_remarks || ''
   })
 
   useEffect(() => {
@@ -52,9 +56,12 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
         module_document_url: module.module_document_url || '',
         assigned_developer_id: module.assigned_developer_id || '',
         category: module.category || 'new_module',
+        platform: module.platform || '',
+        workstream: module.workstream || '',
         deadline: formatDeadline(module.deadline),
         development_date: formatDeadline(module.development_date),
-        website_link: module.website_link || ''
+        website_link: module.website_link || '',
+        on_hold_remarks: module.on_hold_remarks || ''
       })
 
       // Fetch the latest module record directly from database to guarantee the latest registered deadline is displayed
@@ -74,9 +81,12 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
             module_document_url: data.module_document_url || '',
             assigned_developer_id: data.assigned_developer_id || '',
             category: data.category || 'new_module',
+            platform: data.platform || '',
+            workstream: data.workstream || '',
             deadline: formatDeadline(data.deadline),
             development_date: formatDeadline(data.development_date),
-            website_link: data.website_link || ''
+            website_link: data.website_link || '',
+            on_hold_remarks: data.on_hold_remarks || ''
           })
         }
       }
@@ -112,6 +122,11 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
       return
     }
 
+    if (formData.status === 'on_hold' && module.status !== 'on_hold' && !formData.on_hold_remarks.trim()) {
+      toast.error('A reason is required when putting a module on hold')
+      return
+    }
+
     setIsLoading(true)
 
     const dataToSubmit = { ...formData };
@@ -123,6 +138,16 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
     }
     if (dataToSubmit.development_date === '') {
       dataToSubmit.development_date = null as any;
+    }
+    // Empty selects must be stored as NULL; the DB CHECK constraints reject ''.
+    if (dataToSubmit.platform === '') {
+      dataToSubmit.platform = null as any;
+    }
+    if (dataToSubmit.workstream === '') {
+      dataToSubmit.workstream = null as any;
+    }
+    if (dataToSubmit.on_hold_remarks === '') {
+      dataToSubmit.on_hold_remarks = null as any;
     }
 
     const { error } = await supabase
@@ -219,6 +244,35 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Platform</label>
+                    <select
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
+                      value={formData.platform}
+                      onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
+                    >
+                      <option value="">Not set</option>
+                      {PLATFORM_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Workstream</label>
+                    <select
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
+                      value={formData.workstream}
+                      onChange={(e) => setFormData({ ...formData, workstream: e.target.value })}
+                    >
+                      <option value="">Not set</option>
+                      {WORKSTREAM_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <div>
                     <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Status</label>
                     {statusLocked ? (
                       <>
@@ -269,6 +323,25 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                     />
                   </div>
                 </div>
+
+                {formData.status === 'on_hold' && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                      Reason for hold
+                      {module.status !== 'on_hold' && (
+                        <span className="text-red-500 ml-1">*</span>
+                      )}
+                    </label>
+                    <textarea
+                      rows={3}
+                      maxLength={2000}
+                      placeholder="Why is this module on hold?"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white resize-none"
+                      value={formData.on_hold_remarks}
+                      onChange={(e) => setFormData({ ...formData, on_hold_remarks: e.target.value })}
+                    />
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <div>

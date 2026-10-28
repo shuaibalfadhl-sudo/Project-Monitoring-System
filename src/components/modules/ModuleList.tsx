@@ -11,6 +11,9 @@ import EditModuleModal from "@/components/modules/EditModuleModal";
 import ConfirmDeleteModal from "@/components/modules/ConfirmDeleteModal";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import StatusHistorySection from "@/components/modules/StatusHistorySection";
+import ModuleClassChips from "@/components/modules/ModuleClassChips";
+import OnHoldReasonModal from "@/components/modules/OnHoldReasonModal";
+import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import ExcelJS from "exceljs";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import {
@@ -21,6 +24,14 @@ import {
   statusGanttClass,
   statusExcelColors,
 } from "@/lib/moduleStatuses";
+import {
+  platformLabel,
+  workstreamLabel,
+  platformBadgeClass,
+  workstreamBadgeClass,
+  platformExcelColors,
+  workstreamExcelColors,
+} from "@/lib/moduleClassifications";
 
 interface ModuleListProps {
   modules: ProjectModule[];
@@ -62,6 +73,8 @@ export default function ModuleList({
   const [reworkLink, setReworkLink] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [holdTarget, setHoldTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isHolding, setIsHolding] = useState(false);
   const [moduleToDelete, setModuleToDelete] = useState<ProjectModule | null>(null);
 
   const router = useRouter();
@@ -137,11 +150,15 @@ export default function ModuleList({
   };
 
 
-  const handleQuickStatusChange = async (moduleId: string, newStatus: string) => {
+  const applyQuickStatus = async (moduleId: string, newStatus: string, remarks?: string) => {
     try {
       const { error: updateError } = await supabase
         .from("project_modules")
-        .update({ status: newStatus })
+        .update(
+          remarks !== undefined
+            ? { status: newStatus, on_hold_remarks: remarks }
+            : { status: newStatus }
+        )
         .eq("id", moduleId);
 
       if (updateError) throw updateError;
@@ -149,6 +166,23 @@ export default function ModuleList({
     } catch (err: any) {
       setError(err.message || "An error occurred while updating the status.");
     }
+  };
+
+  // On hold is the one status that carries a mandatory reason, so it is collected in a modal.
+  const handleQuickStatusChange = (moduleId: string, newStatus: string, moduleName: string) => {
+    if (newStatus === "on_hold") {
+      setHoldTarget({ id: moduleId, name: moduleName });
+      return;
+    }
+    void applyQuickStatus(moduleId, newStatus);
+  };
+
+  const confirmOnHold = async (reason: string) => {
+    if (!holdTarget) return;
+    setIsHolding(true);
+    await applyQuickStatus(holdTarget.id, "on_hold", reason);
+    setIsHolding(false);
+    setHoldTarget(null);
   };
 
   const generatePagination = (currentPage: number, totalPages: number) => {
@@ -357,6 +391,18 @@ export default function ModuleList({
           header: "Category",
           width: 18,
           value: (m) => (m.category ? m.category.replace("_", " ") : "New Module"),
+        },
+        {
+          header: "Platform",
+          width: 14,
+          value: (m) => platformLabel(m.platform),
+          badge: (m) => platformExcelColors(m.platform),
+        },
+        {
+          header: "Workstream",
+          width: 16,
+          value: (m) => workstreamLabel(m.workstream),
+          badge: (m) => workstreamExcelColors(m.workstream),
         },
         {
           header: "Priority",
@@ -761,6 +807,10 @@ export default function ModuleList({
                           {module.revision_count} Rev
                         </span>
                       ) : null}
+                      <ModuleClassChips
+                        platform={module.platform}
+                        workstream={module.workstream}
+                      />
                     </td>
                     <td className="py-4 text-center">
                       <span className="text-xs font-bold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded capitalize">
@@ -798,7 +848,7 @@ export default function ModuleList({
                           <select
                             className={`pl-2.5 pr-7 py-1 rounded-lg text-xs font-bold border-2 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] cursor-pointer ${getStatusColor(module.status)} border-transparent hover:border-gray-300 dark:hover:border-slate-600 transition-colors appearance-none relative z-0`}
                             value={module.status || 'pending'}
-                            onChange={(e) => handleQuickStatusChange(module.id, e.target.value)}
+                            onChange={(e) => handleQuickStatusChange(module.id, e.target.value, module.name)}
                           >
                             {statusesIn(
                               isSuperAdmin
@@ -1011,6 +1061,7 @@ export default function ModuleList({
                 <p className="text-lg font-bold text-[var(--sys-primary)]">
                   {selectedModule.name}
                 </p>
+                <OnHoldReasonNote remarks={selectedModule.on_hold_remarks} />
               </div>
 
               <div>
@@ -1044,6 +1095,38 @@ export default function ModuleList({
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 capitalize">
                     {selectedModule.category ? selectedModule.category.replace('_', ' ') : 'New Module'}
                   </span>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Platform
+                  </h3>
+                  {selectedModule.platform ? (
+                    <span
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${platformBadgeClass(selectedModule.platform)}`}
+                    >
+                      {platformLabel(selectedModule.platform)}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-800 italic">
+                      Not set
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Workstream
+                  </h3>
+                  {selectedModule.workstream ? (
+                    <span
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${workstreamBadgeClass(selectedModule.workstream)}`}
+                    >
+                      {workstreamLabel(selectedModule.workstream)}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-800 italic">
+                      Not set
+                    </span>
+                  )}
                 </div>
                 <div>
                   <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
@@ -1478,6 +1561,14 @@ export default function ModuleList({
         onClose={() => setModuleToDelete(null)}
         moduleId={moduleToDelete?.id || ''}
         moduleName={moduleToDelete?.name || ''}
+      />
+
+      <OnHoldReasonModal
+        isOpen={!!holdTarget}
+        moduleName={holdTarget?.name}
+        isLoading={isHolding}
+        onClose={() => setHoldTarget(null)}
+        onConfirm={confirmOnHold}
       />
     </div>
   );

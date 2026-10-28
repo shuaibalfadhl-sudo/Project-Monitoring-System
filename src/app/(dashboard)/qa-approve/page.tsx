@@ -32,6 +32,9 @@ export default async function QaApprovePage() {
         website_link,
         deadline,
         category,
+        platform,
+        workstream,
+        on_hold_remarks,
         assigned_developer_id
       )
     `)

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
+import ModuleClassChips from "@/components/modules/ModuleClassChips";
 
 export default function QaApproveClient({
   initialModules,
@@ -323,6 +324,7 @@ export default function QaApproveClient({
                     <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
                       QA APPROVED
                     </span>
+                    <ModuleClassChips platform={module.platform} workstream={module.workstream} />
                   </td>
                   <td className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
                     {module.project.name}

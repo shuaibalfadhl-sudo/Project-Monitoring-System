@@ -35,7 +35,10 @@ export default async function QaRevisionPage() {
         assigned_developer_id,
         website_link,
         deadline,
-        category
+        category,
+        platform,
+        workstream,
+        on_hold_remarks
       )
     `)
 
