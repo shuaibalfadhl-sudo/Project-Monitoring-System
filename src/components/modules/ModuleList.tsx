@@ -383,65 +383,78 @@ export default function ModuleList({
 
     const wb = new ExcelJS.Workbook();
     wb.creator = "Project Monitoring System";
-    const ws = wb.addWorksheet(sheetName, {
-      views: [{ state: "frozen", ySplit: 2 }],
-    });
 
     // Title row spanning the full width, tinted with the live brand color
     const brandArgb = hexToArgb(
       getComputedStyle(document.documentElement).getPropertyValue("--sys-primary") || "",
       "FF1A2333",
     );
-    ws.mergeCells(1, 1, 1, cols.length);
-    const titleCell = ws.getCell(1, 1);
-    titleCell.value = projectName || "Project Modules";
-    titleCell.font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
-    titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: brandArgb } };
-    titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
-    ws.getRow(1).height = 28;
 
-    // Header row
-    const headerRow = ws.getRow(2);
-    cols.forEach((c, i) => {
-      const cell = headerRow.getCell(i + 1);
-      cell.value = c.header;
-      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: brandArgb } };
-      cell.alignment = { vertical: "middle", horizontal: "left" };
-      cell.border = {
-        top: { style: "thin", color: { argb: "FFFFFFFF" } },
-        left: { style: "thin", color: { argb: "FFFFFFFF" } },
-        bottom: { style: "thin", color: { argb: "FFD1D5DB" } },
-        right: { style: "thin", color: { argb: "FFD1D5DB" } },
-      };
-    });
-    headerRow.height = 22;
-    ws.columns = cols.map((c) => ({ width: c.width }));
-
-    // Data rows
-    filteredModules.forEach((m) => {
-      const row = ws.addRow(cols.map((c) => c.value(m)));
-      cols.forEach((c, i) => {
-        const cell = row.getCell(i + 1);
-        cell.alignment = { vertical: "middle", horizontal: "left", wrapText: c.width >= 40 };
-        cell.border = {
-          bottom: { style: "hair", color: { argb: "FFE5E7EB" } },
-          left: { style: "thin", color: { argb: "FFF3F4F6" } },
-          right: { style: "thin", color: { argb: "FFF3F4F6" } },
-        };
-        const badge = c.badge?.(m);
-        if (badge) {
-          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: badge.fill } };
-          cell.font = { bold: true, color: { argb: badge.font } };
-        }
+    const buildSheet = (name: string, sheetCols: Cell[]) => {
+      const ws = wb.addWorksheet(name, {
+        views: [{ state: "frozen", ySplit: 2 }],
       });
-      row.height = 20;
-    });
 
-    ws.autoFilter = {
-      from: { row: 2, column: 1 },
-      to: { row: 2, column: cols.length },
+      ws.mergeCells(1, 1, 1, sheetCols.length);
+      const titleCell = ws.getCell(1, 1);
+      titleCell.value = projectName || "Project Modules";
+      titleCell.font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+      titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: brandArgb } };
+      titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+      ws.getRow(1).height = 28;
+
+      // Header row
+      const headerRow = ws.getRow(2);
+      sheetCols.forEach((c, i) => {
+        const cell = headerRow.getCell(i + 1);
+        cell.value = c.header;
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: brandArgb } };
+        cell.alignment = { vertical: "middle", horizontal: "left" };
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFFFFFFF" } },
+          left: { style: "thin", color: { argb: "FFFFFFFF" } },
+          bottom: { style: "thin", color: { argb: "FFD1D5DB" } },
+          right: { style: "thin", color: { argb: "FFD1D5DB" } },
+        };
+      });
+      headerRow.height = 22;
+      ws.columns = sheetCols.map((c) => ({ width: c.width }));
+
+      // Data rows
+      filteredModules.forEach((m) => {
+        const row = ws.addRow(sheetCols.map((c) => c.value(m)));
+        sheetCols.forEach((c, i) => {
+          const cell = row.getCell(i + 1);
+          cell.alignment = { vertical: "middle", horizontal: "left", wrapText: c.width >= 40 };
+          cell.border = {
+            bottom: { style: "hair", color: { argb: "FFE5E7EB" } },
+            left: { style: "thin", color: { argb: "FFF3F4F6" } },
+            right: { style: "thin", color: { argb: "FFF3F4F6" } },
+          };
+          const badge = c.badge?.(m);
+          if (badge) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: badge.fill } };
+            cell.font = { bold: true, color: { argb: badge.font } };
+          }
+        });
+        row.height = 20;
+      });
+
+      ws.autoFilter = {
+        from: { row: 2, column: 1 },
+        to: { row: 2, column: sheetCols.length },
+      };
+
+      return ws;
     };
+
+    buildSheet(sheetName, cols);
+
+    buildSheet("Descriptions", [
+      { header: "Module Name", width: 36, value: (m) => m.name },
+      { header: "Description", width: 70, value: (m) => m.description || "" },
+    ]);
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
