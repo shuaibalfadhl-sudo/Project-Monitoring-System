@@ -10,6 +10,7 @@ import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
+import QaResultCard from "@/components/modules/QaResultCard";
 import { statusLabel as registryStatusLabel, statusBadgeClass, STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
 
 interface DevModule {
@@ -27,6 +28,7 @@ interface DevModule {
   module_document_url?: string | null;
   website_link?: string | null;
   qa_result_document_url?: string | null;
+  qa_remarks?: string | null;
   developer_feedback?: string | null;
   project: {
     id: string;
@@ -704,29 +706,11 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
                 </div>
               </div>
 
-              {/* QA Result Document */}
-              <div className="p-4 rounded-2xl bg-rose-50/40 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30">
-                <h3 className="text-xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider mb-2">
-                  QA Result Document
-                </h3>
-                {selectedModule.qa_result_document_url ? (
-                  <a
-                    href={selectedModule.qa_result_document_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-600 dark:text-rose-400 hover:underline"
-                  >
-                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    View QA Results ↗
-                  </a>
-                ) : (
-                  <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">
-                    No QA result document uploaded yet
-                  </p>
-                )}
-              </div>
+              {/* QA Result: document + remarks */}
+              <QaResultCard
+                documentUrl={selectedModule.qa_result_document_url}
+                remarks={selectedModule.qa_remarks}
+              />
 
               {/* QA Document History */}
               <DocumentHistorySection moduleId={selectedModule.id} />

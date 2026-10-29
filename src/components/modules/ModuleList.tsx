@@ -14,6 +14,7 @@ import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonModal from "@/components/modules/OnHoldReasonModal";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
+import QaResultCard from "@/components/modules/QaResultCard";
 import ExcelJS from "exceljs";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import {
@@ -1231,21 +1232,11 @@ export default function ModuleList({
                 </div>
               </div>
 
-              {selectedModule.qa_result_document_url && (
-                <div className="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30">
-                  <h3 className="text-xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider mb-2">
-                    QA Result Document
-                  </h3>
-                  <a
-                    href={selectedModule.qa_result_document_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm font-bold text-rose-600 dark:text-rose-400 hover:underline"
-                  >
-                    View QA Results ↗
-                  </a>
-                </div>
-              )}
+              {/* QA Result: document + remarks */}
+              <QaResultCard
+                documentUrl={selectedModule.qa_result_document_url}
+                remarks={selectedModule.qa_remarks}
+              />
 
               {(selectedModule.qa_acknowledged_at ||
                 selectedModule.qa_result_acknowledged_at) && (

@@ -28,6 +28,7 @@ export default async function ModuleReviewPage() {
         status,
         module_document_url,
         qa_result_document_url,
+        qa_remarks,
         qa_acknowledged_at,
         qa_acknowledged_by,
         qa_result_acknowledged_at,

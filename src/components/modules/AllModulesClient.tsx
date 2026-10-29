@@ -11,6 +11,7 @@ import EditModuleModal from "@/components/modules/EditModuleModal";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonModal from "@/components/modules/OnHoldReasonModal";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
+import QaResultCard from "@/components/modules/QaResultCard";
 import ExcelJS from "exceljs";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import {
@@ -1023,21 +1024,11 @@ export default function AllModulesClient({
                 </div>
               </div>
 
-              {selectedModule.qa_result_document_url && (
-                <div>
-                  <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                    QA Result Document
-                  </h3>
-                  <a
-                    href={selectedModule.qa_result_document_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-bold text-rose-600 dark:text-rose-400 hover:underline"
-                  >
-                    View QA Results ↗
-                  </a>
-                </div>
-              )}
+              {/* QA Result: document + remarks */}
+              <QaResultCard
+                documentUrl={selectedModule.qa_result_document_url}
+                remarks={selectedModule.qa_remarks}
+              />
 
               {/* Workflow Acknowledgements - always visible */}
               <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
