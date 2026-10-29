@@ -45,36 +45,49 @@ export default async function AllModulesPage() {
       });
     }
   } else if (profile.role === "project_manager") {
-    let query = supabase
-      .from("projects")
-      .select(
-        `
+    // PM sees modules from projects they created AND projects they were invited to.
+    const projectSelect = `
         id,
         name,
         created_by,
         company_id,
         project_modules (*)
-      `,
-      )
-      .eq("created_by", profile.id);
+      `;
 
+    let createdQuery = supabase
+      .from("projects")
+      .select(projectSelect)
+      .eq("created_by", profile.id);
     if (activeCompanyId) {
-      query = query.eq('company_id', activeCompanyId);
+      createdQuery = createdQuery.eq('company_id', activeCompanyId);
+    }
+    const { data: createdProjects } = await createdQuery;
+
+    let memberQuery = supabase
+      .from("project_members")
+      .select(`projects!inner(${projectSelect})`)
+      .eq("user_id", profile.id);
+    if (activeCompanyId) {
+      memberQuery = memberQuery.eq('projects.company_id', activeCompanyId);
+    }
+    const { data: memberships } = await memberQuery;
+
+    const projectsById = new Map<string, any>();
+    for (const p of createdProjects || []) projectsById.set(p.id, p);
+    for (const row of memberships || []) {
+      const p = row.projects as any;
+      if (p?.id) projectsById.set(p.id, p);
     }
 
-    const { data: projects } = await query;
-
-    if (projects) {
-      projects.forEach((p) => {
-        if (p.project_modules) {
-          p.project_modules.forEach((m: any) => {
-            allModules.push({
-              ...m,
-              project: { id: p.id, name: p.name, created_by: p.created_by },
-            });
+    for (const p of projectsById.values()) {
+      if (p.project_modules) {
+        p.project_modules.forEach((m: any) => {
+          allModules.push({
+            ...m,
+            project: { id: p.id, name: p.name, created_by: p.created_by },
           });
-        }
-      });
+        });
+      }
     }
   } else if (profile.role === "system_auditor" || profile.role === "developer") {
     let query = supabase

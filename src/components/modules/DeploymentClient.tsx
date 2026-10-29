@@ -147,17 +147,16 @@ export default function DeploymentClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-900/30 p-6 rounded-2xl shadow-sm inline-block min-w-56">
-          <h3 className="text-sm font-bold text-purple-700 dark:text-purple-500 uppercase tracking-wider mb-2">
-            Total For Deployment
-          </h3>
-          <p className="text-5xl font-black text-purple-600 dark:text-purple-400">
-            {filteredModules.length}
-          </p>
-        </div>
+      <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-900/30 p-6 rounded-2xl shadow-sm inline-block min-w-56">
+        <h3 className="text-sm font-bold text-purple-700 dark:text-purple-500 uppercase tracking-wider mb-2">
+          Total For Deployment
+        </h3>
+        <p className="text-5xl font-black text-purple-600 dark:text-purple-400">
+          {filteredModules.length}
+        </p>
+      </div>
 
-        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3 items-center md:justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-3">
           <button
             onClick={() => {
               setIsRefreshing(true);
@@ -297,7 +296,6 @@ export default function DeploymentClient({
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
-        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-700 overflow-hidden">

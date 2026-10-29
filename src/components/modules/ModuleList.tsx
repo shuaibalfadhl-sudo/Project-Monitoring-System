@@ -657,7 +657,8 @@ export default function ModuleList({
             Export
           </button>
 
-          <CreateModuleModal projectId={projectId} isManager={isManager} />
+          {/* Only managers (and super admins, folded into isManager) may create modules. */}
+          {isManager && <CreateModuleModal projectId={projectId} isManager={isManager} />}
         </div>
       </div>
 

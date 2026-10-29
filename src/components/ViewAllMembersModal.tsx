@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import RemoveMemberButton from '@/components/projects/RemoveMemberButton'
+import TransferOwnershipButton from '@/components/projects/TransferOwnershipButton'
 
 interface Member {
   user_id: string
@@ -11,7 +12,7 @@ interface Member {
   is_owner: boolean
 }
 
-export default function ViewAllMembersModal({ members, isManager, projectId }: { members: Member[], isManager: boolean, projectId: string }) {
+export default function ViewAllMembersModal({ members, canManageMembers, projectId }: { members: Member[], canManageMembers: boolean, projectId: string }) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
@@ -72,8 +73,11 @@ export default function ViewAllMembersModal({ members, isManager, projectId }: {
                     </div>
                   </div>
                 </div>
-                {isManager && !member.is_owner && (
-                  <RemoveMemberButton projectId={projectId} userId={member.user_id || member.id} />
+                {canManageMembers && !member.is_owner && (
+                  <div className="flex items-center gap-2">
+                    <TransferOwnershipButton projectId={projectId} userId={member.user_id || member.id} memberName={member.full_name || 'this member'} />
+                    <RemoveMemberButton projectId={projectId} userId={member.user_id || member.id} />
+                  </div>
                 )}
               </div>
             ))}

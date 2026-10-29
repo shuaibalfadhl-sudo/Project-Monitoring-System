@@ -2,6 +2,7 @@
 import { getUserProfile } from '@/lib/auth-utils'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
+import { scopeProjectsToCreatedOrMember } from '@/lib/projectScope'
 import DeploymentClient from '@/components/modules/DeploymentClient'
 
 export default async function DeploymentPage() {
@@ -49,7 +50,7 @@ export default async function DeploymentPage() {
   // DevOps sees every project in their company (RLS scopes to their companies),
   // so only non-privileged, non-devops roles are restricted to their own projects.
   if (profile.role !== 'super_admin' && profile.role !== 'devops') {
-    projectsQuery = projectsQuery.eq('created_by', profile.id)
+    projectsQuery = await scopeProjectsToCreatedOrMember(projectsQuery, supabaseServer, profile.id)
   }
 
   const { data: projects } = await projectsQuery

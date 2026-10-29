@@ -396,7 +396,17 @@ export default function AllModulesClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3 items-center justify-end">
+      {/* Module count — reflects the current filters */}
+      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 p-5 rounded-2xl shadow-sm inline-block min-w-48">
+        <h3 className="text-sm font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-wider mb-2">
+          Total Modules
+        </h3>
+        <p className="text-4xl font-black text-emerald-600 dark:text-emerald-400">
+          {filteredModules.length}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-end gap-3">
         {/* View toggle */}
         <div className="inline-flex rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1">
           <button

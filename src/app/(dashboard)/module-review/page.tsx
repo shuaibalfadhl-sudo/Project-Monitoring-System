@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserProfile } from '@/lib/auth-utils'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
+import { scopeProjectsToCreatedOrMember } from '@/lib/projectScope'
 import ModuleReviewClient from '@/components/modules/ModuleReviewClient'
 
 export default async function ModuleReviewPage() {
@@ -52,7 +53,7 @@ export default async function ModuleReviewPage() {
   }
 
   if (profile.role !== 'super_admin') {
-    projectsQuery = projectsQuery.eq('created_by', profile.id)
+    projectsQuery = await scopeProjectsToCreatedOrMember(projectsQuery, supabaseServer, profile.id)
   }
 
   const { data: projects } = await projectsQuery

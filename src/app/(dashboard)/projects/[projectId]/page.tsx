@@ -7,6 +7,7 @@ import ViewAllMembersModal from '@/components/ViewAllMembersModal'
 import ModuleList from '@/components/modules/ModuleList'
 import EditProjectModal from '@/components/projects/EditProjectModal'
 import RemoveMemberButton from '@/components/projects/RemoveMemberButton'
+import TransferOwnershipButton from '@/components/projects/TransferOwnershipButton'
 import StatusFilter from '@/components/dashboard/StatusFilter'
 import ProjectPieChart from '@/components/dashboard/ProjectPieChart'
 import { MODULE_STATUSES, statusChartColor } from '@/lib/moduleStatuses'
@@ -45,10 +46,22 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
     p_project_id: project.id
   })
 
-  const processedMembers = members?.map((member: any) => ({
+  // The RPC may not return is_owner, so read ownership flags straight from the table.
+  const { data: memberFlags } = await supabase
+    .from('project_members')
+    .select('user_id, is_owner')
+    .eq('project_id', project.id)
+  const ownerIds = new Set(
+    (memberFlags || []).filter((m: any) => m.is_owner).map((m: any) => m.user_id)
+  )
+
+  // Only the project owner (or a super admin) may remove members or transfer ownership.
+  const canManageMembers = isSuperAdmin || ownerIds.has(user.id)
+
+  const processedMembers = (members?.map((member: any) => ({
     ...member,
-    is_owner: member.user_id === project.created_by || member.is_owner
-  })) || []
+    is_owner: ownerIds.has(member.user_id)
+  })) || []).sort((a: any, b: any) => Number(b.is_owner) - Number(a.is_owner))
 
   const { data: modules } = await supabase
     .from('project_modules')
@@ -137,7 +150,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-sm font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Project Members</h3>
                 <div className="flex gap-3 items-center">
-                  <ViewAllMembersModal members={processedMembers} isManager={isManager} projectId={project.id} />
+                  <ViewAllMembersModal members={processedMembers} canManageMembers={canManageMembers} projectId={project.id} />
                   {isManager && (
                     <Link href={`/projects/${project.id}/members/new`} className="text-xs font-bold text-blue-600 hover:text-blue-800">
                       + Add Member
@@ -156,8 +169,11 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
                           <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Owner</span>
                         )}
                       </div>
-                      {isManager && !member.is_owner && (
-                        <RemoveMemberButton projectId={project.id} userId={member.user_id || member.id} />
+                      {canManageMembers && !member.is_owner && (
+                        <div className="flex items-center gap-2">
+                          <TransferOwnershipButton projectId={project.id} userId={member.user_id || member.id} memberName={member.full_name || 'this member'} />
+                          <RemoveMemberButton projectId={project.id} userId={member.user_id || member.id} />
+                        </div>
                       )}
                     </div>
                   )

@@ -9,28 +9,13 @@ import { statusChartColor } from '@/lib/moduleStatuses'
 export default function ProjectsClient({ initialProjects, isManager, isAuditor, isSuperAdmin, isDeveloper }: any) {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
-
-  const generatePagination = (currentPage: number, totalPages: number) => {
-    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
-    if (currentPage <= 3) return [1, 2, 3, 4, '...', totalPages];
-    if (currentPage >= totalPages - 2) return [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
-  };
 
   const filteredProjects = initialProjects.filter((p: any) => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
     return matchesSearch && matchesStatus;
   })
-
-  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage)
-  const paginatedProjects = filteredProjects.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
 
   return (
     <div className="w-full">
@@ -53,14 +38,14 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
             placeholder="Search projects..."
             value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => { setSearchTerm(e.target.value); }}
           />
         </div>
 
         <select
           className="w-full sm:w-40 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
           value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+          onChange={(e) => { setStatusFilter(e.target.value); }}
         >
           <option value="all">All Statuses</option>
           <option value="planning">Planning</option>
@@ -83,7 +68,7 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
         ) : (
           <>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {paginatedProjects.map((project: any, idx: number) => {
+              {filteredProjects.map((project: any, idx: number) => {
                 const projectTotalModules = project.project_modules?.length || 0;
                 
                 // Usually we track 'deployed' as progress metric
@@ -154,69 +139,6 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
                 );
               })}
             </div>
-
-          {totalPages > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-100 dark:border-slate-700 mt-6 pt-6 gap-4">
-              <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
-                <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">
-                  Showing <span className="font-bold">{(currentPage - 1) * itemsPerPage + (paginatedProjects.length > 0 ? 1 : 0)}</span> to <span className="font-bold">{Math.min(currentPage * itemsPerPage, filteredProjects.length)}</span> of <span className="font-bold">{filteredProjects.length}</span> projects
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-500 font-medium">Show</span>
-                  <select 
-                    value={itemsPerPage}
-                    onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                    className="border border-slate-200 dark:border-slate-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:text-white px-2 py-1 cursor-pointer"
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                  </select>
-                </div>
-              </div>
-
-              {totalPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                  >
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  
-                  <div className="flex items-center gap-1">
-                    {generatePagination(currentPage, totalPages).map((page, i) => (
-                      page === '...' ? (
-                        <span key={`ellipsis-${i}`} className="w-8 h-8 flex items-center justify-center text-slate-400 font-bold tracking-widest">...</span>
-                      ) : (
-                        <button
-                          key={`page-${page}`}
-                          onClick={() => setCurrentPage(page as number)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-bold transition-all ${currentPage === page ? 'bg-[var(--sys-primary)] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700'}`}
-                        >
-                          {page}
-                        </button>
-                      )
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="w-8 h-8 flex items-center justify-center rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
-                  >
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
         </>
         )}
       </div>
