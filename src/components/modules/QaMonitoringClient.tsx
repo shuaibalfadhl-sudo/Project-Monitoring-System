@@ -20,6 +20,7 @@ interface QaModule {
   status: string;
   module_document_url?: string | null;
   qa_result_document_url?: string | null;
+  qa_remarks?: string | null;
   website_link?: string | null;
   qa_acknowledged_by?: string | null;
   auditor_name?: string | null;
@@ -120,6 +121,7 @@ export default function QaMonitoringClient({
 
   const [newStatus, setNewStatus] = useState<string>("");
   const [reworkLink, setReworkLink] = useState<string>("");
+  const [qaRemarks, setQaRemarks] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showAckConfirm, setShowAckConfirm] = useState(false);
@@ -146,6 +148,7 @@ export default function QaMonitoringClient({
     setSelectedModule(mod);
     setNewStatus("");
     setReworkLink("");
+    setQaRemarks("");
     setError("");
   };
 
@@ -154,6 +157,7 @@ export default function QaMonitoringClient({
     setCopiedLink(false);
     setNewStatus("");
     setReworkLink("");
+    setQaRemarks("");
     setError("");
     setShowConfirmModal(false);
   };
@@ -199,19 +203,16 @@ export default function QaMonitoringClient({
 
     if (newStatus === "for revision" || newStatus === "for_revision") {
       const trimmedLink = reworkLink.trim();
-      if (!trimmedLink) {
-        setError("Please provide a valid document URL for the revision.");
-        return;
-      }
-
-      try {
-        const u = new URL(trimmedLink);
-        if (u.protocol !== "http:" && u.protocol !== "https:") {
-          throw new Error();
+      if (trimmedLink) {
+        try {
+          const u = new URL(trimmedLink);
+          if (u.protocol !== "http:" && u.protocol !== "https:") {
+            throw new Error();
+          }
+        } catch {
+          setError("Please provide a valid document URL (starting with http:// or https://)");
+          return;
         }
-      } catch {
-        setError("Please provide a valid document URL (starting with http:// or https://)");
-        return;
       }
     }
 
@@ -229,25 +230,27 @@ export default function QaMonitoringClient({
       const { data: { user } } = await supabase.auth.getUser();
 
       const isForRevision = newStatus === "for revision" || newStatus === "for_revision";
+      const trimmedLink = reworkLink.trim();
 
       const { error: updateError } = await supabase
         .from("project_modules")
         .update({
           status: newStatus,
           qa_result_document_url:
-            isForRevision ? reworkLink.trim() : null,
+            isForRevision && trimmedLink ? trimmedLink : null,
+          qa_remarks: qaRemarks.trim() || null,
         })
         .eq("id", selectedModule.id);
 
       if (updateError) throw updateError;
 
       // When marking for revision, record the document URL in qa_document_history
-      if (isForRevision) {
+      if (isForRevision && trimmedLink) {
         const { error: histErr } = await supabase
           .from("qa_document_history")
           .insert({
             module_id: selectedModule.id,
-            document_url: reworkLink.trim(),
+            document_url: trimmedLink,
             uploaded_by: user?.id,
           });
 
@@ -257,6 +260,8 @@ export default function QaMonitoringClient({
         } else {
           toast.success("Module marked For Revision and document recorded in history.");
         }
+      } else if (isForRevision) {
+        toast.success("Module marked For Revision.");
       } else {
         toast.success("Module marked as QA Approved.");
       }
@@ -1087,11 +1092,11 @@ export default function QaMonitoringClient({
                   {(newStatus === "for revision" || newStatus === "for_revision") && (
                     <div className="animate-in fade-in slide-in-from-top-4 duration-300 pt-2">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xs font-bold text-red-600 uppercase tracking-wider flex items-center gap-1.5">
-                          QA Result Document URL <span className="text-red-500 text-sm">*</span>
+                        <h3 className="text-xs font-bold text-red-600 uppercase tracking-wider">
+                          QA Result Document URL
                         </h3>
-                        <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full uppercase">
-                          Required
+                        <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full uppercase">
+                          Optional
                         </span>
                       </div>
                       <input
@@ -1103,11 +1108,26 @@ export default function QaMonitoringClient({
                         }}
                         placeholder="https://docs.google.com/... or link to revision document"
                         className="w-full p-4 rounded-xl border-2 border-red-200 bg-red-50/50 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10 outline-none transition-all font-medium placeholder:text-red-300 text-slate-800"
-                        required
                       />
                       <p className="text-[11px] text-gray-500 mt-1.5">
-                        This document link will be recorded in the module&apos;s QA Document History.
+                        Optional — if provided, this document link will be recorded in the module&apos;s QA Document History.
                       </p>
+                    </div>
+                  )}
+
+                  {newStatus && (
+                    <div className="pt-2">
+                      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                        QA Remarks
+                      </h3>
+                      <textarea
+                        value={qaRemarks}
+                        onChange={(e) => setQaRemarks(e.target.value)}
+                        rows={3}
+                        maxLength={2000}
+                        placeholder="Notes from this QA review, saved with the audit result"
+                        className="w-full p-4 rounded-xl border-2 border-gray-200 bg-gray-50/50 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium text-slate-800 resize-y"
+                      />
                     </div>
                   )}
                 </>

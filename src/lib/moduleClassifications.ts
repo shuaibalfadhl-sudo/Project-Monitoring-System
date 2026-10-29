@@ -23,6 +23,12 @@ export const MODULE_PLATFORMS: ClassMeta[] = [
     badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
     excel: { fill: "FFEDE9FE", font: "FF6D28D9" },
   },
+  {
+    value: "kiosk",
+    label: "Kiosk",
+    badge: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300",
+    excel: { fill: "FFFAE8FF", font: "FFA21CAF" },
+  },
 ];
 
 export const MODULE_WORKSTREAMS: ClassMeta[] = [
