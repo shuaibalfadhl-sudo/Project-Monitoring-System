@@ -9,6 +9,7 @@ import EditProjectModal from '@/components/projects/EditProjectModal'
 import RemoveMemberButton from '@/components/projects/RemoveMemberButton'
 import StatusFilter from '@/components/dashboard/StatusFilter'
 import ProjectPieChart from '@/components/dashboard/ProjectPieChart'
+import { MODULE_STATUSES, statusChartColor } from '@/lib/moduleStatuses'
 
 export default async function ProjectDetailsPage({ params, searchParams }: { params: Promise<{ projectId: string }>, searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const resolvedParams = await params
@@ -73,18 +74,6 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
 
   let gradientString = '#f3f4f6 0% 100%';
   const statusCounts: Record<string, number> = {};
-  const statusColors: Record<string, string> = {
-    pending: '#9ca3af',
-    development: '#3b82f6',
-    pm_review: '#a855f7',
-    for_qa: '#f97316',
-    auditing: '#f59e0b',
-    revision: '#ef4444',
-    revising: '#f43f5e',
-    qa_approved: '#22c55e',
-    deployment: '#6366f1',
-    deployed: '#10b981'
-  };
 
   let presentStatuses: string[] = [];
   let pieChartData: any[] = [];
@@ -95,13 +84,13 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
       statusCounts[status] = (statusCounts[status] || 0) + 1;
     });
 
-    const order = ['deployed', 'deployment', 'qa_approved', 'auditing', 'for_qa', 'revising', 'revision', 'pm_review', 'development', 'pending'];
+    const order = MODULE_STATUSES.map((s) => s.value).reverse();
     presentStatuses = Object.keys(statusCounts).sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
     pieChartData = presentStatuses.map(status => ({
       id: status,
       value: statusCounts[status] || 0,
-      color: statusColors[status] || '#94a3b8'
+      color: statusChartColor(status)
     }));
   }
 
@@ -189,7 +178,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
               {presentStatuses.length > 0 ? presentStatuses.map(status => (
                 <div key={status} className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: statusColors[status] }}></div>
+                    <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: statusChartColor(status) }}></div>
                     <span className={`text-sm font-bold text-gray-700 dark:text-slate-300 ${status === 'qa_approved' || status === 'for_qa' ? '' : 'capitalize'}`}>{status === 'qa_approved' ? 'QA Approved' : status === 'for_qa' ? 'For QA' : status.replace('_', ' ')}</span>
                   </div>
                   <span className="text-base font-black text-[var(--sys-primary)]">{statusCounts[status]}</span>

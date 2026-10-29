@@ -7,6 +7,7 @@ import { cookies } from 'next/headers'
 
 import StatusFilter from '@/components/dashboard/StatusFilter'
 import ProjectPieChart from '@/components/dashboard/ProjectPieChart'
+import { statusChartColor } from '@/lib/moduleStatuses'
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const profile = await getUserProfile()
@@ -150,26 +151,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 const projectTotalModules = project.project_modules?.length || 0;
                 let gradientString = '#f3f4f6 0% 100%';
                 
-                const statusColors: Record<string, string> = {
-                  pending: '#9ca3af',      // Gray
-                  development: '#3b82f6',  // Blue
-                  pm_review: '#a855f7',    // Purple
-                  for_qa: '#f97316',       // Orange
-                  auditing: '#f59e0b',     // Amber
-                  revision: '#ef4444',     // Red
-                  revising: '#f43f5e',     // Rose
-                  qa_approved: '#22c55e',  // Green
-                  deployment: '#6366f1',   // Indigo
-                  deployed: '#10b981'      // Emerald
-                };
-                
                 const targetStatus = currentStatus === 'all' ? 'deployed' : currentStatus;
                 const completedModules = project.project_modules?.filter((m: any) => m.status === targetStatus).length || 0;
                 const progressPercentage = projectTotalModules === 0 ? 0 : Math.round((completedModules / projectTotalModules) * 100);
                 const remainingModules = projectTotalModules - completedModules;
                 
                 const pieChartData = projectTotalModules === 0 ? [] : [
-                  { id: targetStatus, value: completedModules, color: statusColors[targetStatus] || '#10b981' },
+                  { id: targetStatus, value: completedModules, color: statusChartColor(targetStatus) },
                   { id: 'remaining', value: remainingModules, color: '#f3f4f6' }
                 ];
                 

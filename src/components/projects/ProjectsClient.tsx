@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import CreateProjectModal from '@/components/projects/CreateProjectModal'
 import ProjectPieChart from '@/components/dashboard/ProjectPieChart'
+import { statusChartColor } from '@/lib/moduleStatuses'
 
 export default function ProjectsClient({ initialProjects, isManager, isAuditor, isSuperAdmin, isDeveloper }: any) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -85,19 +86,6 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
               {paginatedProjects.map((project: any, idx: number) => {
                 const projectTotalModules = project.project_modules?.length || 0;
                 
-                const statusColors: Record<string, string> = {
-                  pending: '#9ca3af',      // Gray
-                  development: '#3b82f6',  // Blue
-                  pm_review: '#a855f7',    // Purple
-                  for_qa: '#f97316',       // Orange
-                  auditing: '#f59e0b',     // Amber
-                  revision: '#ef4444',     // Red
-                  revising: '#f43f5e',     // Rose
-                  qa_approved: '#22c55e',  // Green
-                  deployment: '#6366f1',   // Indigo
-                  deployed: '#10b981'      // Emerald
-                };
-                
                 // Usually we track 'deployed' as progress metric
                 const targetStatus = 'deployed';
                 const completedModules = project.project_modules?.filter((m: any) => m.status === targetStatus).length || 0;
@@ -105,7 +93,7 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
                 const remainingModules = projectTotalModules - completedModules;
                 
                 const pieChartData = projectTotalModules === 0 ? [] : [
-                  { id: targetStatus, value: completedModules, color: statusColors[targetStatus] || '#10b981' },
+                  { id: targetStatus, value: completedModules, color: statusChartColor(targetStatus) },
                   { id: 'remaining', value: remainingModules, color: '#f3f4f6' }
                 ];
                 

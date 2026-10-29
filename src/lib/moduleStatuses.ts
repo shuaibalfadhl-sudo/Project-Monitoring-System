@@ -8,6 +8,7 @@ export interface StatusMeta {
   label: string;
   badge: string; // full Tailwind classes (light + dark)
   gantt: string; // Gantt bar background class
+  chart: string; // hex for pie charts and inline-style legends
   excel: { fill: string; font: string }; // ARGB colors for Excel export
 }
 
@@ -17,6 +18,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "Pending",
     badge: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
     gantt: "bg-slate-400",
+    chart: "#9CA3AF",
     excel: { fill: "FFF3F4F6", font: "FF374151" },
   },
   {
@@ -24,6 +26,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "For Data Gathering",
     badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
     gantt: "bg-teal-500",
+    chart: "#14B8A6",
     excel: { fill: "FFCCFBF1", font: "FF0F766E" },
   },
   {
@@ -31,6 +34,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "Development",
     badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
     gantt: "bg-blue-500",
+    chart: "#3B82F6",
     excel: { fill: "FFDBEAFE", font: "FF1D4ED8" },
   },
   {
@@ -38,6 +42,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "Developing",
     badge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300",
     gantt: "bg-cyan-500",
+    chart: "#06B6D4",
     excel: { fill: "FFCFFAFE", font: "FF0E7490" },
   },
   {
@@ -45,6 +50,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "PM Review",
     badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
     gantt: "bg-purple-500",
+    chart: "#A855F7",
     excel: { fill: "FFEDE9FE", font: "FF6D28D9" },
   },
   {
@@ -52,6 +58,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "For QA",
     badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
     gantt: "bg-orange-500",
+    chart: "#F97316",
     excel: { fill: "FFFFEDD5", font: "FFC2410C" },
   },
   {
@@ -59,6 +66,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "Auditing",
     badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
     gantt: "bg-amber-500",
+    chart: "#F59E0B",
     excel: { fill: "FFFEF3C7", font: "FFB45309" },
   },
   {
@@ -66,6 +74,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "For Revision",
     badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
     gantt: "bg-rose-500",
+    chart: "#FB7185",
     excel: { fill: "FFFFE4E6", font: "FFBE123C" },
   },
   {
@@ -73,6 +82,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "Revision",
     badge: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
     gantt: "bg-rose-500",
+    chart: "#EF4444",
     excel: { fill: "FFFEE2E2", font: "FFBE123C" },
   },
   {
@@ -80,6 +90,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "Revising",
     badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
     gantt: "bg-fuchsia-500",
+    chart: "#F43F5E",
     excel: { fill: "FFEDE9FE", font: "FF6D28D9" },
   },
   {
@@ -87,6 +98,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "On Hold",
     badge: "bg-zinc-200 text-zinc-700 dark:bg-zinc-700/60 dark:text-zinc-300",
     gantt: "bg-zinc-400",
+    chart: "#71717A",
     excel: { fill: "FFE4E4E7", font: "FF3F3F46" },
   },
   {
@@ -94,6 +106,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "QA Approved",
     badge: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
     gantt: "bg-green-500",
+    chart: "#22C55E",
     excel: { fill: "FFDCFCE7", font: "FF15803D" },
   },
   {
@@ -101,6 +114,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "Deployment",
     badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
     gantt: "bg-indigo-500",
+    chart: "#6366F1",
     excel: { fill: "FFE0E7FF", font: "FF4338CA" },
   },
   {
@@ -108,6 +122,7 @@ export const MODULE_STATUSES: StatusMeta[] = [
     label: "Deployed",
     badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
     gantt: "bg-emerald-500",
+    chart: "#10B981",
     excel: { fill: "FFD1FAE5", font: "FF047857" },
   },
 ];
@@ -134,6 +149,7 @@ export const statusLabel = (value?: string | null) => statusMeta(value).label;
 export const statusBadgeClass = (value?: string | null) => statusMeta(value).badge;
 export const statusGanttClass = (value?: string | null) => statusMeta(value).gantt;
 export const statusExcelColors = (value?: string | null) => statusMeta(value).excel;
+export const statusChartColor = (value?: string | null) => statusMeta(value).chart;
 
 export const statusesIn = (values: readonly string[]): StatusMeta[] => values.map((v) => statusMeta(v));
 
