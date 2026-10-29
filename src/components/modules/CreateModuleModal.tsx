@@ -199,7 +199,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Deadline</label>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Deadline <span className="text-red-500">*</span></label>
                     <input
                       type="date"
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"

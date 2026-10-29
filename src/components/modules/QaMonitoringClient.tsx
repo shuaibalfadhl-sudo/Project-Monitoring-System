@@ -12,6 +12,13 @@ import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import { STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
 
+const PRIORITY_RANK: Record<string, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
 interface QaModule {
   id: string;
   name: string;
@@ -30,6 +37,7 @@ interface QaModule {
   platform?: string | null;
   workstream?: string | null;
   on_hold_remarks?: string | null;
+  updated_at?: string | null;
   project: {
     id: string;
     name: string;
@@ -62,7 +70,7 @@ export default function QaMonitoringClient({
   const [copiedLink, setCopiedLink] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("default");
   const [projectFilter, setProjectFilter] = useState("all");
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
@@ -314,14 +322,25 @@ export default function QaMonitoringClient({
       m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || m.status === statusFilter;
-    const matchesPriority =
-      priorityFilter === "all" || m.priority === priorityFilter;
     const matchesProject =
       projectFilter === "all" || m.project.id === projectFilter;
     const matchesAcknowledger =
       ackFilter === "all" || m.qa_acknowledged_by === ackFilter;
-    return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesAcknowledger;
+    return matchesSearch && matchesStatus && matchesProject && matchesAcknowledger;
   });
+
+  // "Default" preserves the server queue order: auditing first, then priority, then recency.
+  if (sortOrder !== "default") {
+    filteredModules.sort((a, b) => {
+      if (sortOrder === "priority_high" || sortOrder === "priority_low") {
+        const diff = (PRIORITY_RANK[a.priority] ?? 4) - (PRIORITY_RANK[b.priority] ?? 4);
+        return sortOrder === "priority_high" ? diff : -diff;
+      }
+      const diff =
+        (Date.parse(a.updated_at ?? "") || 0) - (Date.parse(b.updated_at ?? "") || 0);
+      return sortOrder === "newest" ? -diff : diff;
+    });
+  }
 
   return (
     <div className="w-full bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
@@ -565,18 +584,18 @@ export default function QaMonitoringClient({
           </select>
 
           <select
-            className="w-full sm:w-32 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
-            value={priorityFilter}
+            className="w-full sm:w-48 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
+            value={sortOrder}
             onChange={(e) => {
-              setPriorityFilter(e.target.value);
+              setSortOrder(e.target.value);
               setCurrentPage(1);
             }}
           >
-            <option value="all">All Priorities</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
+            <option value="default">Default order</option>
+            <option value="newest">Newest to oldest</option>
+            <option value="oldest">Oldest to newest</option>
+            <option value="priority_high">Priority: High to Low</option>
+            <option value="priority_low">Priority: Low to High</option>
           </select>
         </div>
       </div>
@@ -608,6 +627,9 @@ export default function QaMonitoringClient({
                     </th>
                     <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Project Name
+                    </th>
+                    <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                      Developer
                     </th>
                     <th className="py-4 px-6 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Status
@@ -645,6 +667,15 @@ export default function QaMonitoringClient({
                         <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mt-1">
                           By: {mod.project.creator_name || "Unknown"}
                         </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        {mod.assigned_developer_name ? (
+                          <span className="font-semibold text-gray-700 dark:text-slate-200 text-sm">
+                            {mod.assigned_developer_name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-slate-500 italic">Unassigned</span>
+                        )}
                       </td>
                       <td className="py-4 px-6">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 ${mod.status === 'qa_approved' || mod.status === 'for_qa' ? '' : 'capitalize'}`}>

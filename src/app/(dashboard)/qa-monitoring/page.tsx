@@ -75,6 +75,7 @@ export default async function QaMonitoringPage() {
             workstream,
             on_hold_remarks,
             qa_acknowledged_by,
+            assigned_developer_id,
             developer_feedback,
             updated_at
           )
