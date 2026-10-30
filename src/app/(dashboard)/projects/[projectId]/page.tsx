@@ -56,7 +56,8 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   )
 
   // Only the project owner (or a super admin) may remove members or transfer ownership.
-  const canManageMembers = isSuperAdmin || ownerIds.has(user.id)
+  const isOwner = ownerIds.has(user.id)
+  const canManageMembers = isSuperAdmin || isOwner
 
   const processedMembers = (members?.map((member: any) => ({
     ...member,
@@ -235,6 +236,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
         isAuditor={isAuditor}
         isDeveloper={isDeveloper}
         isSuperAdmin={isSuperAdmin}
+        isOwner={isOwner}
       />
     </div>
   )

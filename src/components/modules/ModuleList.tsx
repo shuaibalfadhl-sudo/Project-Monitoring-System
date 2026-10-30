@@ -42,6 +42,7 @@ interface ModuleListProps {
   isAuditor: boolean;
   isDeveloper?: boolean;
   isSuperAdmin?: boolean;
+  isOwner?: boolean;
 }
 
 export default function ModuleList({
@@ -52,6 +53,7 @@ export default function ModuleList({
   isAuditor,
   isDeveloper,
   isSuperAdmin,
+  isOwner,
 }: ModuleListProps) {
   const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -845,7 +847,7 @@ export default function ModuleList({
                       )}
                     </td>
                     <td className="py-4">
-                      {isSuperAdmin || (isManager && !['auditing', 'qa_approved', 'deployed', 'deployment'].includes(module.status || 'pending')) ? (
+                      {isSuperAdmin || ((isManager || isOwner) && !['auditing', 'qa_approved', 'deployed', 'deployment'].includes(module.status || 'pending')) ? (
                         <div onClick={(e) => e.stopPropagation()} className="relative inline-block group">
                           <select
                             className={`pl-2.5 pr-7 py-1 rounded-lg text-xs font-bold border-2 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] cursor-pointer ${getStatusColor(module.status)} border-transparent hover:border-gray-300 dark:hover:border-slate-600 transition-colors appearance-none relative z-0`}

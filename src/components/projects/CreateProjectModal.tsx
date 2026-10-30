@@ -56,8 +56,8 @@ export default function CreateProjectModal() {
       .eq('id', user.id)
       .single()
 
-    if (!profile || (profile.role !== 'project_manager' && profile.role !== 'super_admin')) {
-      toast.error('Permission Denied: Your account role must be "Project Manager" or "Super Admin" to create projects.')
+    if (!profile || !['project_manager', 'developer', 'super_admin'].includes(profile.role)) {
+      toast.error('Permission Denied: Your account role must be "Project Manager", "Developer" or "Super Admin" to create projects.')
       setIsLoading(false)
       return
     }
