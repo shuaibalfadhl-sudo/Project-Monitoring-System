@@ -80,6 +80,9 @@ export default function ModuleList({
   const [isHolding, setIsHolding] = useState(false);
   const [moduleToDelete, setModuleToDelete] = useState<ProjectModule | null>(null);
 
+  // Owners manage modules in their own projects; Delete stays manager-only.
+  const canManageModules = isManager || !!isOwner;
+
   const router = useRouter();
   const supabase = createClient();
 
@@ -659,8 +662,8 @@ export default function ModuleList({
             Export
           </button>
 
-          {/* Only managers (and super admins, folded into isManager) may create modules. */}
-          {isManager && <CreateModuleModal projectId={projectId} isManager={isManager} />}
+          {/* Managers and project owners may create modules; owners get the PM status set. */}
+          {canManageModules && <CreateModuleModal projectId={projectId} isManager={isManager || !!isOwner} />}
         </div>
       </div>
 
@@ -786,7 +789,7 @@ export default function ModuleList({
                   <th className="pb-4 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     Status
                   </th>
-                  {isManager ? (
+                  {canManageModules ? (
                     <th className="pb-4 font-bold text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wider text-right">
                       Actions
                     </th>
@@ -847,7 +850,7 @@ export default function ModuleList({
                       )}
                     </td>
                     <td className="py-4">
-                      {isSuperAdmin || ((isManager || isOwner) && !['auditing', 'qa_approved', 'deployed', 'deployment'].includes(module.status || 'pending')) ? (
+                  {isSuperAdmin || (canManageModules && !['auditing', 'qa_approved', 'deployed', 'deployment'].includes(module.status || 'pending')) ? (
                         <div onClick={(e) => e.stopPropagation()} className="relative inline-block group">
                           <select
                             className={`pl-2.5 pr-7 py-1 rounded-lg text-xs font-bold border-2 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] cursor-pointer ${getStatusColor(module.status)} border-transparent hover:border-gray-300 dark:hover:border-slate-600 transition-colors appearance-none relative z-0`}
@@ -878,19 +881,25 @@ export default function ModuleList({
                         </span>
                       )}
                     </td>
-                    {isManager ? (
+                    {canManageModules ? (
                       <td className="py-4 text-right">
                         <div
                           className="flex justify-end gap-4"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <EditModuleModal module={module} isManager={isManager} isSuperAdmin={isSuperAdmin} />
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setModuleToDelete(module); }}
-                            className="text-sm font-semibold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            Delete
-                          </button>
+                          <EditModuleModal
+                            module={module}
+                            isManager={isManager || !!isOwner}
+                            isSuperAdmin={isSuperAdmin}
+                          />
+                          {isManager && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setModuleToDelete(module); }}
+                              className="text-sm font-semibold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     ) : (

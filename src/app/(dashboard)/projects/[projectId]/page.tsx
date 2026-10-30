@@ -130,7 +130,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
             <Link href="/projects" className="text-sm font-semibold text-gray-500 dark:text-slate-400 hover:text-[var(--sys-primary)] dark:hover:text-[var(--sys-primary)]">
               ← Back to Projects
             </Link>
-            {isManager && (
+            {(isManager || isOwner) && (
               <EditProjectModal project={project} />
             )}
           </div>

@@ -31,7 +31,13 @@ export default function CreateProjectModal() {
       const { data } = await supabase.from('companies').select('id, name').order('name')
       setCompanies(data || [])
       if (data && data.length > 0) {
-        setFormData(prev => ({ ...prev, company_id: data[0].id }))
+        // Default to the company currently in view so the new project is not filtered out.
+        const activeCompanyId = document.cookie
+          .match(/(?:^|;\s*)activeCompanyId=([^;]+)/)?.[1]
+        const preferred = activeCompanyId && data.some(c => c.id === activeCompanyId)
+          ? activeCompanyId
+          : data[0].id
+        setFormData(prev => ({ ...prev, company_id: preferred }))
       }
     }
     fetchCompanies()
@@ -98,7 +104,7 @@ export default function CreateProjectModal() {
         start_date: '',
         target_date: '',
         status: 'planning',
-        company_id: companies.length > 0 ? companies[0].id : ''
+        company_id: formData.company_id
       })
       router.refresh()
       setIsLoading(false)
