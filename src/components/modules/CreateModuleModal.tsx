@@ -15,12 +15,16 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
   const supabase = createClient()
 
   const [isLoading, setIsLoading] = useState(false)
+  const [developers, setDevelopers] = useState<{ id: string, full_name: string }[]>([])
+  const [isDevDropdownOpen, setIsDevDropdownOpen] = useState(false)
+  const [devSearch, setDevSearch] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     priority: 'medium',
     status: 'pending',
     module_document_url: '',
+    assigned_developer_id: '',
     category: 'new_module',
     platform: '',
     workstream: '',
@@ -32,6 +36,25 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const fetchDevelopers = async () => {
+      const { data, error } = await supabase
+        .from('project_members')
+        .select('user_id, profiles!inner(id, full_name, role)')
+        .eq('project_id', projectId)
+        .in('profiles.role', ['developer', 'devops'])
+
+      if (!error && data) {
+        setDevelopers(data.map((d: any) => ({
+          id: d.profiles.id,
+          full_name: d.profiles.full_name || 'Unnamed Developer'
+        })))
+      }
+    }
+    fetchDevelopers()
+  }, [isOpen, projectId, supabase])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -53,6 +76,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
     // Empty selects must be stored as NULL; the DB CHECK constraints reject ''.
     if (payload.platform === '') payload.platform = null
     if (payload.workstream === '') payload.workstream = null
+    if (payload.assigned_developer_id === '') payload.assigned_developer_id = null
 
     const { error } = await supabase
       .from('project_modules')
@@ -70,6 +94,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
         priority: 'medium',
         status: 'pending',
         module_document_url: '',
+        assigned_developer_id: '',
         category: 'new_module',
         platform: '',
         workstream: '',
@@ -219,6 +244,62 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                       onChange={(e) => setFormData({ ...formData, development_date: e.target.value })}
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Assign Developer</label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsDevDropdownOpen(!isDevDropdownOpen)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium text-left flex justify-between items-center dark:text-white"
+                    >
+                      {formData.assigned_developer_id
+                        ? developers.find(d => d.id === formData.assigned_developer_id)?.full_name || 'Unknown'
+                        : 'Unassigned'}
+                      <svg className={`w-4 h-4 text-gray-500 transition-transform ${isDevDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    {isDevDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 flex flex-col overflow-hidden">
+                        <div className="p-2 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50">
+                          <input
+                            type="text"
+                            placeholder="Search developer..."
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] dark:text-white"
+                            value={devSearch}
+                            onChange={(e) => setDevSearch(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            autoFocus
+                          />
+                        </div>
+                        <div className="overflow-y-auto flex-1 p-1">
+                          <button
+                            type="button"
+                            onClick={() => { setFormData({ ...formData, assigned_developer_id: '' }); setIsDevDropdownOpen(false); setDevSearch(''); }}
+                            className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors ${!formData.assigned_developer_id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
+                          >
+                            Unassigned
+                          </button>
+                          {developers.filter(d => d.full_name.toLowerCase().includes(devSearch.toLowerCase())).map(dev => (
+                            <button
+                              key={dev.id}
+                              type="button"
+                              onClick={() => { setFormData({ ...formData, assigned_developer_id: dev.id }); setIsDevDropdownOpen(false); setDevSearch(''); }}
+                              className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors ${formData.assigned_developer_id === dev.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
+                            >
+                              {dev.full_name}
+                            </button>
+                          ))}
+                          {developers.length > 0 && developers.filter(d => d.full_name.toLowerCase().includes(devSearch.toLowerCase())).length === 0 && (
+                            <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-slate-400 italic">No developers found.</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {developers.length === 0 && (
+                    <p className="text-xs text-orange-500 mt-2 font-medium">No developers are assigned to this project yet.</p>
+                  )}
                 </div>
 
                 <div>

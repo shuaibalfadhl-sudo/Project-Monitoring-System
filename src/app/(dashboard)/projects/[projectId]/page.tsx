@@ -67,7 +67,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
     .from('project_modules')
     .select('*')
     .eq('project_id', project.id)
-    .order('priority', { ascending: true })
+    .order('created_at', { ascending: false })
 
   // Fetch all profiles to map auditor/PM/developer names
   const { data: allProfiles } = await supabase
