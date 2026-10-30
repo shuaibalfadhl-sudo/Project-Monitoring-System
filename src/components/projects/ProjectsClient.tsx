@@ -4,9 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import CreateProjectModal from '@/components/projects/CreateProjectModal'
 import ProjectPieChart from '@/components/dashboard/ProjectPieChart'
+import StatusFilter from '@/components/dashboard/StatusFilter'
 import { statusChartColor } from '@/lib/moduleStatuses'
 
-export default function ProjectsClient({ initialProjects, isManager, isAuditor, isSuperAdmin, isDeveloper }: any) {
+export default function ProjectsClient({ initialProjects, isManager, isAuditor, isSuperAdmin, isDeveloper, currentStatus }: any) {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
@@ -17,17 +18,32 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
     return matchesSearch && matchesStatus;
   })
 
+  // Progress on each card counts modules in the status picked above.
+  const targetStatus = currentStatus === 'all' ? 'deployed' : (currentStatus || 'deployed')
+
   return (
     <div className="w-full">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
           {isAuditor ? 'Assigned Projects' : isSuperAdmin ? 'All Projects' : 'Projects'}
         </h1>
-        {(isManager || isSuperAdmin || isDeveloper) && <CreateProjectModal />}
       </div>
 
-      <div className="mb-6 flex flex-col sm:flex-row w-full gap-4 items-center justify-end">
-        <div className="relative w-full sm:w-64">
+      {/* Project count + progress filter */}
+      <div className="flex flex-wrap items-center gap-4 mb-6">
+        <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 p-5 rounded-2xl shadow-sm inline-block min-w-48">
+          <h3 className="text-sm font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider mb-2">
+            Total Projects
+          </h3>
+          <p className="text-4xl font-black text-indigo-600 dark:text-indigo-400">
+            {filteredProjects.length}
+          </p>
+        </div>
+        <StatusFilter currentStatus={targetStatus} inline />
+      </div>
+
+      <div className="mb-6 flex flex-col lg:flex-row w-full gap-3 items-stretch lg:items-center justify-end">
+        <div className="relative w-full lg:w-64">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -43,7 +59,7 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
         </div>
 
         <select
-          className="w-full sm:w-40 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+          className="w-full lg:w-40 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); }}
         >
@@ -53,6 +69,8 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
           <option value="on_hold">On Hold</option>
           <option value="completed">Completed</option>
         </select>
+
+        {(isManager || isSuperAdmin || isDeveloper) && <CreateProjectModal />}
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 transition-colors duration-300">
@@ -70,9 +88,7 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredProjects.map((project: any, idx: number) => {
                 const projectTotalModules = project.project_modules?.length || 0;
-                
-                // Usually we track 'deployed' as progress metric
-                const targetStatus = 'deployed';
+
                 const completedModules = project.project_modules?.filter((m: any) => m.status === targetStatus).length || 0;
                 const progressPercentage = projectTotalModules === 0 ? 0 : Math.round((completedModules / projectTotalModules) * 100);
                 const remainingModules = projectTotalModules - completedModules;

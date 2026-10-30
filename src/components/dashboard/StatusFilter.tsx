@@ -17,7 +17,7 @@ const STATUSES = [
   { value: "pending", label: "Pending" }
 ];
 
-export default function StatusFilter({ currentStatus }: { currentStatus: string }) {
+export default function StatusFilter({ currentStatus, inline }: { currentStatus: string, inline?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -29,23 +29,38 @@ export default function StatusFilter({ currentStatus }: { currentStatus: string 
     router.push(`${pathname}?${params.toString()}`);
   };
 
+  const select = (
+    <select
+      id="statusFilter"
+      value={currentStatus}
+      onChange={handleStatusChange}
+      className="text-sm font-semibold bg-gray-50 dark:bg-slate-800 text-[var(--sys-primary)] border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+    >
+      {STATUSES.map((status) => (
+        <option key={status.value} value={status.value}>
+          {status.label}
+        </option>
+      ))}
+    </select>
+  );
+
+  if (inline) {
+    return (
+      <div className="flex items-center gap-2 shrink-0">
+        <label htmlFor="statusFilter" className="text-sm font-bold text-gray-500 whitespace-nowrap">
+          Filter Progress By:
+        </label>
+        {select}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 rounded-2xl shadow-sm w-full mb-6">
       <label htmlFor="statusFilter" className="text-sm font-bold text-gray-500">
         Filter Progress By:
       </label>
-      <select
-        id="statusFilter"
-        value={currentStatus}
-        onChange={handleStatusChange}
-        className="text-sm font-semibold bg-gray-50 dark:bg-slate-800 text-[var(--sys-primary)] border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-      >
-        {STATUSES.map((status) => (
-          <option key={status.value} value={status.value}>
-            {status.label}
-          </option>
-        ))}
-      </select>
+      {select}
     </div>
   );
 }

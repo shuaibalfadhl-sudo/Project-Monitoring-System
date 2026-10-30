@@ -115,7 +115,7 @@ export default function CreateProjectModal() {
     <>
       <button 
         onClick={() => setIsOpen(true)}
-        className="py-2.5 px-6 bg-[var(--sys-primary)] text-white hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg"
+        className="py-2 px-5 bg-[var(--sys-primary)] text-white hover:bg-[#1a2333] rounded-xl font-bold text-sm whitespace-nowrap transition-colors shadow-lg"
       >
         + Create Project
       </button>

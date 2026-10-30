@@ -6,7 +6,10 @@ import Link from 'next/link'
 import { Project } from '@/types/project'
 import ProjectsClient from '@/components/projects/ProjectsClient'
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const params = await searchParams
+  const currentStatus = typeof params?.status === 'string' ? params.status : 'deployed'
+
   const isManager = await hasRole('project_manager')
   const isAuditor = await hasRole('system_auditor')
   const isSuperAdmin = await hasRole('super_admin')
@@ -132,6 +135,7 @@ export default async function ProjectsPage() {
       isAuditor={isAuditor} 
       isSuperAdmin={isSuperAdmin} 
       isDeveloper={isDeveloper}
+      currentStatus={currentStatus}
     />
   )
 }
