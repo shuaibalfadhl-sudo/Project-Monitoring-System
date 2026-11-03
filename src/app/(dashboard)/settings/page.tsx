@@ -78,16 +78,31 @@ export default function SettingsPage() {
       // Clear local storage so global settings take precedence
       localStorage.removeItem('local-theme')
       
-      // Immediately force the HTML tag to reflect the new theme
+      // Apply the new theme behind the curtain animation
       const html = document.documentElement
-      if (formData.theme === 'dark') {
-        html.classList.add('dark')
+      const isThemeChanging = html.classList.contains('dark') !== (formData.theme === 'dark')
+      const applyTheme = () => {
+        if (formData.theme === 'dark') {
+          html.classList.add('dark')
+        } else {
+          html.classList.remove('dark')
+        }
+      }
+      if (isThemeChanging) {
+        html.classList.remove('theme-transition')
+        void html.offsetWidth
+        html.classList.add('theme-transition')
+        window.setTimeout(applyTheme, 320)
+        window.setTimeout(() => {
+          html.classList.remove('theme-transition')
+          router.refresh()
+        }, 750)
       } else {
-        html.classList.remove('dark')
+        applyTheme()
+        router.refresh()
       }
 
       toast.success('System settings updated successfully!')
-      router.refresh()
     }
     setIsLoading(false)
   }
@@ -129,7 +144,7 @@ export default function SettingsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 sm:p-10 transition-colors duration-300">
-        <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-2">System Settings</h1>
+        <h1 className="text-3xl font-extrabold text-[var(--sys-primary-text)] mb-2">System Settings</h1>
         <p className="text-gray-500 dark:text-slate-400 mb-8 font-medium">Manage global system configurations. This page is only visible to Super Administrators.</p>
 
         <form onSubmit={handleSubmit} className="space-y-6">

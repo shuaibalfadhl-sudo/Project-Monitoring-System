@@ -316,7 +316,7 @@ export default function DeploymentClient({
                   QA Auditor
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  QA Document
+                  Assigned Developer
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Actions
@@ -369,17 +369,12 @@ export default function DeploymentClient({
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    {module.qa_result_document_url ? (
-                      <a
-                        href={module.qa_result_document_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 dark:text-blue-400 font-bold hover:underline"
-                      >
-                        View Document ↗
-                      </a>
+                    {module.developer_name ? (
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        {module.developer_name}
+                      </span>
                     ) : (
-                      <span className="text-slate-400 italic">No Document</span>
+                      <span className="text-slate-400 italic">Unassigned</span>
                     )}
                   </td>
                   <td className="px-6 py-4 flex items-center gap-3">

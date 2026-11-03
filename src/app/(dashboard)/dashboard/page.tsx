@@ -117,7 +117,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <>
                 <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm animate-slide-up" style={{ animationDelay: '0.1s' }}>
                   <h3 className="text-sm font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-2">Projects Handled</h3>
-                  <p className="text-4xl font-black text-[var(--sys-primary)]">{totalProjects}</p>
+                  <p className="text-4xl font-black text-[var(--sys-primary-text)]">{totalProjects}</p>
                 </div>
                 <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm animate-slide-up" style={{ animationDelay: '0.2s' }}>
                   <h3 className="text-sm font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-2">Overall Progress</h3>
@@ -128,7 +128,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <>
                 <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm animate-slide-up" style={{ animationDelay: '0.1s' }}>
                   <h3 className="text-sm font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-2">Assigned Projects</h3>
-                  <p className="text-4xl font-black text-[var(--sys-primary)]">{totalProjects}</p>
+                  <p className="text-4xl font-black text-[var(--sys-primary-text)]">{totalProjects}</p>
                 </div>
                 <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm animate-slide-up" style={{ animationDelay: '0.2s' }}>
                   <h3 className="text-sm font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-2">Modules For QA</h3>

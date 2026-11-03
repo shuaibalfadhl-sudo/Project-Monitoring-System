@@ -65,7 +65,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
               filteredOptions.map((option) => (
                 <div
                   key={option.id}
-                  className={`px-3 py-2 cursor-pointer rounded-lg text-sm font-medium hover:bg-gray-50 ${value === option.id ? 'bg-blue-50 text-[var(--sys-primary)]' : 'text-gray-700'}`}
+                  className={`px-3 py-2 cursor-pointer rounded-lg text-sm font-medium hover:bg-gray-50 ${value === option.id ? 'bg-blue-50 text-[var(--sys-primary-text)]' : 'text-gray-700'}`}
                   onClick={() => {
                     onChange(option.id);
                     setIsOpen(false);

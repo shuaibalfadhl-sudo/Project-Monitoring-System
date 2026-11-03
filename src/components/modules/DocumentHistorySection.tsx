@@ -233,7 +233,7 @@ export default function DocumentHistorySection({
                     <div className="w-6 h-6 rounded-full bg-[var(--sys-primary)] text-white text-[11px] font-black flex items-center justify-center shrink-0">
                       {(record.uploader_name ?? "U").charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-xs font-bold text-[var(--sys-primary)] truncate">
+                    <span className="text-xs font-bold text-[var(--sys-primary-text)] truncate">
                       {record.uploader_name ?? "System Auditor"}
                     </span>
                     {idx === 0 && (

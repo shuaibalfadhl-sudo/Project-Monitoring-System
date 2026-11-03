@@ -2,7 +2,25 @@
 
 @custom-variant dark (&:is(.dark, .dark *));
 
+:root {
+  --sys-primary-text: var(--sys-primary);
+}
+
+.dark {
+  --sys-primary-text: color-mix(in srgb, var(--sys-primary) 35%, white);
+}
+
 @layer utilities {
+  .theme-transition::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    background: linear-gradient(135deg, var(--sys-primary), color-mix(in srgb, var(--sys-primary) 75%, black));
+    animation: themeCurtain 0.7s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  }
+
   .animate-fade-in {
     animation: fadeIn 0.5s ease-out forwards;
     opacity: 0;
@@ -58,4 +76,18 @@
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(40px); }
   to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes themeCurtain {
+  0% { clip-path: inset(0 0 100% 0); }
+  45% { clip-path: inset(0 0 0 0); }
+  55% { clip-path: inset(0 0 0 0); }
+  100% { clip-path: inset(100% 0 0 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-transition::before {
+    animation: none;
+    display: none;
+  }
 }

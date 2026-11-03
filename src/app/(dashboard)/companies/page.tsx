@@ -349,7 +349,7 @@ export default function CompaniesPage() {
                     </div>
                   </td>
                   <td className="px-6 py-5 text-right">
-                    <button className="text-sm font-bold text-[var(--sys-primary)] group-hover:underline flex items-center justify-end gap-1 w-full">
+                    <button className="text-sm font-bold text-[var(--sys-primary-text)] group-hover:underline flex items-center justify-end gap-1 w-full">
                       View Details
                       <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -415,7 +415,7 @@ export default function CompaniesPage() {
                 {companies.find(c => c.id === selectedCompanyId)?.owner_id === currentUser?.id && (
                   <button
                     onClick={() => setIsAddMemberModalOpen(true)}
-                    className="w-full py-4 mb-6 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--sys-primary)] font-black rounded-2xl transition-colors text-sm border-2 border-dashed border-indigo-100 dark:border-slate-700 flex items-center justify-center gap-2 group"
+                    className="w-full py-4 mb-6 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--sys-primary-text)] font-black rounded-2xl transition-colors text-sm border-2 border-dashed border-indigo-100 dark:border-slate-700 flex items-center justify-center gap-2 group"
                   >
                     <svg className="w-5 h-5 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
                     Invite New Member

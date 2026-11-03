@@ -169,7 +169,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: any[] }) {
                 <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-[var(--sys-primary)] flex items-center justify-center font-bold text-sm shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-[var(--sys-primary-text)] flex items-center justify-center font-bold text-sm shrink-0">
                         {(user.full_name || 'U').charAt(0).toUpperCase()}
                       </div>
                       <span className="font-semibold text-slate-900 dark:text-white">

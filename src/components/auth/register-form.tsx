@@ -65,15 +65,15 @@ export function RegisterForm() {
         <div className="flex flex-col gap-2">
           <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 ml-1 uppercase tracking-wider">Select your role <span className="text-red-500">*</span></label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <label className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-sm font-semibold transition-colors ${role === 'project_manager' ? 'border-[var(--sys-primary)] bg-[var(--sys-primary)]/10 text-[var(--sys-primary)]' : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
+            <label className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-sm font-semibold transition-colors ${role === 'project_manager' ? 'border-[var(--sys-primary)] bg-[var(--sys-primary)]/10 text-[var(--sys-primary-text)]' : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
               <input type="radio" name="role" value="project_manager" className="sr-only" onChange={(e) => setRole(e.target.value as UserRole)} />
               Project Manager
             </label>
-            <label className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-sm font-semibold transition-colors ${role === 'system_auditor' ? 'border-[var(--sys-primary)] bg-[var(--sys-primary)]/10 text-[var(--sys-primary)]' : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
+            <label className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-sm font-semibold transition-colors ${role === 'system_auditor' ? 'border-[var(--sys-primary)] bg-[var(--sys-primary)]/10 text-[var(--sys-primary-text)]' : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
               <input type="radio" name="role" value="system_auditor" className="sr-only" onChange={(e) => setRole(e.target.value as UserRole)} />
               System Auditor
             </label>
-            <label className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-sm font-semibold transition-colors ${role === 'developer' ? 'border-[var(--sys-primary)] bg-[var(--sys-primary)]/10 text-[var(--sys-primary)]' : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
+            <label className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-sm font-semibold transition-colors ${role === 'developer' ? 'border-[var(--sys-primary)] bg-[var(--sys-primary)]/10 text-[var(--sys-primary-text)]' : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
               <input type="radio" name="role" value="developer" className="sr-only" onChange={(e) => setRole(e.target.value as UserRole)} />
               Developer
             </label>

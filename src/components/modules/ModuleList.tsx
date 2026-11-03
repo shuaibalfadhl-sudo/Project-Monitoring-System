@@ -525,7 +525,7 @@ export default function ModuleList({
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-800 overflow-hidden">
       <div className="p-6 sm:p-8 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-xl font-bold text-[var(--sys-primary)]">Modules</h2>
+        <h2 className="text-xl font-bold text-[var(--sys-primary-text)]">Modules</h2>
 
         <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3 items-center">
           {/* View toggle */}
@@ -718,7 +718,7 @@ export default function ModuleList({
                         className="flex items-center cursor-pointer group"
                       >
                         <div className="w-56 shrink-0 px-1 pr-3">
-                          <span className="block truncate text-sm font-bold text-[var(--sys-primary)]">
+                          <span className="block truncate text-sm font-bold text-[var(--sys-primary-text)]">
                             {module.name}
                           </span>
                           <span className="block truncate text-[11px] text-gray-400 dark:text-slate-500">
@@ -807,7 +807,7 @@ export default function ModuleList({
                     onClick={() => openModal(module)}
                     className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
                   >
-                    <td className="py-4 font-bold text-[var(--sys-primary)]">
+                    <td className="py-4 font-bold text-[var(--sys-primary-text)]">
                       {module.name}
                       {module.revision_count ? (
                         <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
@@ -1043,7 +1043,7 @@ export default function ModuleList({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900">
-              <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">
+              <h2 className="text-xl font-extrabold text-[var(--sys-primary-text)]">
                 Module Details
               </h2>
               <button
@@ -1071,7 +1071,7 @@ export default function ModuleList({
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                   Module Name
                 </h3>
-                <p className="text-lg font-bold text-[var(--sys-primary)]">
+                <p className="text-lg font-bold text-[var(--sys-primary-text)]">
                   {selectedModule.name}
                 </p>
                 <OnHoldReasonNote remarks={selectedModule.on_hold_remarks} />
@@ -1262,7 +1262,7 @@ export default function ModuleList({
                           <span className="text-[10px] font-bold text-gray-400 uppercase">
                             System Auditor QA
                           </span>
-                          <span className="text-sm font-semibold text-[var(--sys-primary)]">
+                          <span className="text-sm font-semibold text-[var(--sys-primary-text)]">
                             {selectedModule.qa_acknowledged_by_name ||
                               "Unknown Auditor"}{" "}
                             —{" "}
@@ -1285,7 +1285,7 @@ export default function ModuleList({
                           <span className="text-[10px] font-bold text-gray-400 uppercase">
                             Project Manager Rework
                           </span>
-                          <span className="text-sm font-semibold text-[var(--sys-primary)]">
+                          <span className="text-sm font-semibold text-[var(--sys-primary-text)]">
                             {selectedModule.qa_result_acknowledged_by_name ||
                               "Unknown PM"}{" "}
                             —{" "}
@@ -1394,7 +1394,7 @@ export default function ModuleList({
                         value={reworkLink}
                         onChange={(e) => setReworkLink(e.target.value)}
                         placeholder="Enter document link or provide a description of what needs to be fixed..."
-                        className="w-full p-4 rounded-xl border-2 border-red-100 bg-red-50/50 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none transition-all resize-none h-32 text-[var(--sys-primary)] font-medium placeholder:text-red-300"
+                        className="w-full p-4 rounded-xl border-2 border-red-100 bg-red-50/50 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none transition-all resize-none h-32 text-[var(--sys-primary-text)] font-medium placeholder:text-red-300"
                         required
                       />
                     </div>

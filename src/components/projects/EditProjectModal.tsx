@@ -70,7 +70,7 @@ export default function EditProjectModal({ project }: { project: Project }) {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900">
-              <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Edit Project</h2>
+              <h2 className="text-xl font-extrabold text-[var(--sys-primary-text)]">Edit Project</h2>
               <button 
                 onClick={() => setIsOpen(false)}
                 className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"

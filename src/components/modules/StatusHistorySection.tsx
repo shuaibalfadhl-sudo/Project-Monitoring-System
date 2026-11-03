@@ -150,7 +150,7 @@ export default function StatusHistorySection({
                 <div className="w-6 h-6 rounded-full bg-[var(--sys-primary)] text-white text-[11px] font-black flex items-center justify-center shrink-0">
                   {(record.user_name ?? "S").charAt(0).toUpperCase()}
                 </div>
-                <span className="text-xs font-bold text-[var(--sys-primary)] truncate">
+                <span className="text-xs font-bold text-[var(--sys-primary-text)] truncate">
                   {record.user_name ?? "System"}
                 </span>
                 {idx === 0 && (
@@ -309,7 +309,7 @@ export default function StatusHistorySection({
             <button
               type="button"
               onClick={() => setShowAll(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[var(--sys-primary)] bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-100 dark:border-blue-900/40 transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[var(--sys-primary-text)] bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-100 dark:border-blue-900/40 transition-colors"
             >
               View All History
               <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-white dark:bg-slate-800 text-[10px] font-black">

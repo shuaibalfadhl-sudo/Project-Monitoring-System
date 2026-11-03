@@ -32,10 +32,10 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
       {/* Project count + progress filter */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 p-5 rounded-2xl shadow-sm inline-block min-w-48">
-          <h3 className="text-sm font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider mb-2">
+          <h3 className="text-sm font-bold text-[var(--sys-primary-text)] uppercase tracking-wider mb-2">
             Total Projects
           </h3>
-          <p className="text-4xl font-black text-indigo-600 dark:text-indigo-400">
+          <p className="text-4xl font-black text-[var(--sys-primary-text)]">
             {filteredProjects.length}
           </p>
         </div>
@@ -104,11 +104,11 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
                   <div key={project.id} className="flex flex-col p-6 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-[0_2px_10px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group animate-scale-in" style={{ animationDelay: `${0.1 + idx * 0.1}s` }}>
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex flex-col items-start gap-2 max-w-[60%]">
-                        <h4 className="text-lg font-black text-indigo-600 line-clamp-1 group-hover:text-indigo-700 transition-colors">
+                        <h4 className="text-lg font-black text-[var(--sys-primary-text)] line-clamp-1 group-hover:opacity-80 transition-opacity">
                           {project.name}
                         </h4>
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold capitalize ${
-                          project.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                          project.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-indigo-50 dark:bg-indigo-900/30 text-[var(--sys-primary-text)]'
                         }`}>
                           {project.status === 'qa_approved' ? 'QA Approved' : project.status === 'for_qa' ? 'For QA' : project.status.replace('_', ' ')}
                         </span>

@@ -111,7 +111,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="w-full sm:w-auto py-2 px-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-[var(--sys-primary)] hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-300 dark:hover:border-slate-600 rounded-xl font-bold transition-all shadow-sm text-sm text-center"
+        className="w-full sm:w-auto py-2 px-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-[var(--sys-primary-text)] hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-300 dark:hover:border-slate-600 rounded-xl font-bold transition-all shadow-sm text-sm text-center"
       >
         + Add
       </button>
@@ -120,7 +120,7 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900">
-              <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Add Module</h2>
+              <h2 className="text-xl font-extrabold text-[var(--sys-primary-text)]">Add Module</h2>
               <button
                 onClick={() => setIsOpen(false)}
                 className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"

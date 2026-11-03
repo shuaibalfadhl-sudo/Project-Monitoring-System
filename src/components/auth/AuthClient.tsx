@@ -48,7 +48,7 @@ export function AuthClient({ defaultMode, systemName, logoUrl, description }: Au
               <span className="text-gray-500 dark:text-slate-400">Already have an account? </span>
               <button 
                 onClick={toggleMode}
-                className="text-[var(--sys-primary)] hover:opacity-80 transition-colors font-bold"
+                className="text-[var(--sys-primary-text)] hover:opacity-80 transition-colors font-bold"
               >
                 Sign In
               </button>
@@ -78,7 +78,7 @@ export function AuthClient({ defaultMode, systemName, logoUrl, description }: Au
               <span className="text-gray-500 dark:text-slate-400">Don't have an account? </span>
               <button 
                 onClick={toggleMode}
-                className="text-[var(--sys-primary)] hover:opacity-80 transition-colors font-bold"
+                className="text-[var(--sys-primary-text)] hover:opacity-80 transition-colors font-bold"
               >
                 Register
               </button>

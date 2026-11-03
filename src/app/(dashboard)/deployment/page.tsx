@@ -73,17 +73,22 @@ export default async function DeploymentPage() {
   }
 
   if (deploymentModules.length > 0) {
-    const auditorIds = [...new Set(deploymentModules.map(m => m.qa_acknowledged_by).filter(Boolean))]
-    if (auditorIds.length > 0) {
-      const { data: auditors } = await supabaseServer
+    const profileIds = [...new Set(
+      deploymentModules.flatMap(m => [m.qa_acknowledged_by, m.assigned_developer_id]).filter(Boolean)
+    )]
+    if (profileIds.length > 0) {
+      const { data: people } = await supabaseServer
         .from('profiles')
         .select('id, full_name')
-        .in('id', auditorIds)
-      
-      const auditorMap = new Map(auditors?.map(a => [a.id, a.full_name]) || [])
+        .in('id', profileIds)
+
+      const nameMap = new Map(people?.map(p => [p.id, p.full_name]) || [])
       deploymentModules.forEach(m => {
         if (m.qa_acknowledged_by) {
-          m.auditor_name = auditorMap.get(m.qa_acknowledged_by)
+          m.auditor_name = nameMap.get(m.qa_acknowledged_by)
+        }
+        if (m.assigned_developer_id) {
+          m.developer_name = nameMap.get(m.assigned_developer_id)
         }
       })
     }

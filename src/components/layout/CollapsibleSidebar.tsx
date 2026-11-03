@@ -37,7 +37,7 @@ export default function CollapsibleSidebar({ role, systemName, systemLogoUrl }: 
             <h2 className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight truncate">
               {systemName || "Project System"}
             </h2>
-            <p className="text-[10px] font-bold text-[var(--sys-primary)] uppercase tracking-wider">
+            <p className="text-[10px] font-bold text-[var(--sys-primary-text)] uppercase tracking-wider">
               {role.replace(/_/g, " ")}
             </p>
           </div>

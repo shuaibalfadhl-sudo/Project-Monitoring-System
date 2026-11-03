@@ -590,7 +590,7 @@ export default function AllModulesClient({
                         className="flex items-center cursor-pointer group"
                       >
                         <div className="w-56 shrink-0 px-1 pr-3">
-                          <span className="block truncate text-sm font-bold text-[var(--sys-primary)]">
+                          <span className="block truncate text-sm font-bold text-[var(--sys-primary-text)]">
                             {module.name}
                           </span>
                           <span className="block truncate text-[11px] text-gray-400 dark:text-slate-500">
@@ -893,7 +893,7 @@ export default function AllModulesClient({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-              <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">
+              <h2 className="text-xl font-extrabold text-[var(--sys-primary-text)]">
                 Module Details
               </h2>
               <button
@@ -1052,7 +1052,7 @@ export default function AllModulesClient({
                       System Auditor QA
                     </span>
                     {selectedModule.qa_acknowledged_at ? (
-                      <span className="text-sm font-semibold text-[var(--sys-primary)]">
+                      <span className="text-sm font-semibold text-[var(--sys-primary-text)]">
                         {selectedModule.qa_acknowledged_by_name ||
                           "Unknown Auditor"}{" "}
                         —{" "}
@@ -1082,7 +1082,7 @@ export default function AllModulesClient({
                       Project Manager QA Result
                     </span>
                     {selectedModule.qa_result_acknowledged_at ? (
-                      <span className="text-sm font-semibold text-[var(--sys-primary)]">
+                      <span className="text-sm font-semibold text-[var(--sys-primary-text)]">
                         {selectedModule.qa_result_acknowledged_by_name ||
                           "Unknown PM"}{" "}
                         —{" "}

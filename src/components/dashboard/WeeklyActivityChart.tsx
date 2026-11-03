@@ -92,7 +92,7 @@ export default function WeeklyActivityChart({
     <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-8 rounded-3xl shadow-sm h-full flex flex-col">
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h2 className="text-xl font-black text-[var(--sys-primary)] mb-1">Weekly Activity Overview</h2>
+          <h2 className="text-xl font-black text-[var(--sys-primary-text)] mb-1">Weekly Activity Overview</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Deployed vs Revision across all projects</p>
         </div>
         <select 

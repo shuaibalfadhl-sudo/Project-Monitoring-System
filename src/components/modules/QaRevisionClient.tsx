@@ -632,7 +632,7 @@ export default function QaRevisionClient({
             <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900 flex justify-between items-start">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Review Result</h2>
+                  <h2 className="text-xl font-extrabold text-[var(--sys-primary-text)]">Review Result</h2>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-bold capitalize ${selectedModule.status === "revision"
                       ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
                       : selectedModule.status === "pm_review"

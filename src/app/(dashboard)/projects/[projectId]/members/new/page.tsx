@@ -85,7 +85,7 @@ export default function AddMemberPage({ params }: { params: Promise<{ projectId:
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-      <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-8">Add Project Member</h1>
+      <h1 className="text-3xl font-extrabold text-[var(--sys-primary-text)] mb-8">Add Project Member</h1>
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Search for a User (Name or Email)</label>
@@ -110,7 +110,7 @@ export default function AddMemberPage({ params }: { params: Promise<{ projectId:
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-sm font-bold text-[var(--sys-primary)]">{user.full_name}</p>
+                      <p className="text-sm font-bold text-[var(--sys-primary-text)]">{user.full_name}</p>
                       <p className="text-xs text-gray-500">{user.email}</p>
                     </div>
                     <span className="text-xs font-semibold px-2 py-1 bg-gray-100 rounded text-gray-600 capitalize">

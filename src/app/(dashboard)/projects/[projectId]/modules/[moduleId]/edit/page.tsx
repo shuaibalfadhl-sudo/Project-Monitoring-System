@@ -70,7 +70,7 @@ export default function EditModulePage({ params }: { params: Promise<{ projectId
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-      <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-8">Edit Module</h1>
+      <h1 className="text-3xl font-extrabold text-[var(--sys-primary-text)] mb-8">Edit Module</h1>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>

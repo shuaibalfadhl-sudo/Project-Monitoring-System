@@ -125,17 +125,23 @@ export default function TopNavbar({
 
   const toggleTheme = () => {
     const html = document.documentElement
-    if (isDarkMode) {
-      html.classList.remove('dark')
-      localStorage.setItem('local-theme', 'light')
-      setIsDarkMode(false)
-      toast.success("Switched to Light Mode")
-    } else {
-      html.classList.add('dark')
-      localStorage.setItem('local-theme', 'dark')
-      setIsDarkMode(true)
-      toast.success("Switched to Dark Mode")
-    }
+    html.classList.remove('theme-transition')
+    void html.offsetWidth
+    html.classList.add('theme-transition')
+    window.setTimeout(() => html.classList.remove('theme-transition'), 750)
+    window.setTimeout(() => {
+      if (isDarkMode) {
+        html.classList.remove('dark')
+        localStorage.setItem('local-theme', 'light')
+        setIsDarkMode(false)
+        toast.success("Switched to Light Mode")
+      } else {
+        html.classList.add('dark')
+        localStorage.setItem('local-theme', 'dark')
+        setIsDarkMode(true)
+        toast.success("Switched to Dark Mode")
+      }
+    }, 320)
   }
 
   const handleLogout = async () => {
@@ -325,19 +331,19 @@ export default function TopNavbar({
             <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right">
               <Link 
                 href="/profile" 
-                className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary)] font-medium"
+                className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary-text)] font-medium"
               >
                 Profile
               </Link>
               <Link 
                 href="/companies" 
-                className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary)] font-medium"
+                className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary-text)] font-medium"
               >
                 Companies
               </Link>
               <button 
                 onClick={toggleTheme}
-                className="w-full text-left block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary)] font-medium"
+                className="w-full text-left block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[var(--sys-primary-text)] font-medium"
               >
                 {isDarkMode ? 'Light Mode' : 'Dark Mode'}
               </button>
@@ -386,7 +392,7 @@ export default function TopNavbar({
                 Menu
               </h2>
               {role && (
-                <p className="text-[11px] font-bold text-[var(--sys-primary)] mt-1 uppercase tracking-wider">
+                <p className="text-[11px] font-bold text-[var(--sys-primary-text)] mt-1 uppercase tracking-wider">
                   {role.replace('_', ' ')}
                 </p>
               )}
@@ -432,7 +438,7 @@ export default function TopNavbar({
       {isPending && (
         <div className="fixed inset-0 z-[9999] bg-slate-900/20 dark:bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center transition-all duration-300">
           <div className="bg-white dark:bg-slate-800 px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-200">
-            <svg className="animate-spin w-10 h-10 text-[var(--sys-primary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg className="animate-spin w-10 h-10 text-[var(--sys-primary-text)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>

@@ -46,7 +46,7 @@ export default function ViewAllMembersModal({ members, canManageMembers, project
         {/* Modal Content */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]">
           <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900">
-            <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">All Project Members</h2>
+            <h2 className="text-xl font-extrabold text-[var(--sys-primary-text)]">All Project Members</h2>
             <button 
               onClick={() => setIsOpen(false)}
               className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"
@@ -66,7 +66,7 @@ export default function ViewAllMembersModal({ members, canManageMembers, project
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-[var(--sys-primary)]">{member.full_name || 'Unnamed member'}</p>
+                      <p className="text-sm font-bold text-[var(--sys-primary-text)]">{member.full_name || 'Unnamed member'}</p>
                       {member.is_owner && (
                         <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Owner</span>
                       )}

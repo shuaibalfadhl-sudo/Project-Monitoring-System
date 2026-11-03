@@ -344,7 +344,7 @@ export default function QaMonitoringClient({
 
   return (
     <div className="w-full bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
-      <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-6">
+      <h1 className="text-3xl font-extrabold text-[var(--sys-primary-text)] mb-6">
         QA Monitoring
       </h1>
 
@@ -656,7 +656,7 @@ export default function QaMonitoringClient({
                           {mod.priority}
                         </span>
                       </td>
-                      <td className="py-4 px-6 font-bold text-[var(--sys-primary)] group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
+                      <td className="py-4 px-6 font-bold text-[var(--sys-primary-text)] group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
                         <span className="block">{mod.name}</span>
                         <ModuleClassChips platform={mod.platform} workstream={mod.workstream} />
                       </td>
@@ -847,7 +847,7 @@ export default function QaMonitoringClient({
           >
             <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900 flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">
+                <h2 className="text-xl font-extrabold text-[var(--sys-primary-text)]">
                   Review Module
                 </h2>
                 <p className="text-sm font-semibold text-gray-500 dark:text-slate-400 mt-1">
@@ -879,7 +879,7 @@ export default function QaMonitoringClient({
                 <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                   Module Name
                 </h3>
-                <p className="text-lg font-bold text-[var(--sys-primary)]">
+                <p className="text-lg font-bold text-[var(--sys-primary-text)]">
                   {selectedModule.name}
                 </p>
                 <ModuleClassChips

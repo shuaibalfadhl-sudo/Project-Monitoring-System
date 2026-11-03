@@ -224,7 +224,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
 
   return (
     <div className="w-full bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
-      <h1 className="text-3xl font-extrabold text-[var(--sys-primary)] mb-6">Dev Workspace</h1>
+      <h1 className="text-3xl font-extrabold text-[var(--sys-primary-text)] mb-6">Dev Workspace</h1>
 
       <div className="mb-8 flex flex-col items-start gap-4">
         <div className="flex gap-4 flex-wrap">
@@ -417,7 +417,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="font-bold text-[var(--sys-primary)] group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors block">{mod.name}</span>
+                        <span className="font-bold text-[var(--sys-primary-text)] group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors block">{mod.name}</span>
                         <ModuleClassChips platform={mod.platform} workstream={mod.workstream} />
                       </td>
                       <td className="py-4 px-6">
@@ -538,7 +538,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
             {/* Modal Header */}
             <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900 flex justify-between items-start">
               <div>
-                <h2 className="text-xl font-extrabold text-[var(--sys-primary)]">Module Details</h2>
+                <h2 className="text-xl font-extrabold text-[var(--sys-primary-text)]">Module Details</h2>
                 <p className="text-sm font-semibold text-gray-500 dark:text-slate-400 mt-1">{selectedModule.project.name}</p>
               </div>
               <button

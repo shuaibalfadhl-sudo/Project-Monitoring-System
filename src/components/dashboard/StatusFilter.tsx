@@ -34,7 +34,7 @@ export default function StatusFilter({ currentStatus, inline }: { currentStatus:
       id="statusFilter"
       value={currentStatus}
       onChange={handleStatusChange}
-      className="text-sm font-semibold bg-gray-50 dark:bg-slate-800 text-[var(--sys-primary)] border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+      className="text-sm font-semibold bg-gray-50 dark:bg-slate-800 text-[var(--sys-primary-text)] border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
     >
       {STATUSES.map((status) => (
         <option key={status.value} value={status.value}>
