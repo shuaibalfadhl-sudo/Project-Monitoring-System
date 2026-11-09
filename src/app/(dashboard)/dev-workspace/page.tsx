@@ -48,7 +48,8 @@ export default async function DevWorkspacePage() {
           website_link,
           qa_result_document_url,
           qa_remarks,
-          developer_feedback
+          developer_feedback,
+          prototype
         )
       `);
 
@@ -94,7 +95,8 @@ export default async function DevWorkspacePage() {
             website_link,
             qa_result_document_url,
             qa_remarks,
-            developer_feedback
+            developer_feedback,
+            prototype
           )
         )
       `)

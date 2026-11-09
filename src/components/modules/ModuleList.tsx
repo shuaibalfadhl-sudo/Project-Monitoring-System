@@ -15,6 +15,7 @@ import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonModal from "@/components/modules/OnHoldReasonModal";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import QaResultCard from "@/components/modules/QaResultCard";
+import PrototypeSection from "@/components/modules/PrototypeSection";
 import ExcelJS from "exceljs";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import {
@@ -663,7 +664,7 @@ export default function ModuleList({
           </button>
 
           {/* Managers and project owners may create modules; owners get the PM status set. */}
-          {canManageModules && <CreateModuleModal projectId={projectId} isManager={isManager || !!isOwner} />}
+          {canManageModules && <CreateModuleModal projectId={projectId} isManager={isManager || !!isOwner} canUploadPrototype={!!isOwner || !!isSuperAdmin} />}
         </div>
       </div>
 
@@ -891,6 +892,7 @@ export default function ModuleList({
                             module={module}
                             isManager={isManager || !!isOwner}
                             isSuperAdmin={isSuperAdmin}
+                            canManagePrototype={!!isOwner || !!isSuperAdmin}
                           />
                           {isManager && (
                             <button
@@ -1243,6 +1245,15 @@ export default function ModuleList({
                   )}
                 </div>
               </div>
+
+              <PrototypeSection
+                key={`${selectedModule.id}:${selectedModule.prototype ?? ''}`}
+                projectId={selectedModule.project_id}
+                moduleId={selectedModule.id}
+                prototypePath={selectedModule.prototype ?? null}
+                canManage={false}
+                canPreview={false}
+              />
 
               {/* QA Result: document + remarks */}
               <QaResultCard

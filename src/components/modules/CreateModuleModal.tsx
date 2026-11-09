@@ -1,20 +1,23 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { STATUS_GROUPS, statusesIn } from '@/lib/moduleStatuses'
 import { PLATFORM_OPTIONS, WORKSTREAM_OPTIONS } from '@/lib/moduleClassifications'
+import { buildPrototypePath, deletePrototypeObject, uploadPrototypeWithProgress, validatePrototypeFile } from '@/lib/prototypes'
 
-export default function CreateModuleModal({ projectId, isManager }: { projectId: string, isManager?: boolean }) {
+export default function CreateModuleModal({ projectId, isManager, canUploadPrototype }: { projectId: string, isManager?: boolean, canUploadPrototype?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
   const [isLoading, setIsLoading] = useState(false)
+  const [prototypeFile, setPrototypeFile] = useState<File | null>(null)
+  const prototypeInputRef = useRef<HTMLInputElement>(null)
   const [developers, setDevelopers] = useState<{ id: string, full_name: string }[]>([])
   const [isDevDropdownOpen, setIsDevDropdownOpen] = useState(false)
   const [devSearch, setDevSearch] = useState('')
@@ -78,33 +81,101 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
     if (payload.workstream === '') payload.workstream = null
     if (payload.assigned_developer_id === '') payload.assigned_developer_id = null
 
-    const { error } = await supabase
+    const { data: created, error } = await supabase
       .from('project_modules')
       .insert(payload)
+      .select('id')
+      .single()
 
-    if (error) {
-      toast.error(error.message)
+    if (error || !created) {
+      toast.error(error?.message || 'The module could not be added. Please try again.')
       setIsLoading(false)
+      return
+    }
+
+    let prototypeWarning = ''
+    let uploadedPrototypePath = ''
+    if (prototypeFile) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) {
+          throw new Error('Your session expired. Refresh the page and try again.')
+        }
+
+        const path = buildPrototypePath(projectId, created.id, prototypeFile.name)
+        uploadedPrototypePath = path
+        await uploadPrototypeWithProgress({
+          path,
+          file: prototypeFile,
+          accessToken: session.access_token,
+        })
+
+        const { data: linked, error: linkError } = await supabase
+          .from('project_modules')
+          .update({ prototype: path })
+          .eq('id', created.id)
+          .select('id')
+
+        if (linkError) {
+          throw new Error(
+            linkError.code === '42501'
+              ? 'You do not have permission to attach the prototype.'
+              : linkError.message,
+          )
+        }
+        if (!linked || linked.length === 0) {
+          throw new Error('You do not have permission to attach the prototype.')
+        }
+      } catch (err) {
+        console.error('Prototype upload during module creation failed', err)
+        if (uploadedPrototypePath) {
+          await deletePrototypeObject(supabase, uploadedPrototypePath)
+        }
+        prototypeWarning = err instanceof Error && err.message
+          ? err.message
+          : 'The prototype could not be uploaded.'
+      }
+    }
+
+    if (prototypeWarning) {
+      toast.error(`Module added, but the prototype was not attached: ${prototypeWarning}`)
     } else {
       toast.success('Module added successfully!')
-      setIsOpen(false)
-      setFormData({
-        name: '',
-        description: '',
-        priority: 'medium',
-        status: 'pending',
-        module_document_url: '',
-        assigned_developer_id: '',
-        category: 'new_module',
-        platform: '',
-        workstream: '',
-        deadline: '',
-        development_date: '',
-        website_link: ''
-      })
-      router.refresh()
-      setIsLoading(false)
     }
+
+    setIsOpen(false)
+    setPrototypeFile(null)
+    if (prototypeInputRef.current) prototypeInputRef.current.value = ''
+
+    setFormData({
+      name: '',
+      description: '',
+      priority: 'medium',
+      status: 'pending',
+      module_document_url: '',
+      assigned_developer_id: '',
+      category: 'new_module',
+      platform: '',
+      workstream: '',
+      deadline: '',
+      development_date: '',
+      website_link: ''
+    })
+    router.refresh()
+    setIsLoading(false)
+  }
+
+  const handlePrototypeFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    const validationError = validatePrototypeFile(file)
+    if (validationError) {
+      toast.error(validationError)
+      return
+    }
+    setPrototypeFile(file)
   }
 
   return (
@@ -325,6 +396,51 @@ export default function CreateModuleModal({ projectId, isManager }: { projectId:
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">Link for testing the module (e.g., staging or local URL).</p>
                 </div>
+
+                {canUploadPrototype && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Prototype (HTML)</label>
+                    <input
+                      ref={prototypeInputRef}
+                      type="file"
+                      accept=".html,.htm,text/html"
+                      className="hidden"
+                      onChange={handlePrototypeFile}
+                      disabled={isLoading}
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => prototypeInputRef.current?.click()}
+                        disabled={isLoading}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-[var(--sys-primary-text)] border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all disabled:opacity-60"
+                      >
+                        {prototypeFile ? 'Choose a different file' : 'Choose file'}
+                      </button>
+                      {prototypeFile ? (
+                        <>
+                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[220px]" title={prototypeFile.name}>
+                            {prototypeFile.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPrototypeFile(null)
+                              if (prototypeInputRef.current) prototypeInputRef.current.value = ''
+                            }}
+                            disabled={isLoading}
+                            className="text-xs font-bold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-60"
+                          >
+                            Remove
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">No file selected</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">HTML only, up to 10 MB. The assigned developer can preview it in Dev Workspace.</p>
+                  </div>
+                )}
               </form>
             </div>
 

@@ -41,6 +41,7 @@ export interface ProjectModule {
   website_link?: string | null
   developer_feedback?: string | null
   on_hold_remarks?: string | null
+  prototype?: string | null
 }
 
 export interface ProjectMember {

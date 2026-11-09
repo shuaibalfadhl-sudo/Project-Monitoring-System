@@ -8,8 +8,9 @@ import { toast } from 'sonner'
 import { ProjectModule, ModuleStatus } from '@/types/project'
 import { STATUS_GROUPS, statusesIn, statusLabel, statusBadgeClass } from '@/lib/moduleStatuses'
 import { PLATFORM_OPTIONS, WORKSTREAM_OPTIONS } from '@/lib/moduleClassifications'
+import PrototypeSection from '@/components/modules/PrototypeSection'
 
-export default function EditModuleModal({ module, isManager, isQaRevisionMode, isSuperAdmin }: { module: ProjectModule, isManager?: boolean, isQaRevisionMode?: boolean, isSuperAdmin?: boolean }) {
+export default function EditModuleModal({ module, isManager, isQaRevisionMode, isSuperAdmin, canManagePrototype }: { module: ProjectModule, isManager?: boolean, isQaRevisionMode?: boolean, isSuperAdmin?: boolean, canManagePrototype?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
@@ -434,6 +435,14 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">Link for testing the module (e.g., staging or local URL).</p>
                 </div>
+
+                <PrototypeSection
+                  key={`${module.id}:${module.prototype ?? ''}`}
+                  projectId={module.project_id}
+                  moduleId={module.id}
+                  prototypePath={module.prototype ?? null}
+                  canManage={!!canManagePrototype}
+                />
               </form>
             </div>
 

@@ -11,6 +11,7 @@ import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import QaResultCard from "@/components/modules/QaResultCard";
+import PrototypeSection from "@/components/modules/PrototypeSection";
 import { statusLabel as registryStatusLabel, statusBadgeClass, STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
 
 interface DevModule {
@@ -30,6 +31,7 @@ interface DevModule {
   qa_result_document_url?: string | null;
   qa_remarks?: string | null;
   developer_feedback?: string | null;
+  prototype?: string | null;
   project: {
     id: string;
     name: string;
@@ -705,6 +707,15 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
                   )}
                 </div>
               </div>
+
+              <PrototypeSection
+                key={`${selectedModule.id}:${selectedModule.prototype ?? ''}`}
+                projectId={selectedModule.project.id}
+                moduleId={selectedModule.id}
+                prototypePath={selectedModule.prototype ?? null}
+                canManage={false}
+                canPreview={false}
+              />
 
               {/* QA Result: document + remarks */}
               <QaResultCard

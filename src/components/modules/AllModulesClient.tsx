@@ -12,6 +12,7 @@ import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonModal from "@/components/modules/OnHoldReasonModal";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import QaResultCard from "@/components/modules/QaResultCard";
+import PrototypeSection from "@/components/modules/PrototypeSection";
 import ExcelJS from "exceljs";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import {
@@ -756,6 +757,7 @@ export default function AllModulesClient({
                             module={mod}
                             isManager={role === 'project_manager'}
                             isSuperAdmin={role === 'super_admin'}
+                            canManagePrototype={role === 'super_admin'}
                           />
                         )}
                       </div>
@@ -1033,6 +1035,15 @@ export default function AllModulesClient({
                   )}
                 </div>
               </div>
+
+              <PrototypeSection
+                key={`${selectedModule.id}:${selectedModule.prototype ?? ''}`}
+                projectId={selectedModule.project_id ?? selectedModule.project?.id ?? ''}
+                moduleId={selectedModule.id}
+                prototypePath={selectedModule.prototype ?? null}
+                canManage={false}
+                canPreview={false}
+              />
 
               {/* QA Result: document + remarks */}
               <QaResultCard
