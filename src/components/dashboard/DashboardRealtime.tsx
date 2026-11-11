@@ -4,6 +4,13 @@ import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
+const REALTIME_TABLES = [
+  'projects',
+  'project_members',
+  'project_modules',
+  'project_module_status_history',
+] as const
+
 export default function DashboardRealtime() {
   const router = useRouter()
   const supabase = createClient()
@@ -19,31 +26,15 @@ export default function DashboardRealtime() {
       }, 300)
     }
 
-    // Subscribe to changes on project_modules, projects, and project_members
-    const channel = supabase
-      .channel('global-dashboard-realtime')
-      .on(
+    let channel = supabase.channel('global-dashboard-realtime')
+    for (const table of REALTIME_TABLES) {
+      channel = channel.on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'project_modules' },
-        (payload) => {
-          handleRefresh()
-        }
+        { event: '*', schema: 'public', table },
+        handleRefresh
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'projects' },
-        (payload) => {
-          handleRefresh()
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'project_members' },
-        (payload) => {
-          handleRefresh()
-        }
-      )
-      .subscribe()
+    }
+    channel.subscribe()
 
     return () => {
       if (refreshTimerRef.current) {
@@ -53,5 +44,5 @@ export default function DashboardRealtime() {
     }
   }, [supabase, router])
 
-  return null // This component works invisibly in the background
+  return null
 }

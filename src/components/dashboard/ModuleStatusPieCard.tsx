@@ -217,7 +217,13 @@ export default function ModuleStatusPieCard({ projects }: ModuleStatusPieCardPro
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {projects.map((project) => {
+          {[...projects]
+            .sort(
+              (a, b) =>
+                (b.project_modules?.length ?? 0) - (a.project_modules?.length ?? 0) ||
+                a.name.localeCompare(b.name),
+            )
+            .map((project) => {
             const modules = project.project_modules ?? [];
             const total = modules.length;
             const slices = buildSlices(modules);

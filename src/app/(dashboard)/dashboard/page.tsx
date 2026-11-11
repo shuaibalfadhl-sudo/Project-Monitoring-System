@@ -238,7 +238,7 @@ export default async function DashboardPage() {
             {dashboardStats.map((stat) => (
               <div
                 key={stat.label}
-                className="bg-[#2f313d] dark:bg-slate-800 border border-transparent dark:border-slate-700 rounded-xl px-4 py-6 text-center shadow-sm"
+                className="sys-primary-gradient rounded-xl px-4 py-6 text-center shadow-sm border border-transparent"
               >
                 <p className="text-[11px] font-semibold text-gray-300 uppercase tracking-wider mb-3">
                   {stat.label}

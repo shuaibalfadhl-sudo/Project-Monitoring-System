@@ -11,6 +11,14 @@
 }
 
 @layer utilities {
+  .sys-primary-gradient {
+    background: linear-gradient(135deg, var(--sys-primary), color-mix(in srgb, var(--sys-primary) 72%, black));
+  }
+
+  :is(.dark, .dark *) .sys-primary-gradient {
+    background: linear-gradient(135deg, var(--sys-primary-text), color-mix(in srgb, var(--sys-primary-text) 80%, black));
+  }
+
   .theme-transition::before {
     content: "";
     position: fixed;

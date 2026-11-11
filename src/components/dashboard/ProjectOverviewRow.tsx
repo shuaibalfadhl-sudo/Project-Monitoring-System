@@ -144,7 +144,7 @@ export default function ProjectOverviewRow({ projects }: ProjectOverviewRowProps
                 </span>
                 <div className="h-6 rounded-md bg-indigo-50 dark:bg-slate-800 overflow-hidden">
                   <div
-                    className="h-full rounded-md bg-[#2f313d] dark:bg-indigo-400"
+                    className="h-full rounded-md bg-[var(--sys-primary-text)]"
                     style={{ width: `${(project.count / maxCount) * 100}%` }}
                   />
                 </div>
