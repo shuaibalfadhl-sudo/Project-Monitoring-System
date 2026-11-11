@@ -6,6 +6,7 @@ import { cookies } from 'next/headers'
 import ModuleStatusBreakdown from '@/components/dashboard/ModuleStatusBreakdown'
 import ModuleMovementChart from '@/components/dashboard/ModuleMovementChart'
 import ProjectOverviewRow from '@/components/dashboard/ProjectOverviewRow'
+import ModuleStatusPieCard from '@/components/dashboard/ModuleStatusPieCard'
 import { aggregateStatusMovements, type StatusMovement } from '@/lib/statusMovements'
 
 export default async function DashboardPage() {
@@ -253,6 +254,7 @@ export default async function DashboardPage() {
             modules={displayProjects.flatMap((p) => p.project_modules ?? [])}
           />
           <ModuleMovementChart movements={movements} />
+          <ModuleStatusPieCard projects={displayProjects} />
         </div>
       ) : (
         <p className="text-gray-500 text-sm font-medium mb-10">
