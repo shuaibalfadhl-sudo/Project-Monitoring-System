@@ -21,6 +21,8 @@ const STATUS_STYLES: Record<string, { label: string; color: string }> = {
 
 const FALLBACK_COLORS = ["#6366F1", "#EC4899", "#14B8A6", "#8B5CF6", "#0EA5E9"];
 
+const BAR_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#8B5CF6", "#F97316"];
+
 interface DonutSlice {
   id: string;
   value: number;
@@ -131,7 +133,7 @@ export default function ProjectOverviewRow({ projects }: ProjectOverviewRowProps
           </p>
         ) : (
           <div className="space-y-3.5">
-            {topProjects.map((project) => (
+            {topProjects.map((project, index) => (
               <div
                 key={project.id}
                 className="grid grid-cols-[minmax(0,7.5rem)_1fr_4.75rem] items-center gap-3"
@@ -144,8 +146,11 @@ export default function ProjectOverviewRow({ projects }: ProjectOverviewRowProps
                 </span>
                 <div className="h-6 rounded-md bg-indigo-50 dark:bg-slate-800 overflow-hidden">
                   <div
-                    className="h-full rounded-md bg-[var(--sys-primary-text)]"
-                    style={{ width: `${(project.count / maxCount) * 100}%` }}
+                    className="h-full rounded-md"
+                    style={{
+                      width: `${(project.count / maxCount) * 100}%`,
+                      backgroundColor: BAR_COLORS[index % BAR_COLORS.length],
+                    }}
                   />
                 </div>
                 {project.count > 0 ? (

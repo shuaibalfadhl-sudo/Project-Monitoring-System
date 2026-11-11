@@ -198,6 +198,13 @@ export default async function DashboardPage() {
     { label: 'Deployed Modules', value: deployedModules },
   ]
 
+  const boxStyles = [
+    'bg-indigo-50 border-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:border-indigo-400/20 dark:text-indigo-300',
+    'bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:border-emerald-400/20 dark:text-emerald-300',
+    'bg-amber-50 border-amber-100 text-amber-600 dark:bg-amber-500/15 dark:border-amber-400/20 dark:text-amber-300',
+    'bg-violet-50 border-violet-100 text-violet-600 dark:bg-violet-500/15 dark:border-violet-400/20 dark:text-violet-300',
+  ]
+
   // Movement history for the monthly chart, scoped to the modules in view.
   let movements: StatusMovement[] = []
   const moduleIds = new Set<string>(
@@ -235,15 +242,15 @@ export default async function DashboardPage() {
       {hasDashboard ? (
         <div className="space-y-8 mb-10">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {dashboardStats.map((stat) => (
+            {dashboardStats.map((stat, index) => (
               <div
                 key={stat.label}
-                className="sys-primary-gradient rounded-xl px-4 py-6 text-center shadow-sm border border-transparent"
+                className={`${boxStyles[index % boxStyles.length]} rounded-xl px-4 py-6 text-center shadow-sm border`}
               >
-                <p className="text-[11px] font-semibold text-gray-300 uppercase tracking-wider mb-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider mb-3 opacity-70">
                   {stat.label}
                 </p>
-                <p className="text-3xl sm:text-4xl font-semibold text-white">{stat.value}</p>
+                <p className="text-3xl sm:text-4xl font-semibold">{stat.value}</p>
               </div>
             ))}
           </div>
