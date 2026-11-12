@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { requestRefresh } from "@/lib/coalescedRefresh";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
@@ -38,7 +39,7 @@ export default function QaApproveClient({
     const channel = supabase
       .channel("qa-approve-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "project_modules" }, () => {
-        router.refresh();
+        requestRefresh(router.refresh); // one shared refresh for all listeners (lib/coalescedRefresh)
       })
       .subscribe();
     return () => {

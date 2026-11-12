@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { requestRefresh } from '@/lib/coalescedRefresh'
 
 const REALTIME_TABLES = [
   'projects',
@@ -14,17 +15,10 @@ const REALTIME_TABLES = [
 export default function DashboardRealtime() {
   const router = useRouter()
   const supabase = createClient()
-  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    const handleRefresh = () => {
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current)
-      }
-      refreshTimerRef.current = setTimeout(() => {
-        router.refresh()
-      }, 300)
-    }
+    // One shared refresh with the other listeners (see lib/coalescedRefresh)
+    const handleRefresh = () => requestRefresh(router.refresh)
 
     let channel = supabase.channel('global-dashboard-realtime')
     for (const table of REALTIME_TABLES) {
@@ -37,9 +31,6 @@ export default function DashboardRealtime() {
     channel.subscribe()
 
     return () => {
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current)
-      }
       supabase.removeChannel(channel)
     }
   }, [supabase, router])
