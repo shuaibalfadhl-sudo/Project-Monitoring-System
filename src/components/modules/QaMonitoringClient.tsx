@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
+import { requestRefresh } from "@/lib/coalescedRefresh";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
@@ -144,7 +145,7 @@ export default function QaMonitoringClient({
     const channel = supabase
       .channel("qa-monitoring-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "project_modules" }, () => {
-        router.refresh();
+        requestRefresh(router.refresh); // one shared refresh for all listeners (lib/coalescedRefresh)
       })
       .subscribe();
     return () => {
