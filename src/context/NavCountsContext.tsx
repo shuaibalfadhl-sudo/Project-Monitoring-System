@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { requestRefresh, takePendingRefresh } from '@/lib/coalescedRefresh'
 import { toast } from 'sonner'
 
 interface NotificationItem {
@@ -383,10 +384,12 @@ export function NavCountsProvider({
     let debounceTimer: NodeJS.Timeout | null = null
 
     const handleSync = () => {
+      // Counts: refreshed here (a light browser query). The page itself: one shared refresh for all listeners.
+      requestRefresh(router.refresh)
+      if (document.visibilityState === 'hidden') return
       if (debounceTimer) clearTimeout(debounceTimer)
       debounceTimer = setTimeout(() => {
         fetchCounts()
-        router.refresh()
       }, 300)
     }
 
@@ -418,26 +421,31 @@ export function NavCountsProvider({
       )
       .subscribe()
 
-    // Polling fallback every 10 seconds
+    // Polling fallback every 60 seconds (realtime keeps the counts current); skipped while the tab is hidden
     const interval = setInterval(() => {
-      fetchCounts()
-    }, 10000)
+      if (document.visibilityState !== 'hidden') fetchCounts()
+    }, 60000)
 
-    // Visibility / tab focus sync
+    // Tab becomes visible again: update the counts, and refresh the page once if something changed while hidden
+    // (or the tab was hidden over a minute, in case the browser dropped the realtime connection meanwhile)
+    let hiddenAt = 0
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        fetchCounts()
-        router.refresh()
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now()
+        return
       }
+      fetchCounts()
+      const changed = takePendingRefresh()
+      const longAway = hiddenAt > 0 && Date.now() - hiddenAt > 60000
+      hiddenAt = 0
+      if (changed || longAway) router.refresh()
     }
-    window.addEventListener('visibilitychange', handleVisibility)
-    window.addEventListener('focus', handleVisibility)
+    document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer)
       clearInterval(interval)
-      window.removeEventListener('visibilitychange', handleVisibility)
-      window.removeEventListener('focus', handleVisibility)
+      document.removeEventListener('visibilitychange', handleVisibility)
       supabase.removeChannel(channel)
     }
   }, [supabase, fetchCounts, router])

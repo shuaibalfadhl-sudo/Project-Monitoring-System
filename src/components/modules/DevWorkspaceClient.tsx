@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
+import { requestRefresh } from "@/lib/coalescedRefresh";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
@@ -80,7 +81,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
     const channel = supabase
       .channel("dev-workspace-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "project_modules" }, () => {
-        router.refresh();
+        requestRefresh(router.refresh); // one shared refresh for all listeners (lib/coalescedRefresh)
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };

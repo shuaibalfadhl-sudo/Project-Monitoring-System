@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
+import { requestRefresh } from "@/lib/coalescedRefresh";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
@@ -79,7 +80,7 @@ export default function QaRevisionClient({
     const channel = supabase
       .channel("qa-revision-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "project_modules" }, () => {
-        router.refresh();
+        requestRefresh(router.refresh); // one shared refresh for all listeners (lib/coalescedRefresh)
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
