@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "new-migration": "node scripts/new-migration.mjs",
     "prepare": "husky"
   },
   "dependencies": {
