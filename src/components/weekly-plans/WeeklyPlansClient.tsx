@@ -12,7 +12,7 @@ import {
   weeklyPlanWeekRange,
 } from "@/lib/weeklyPlans";
 import WeeklyPlanDrawer, { type DrawerMode } from "./WeeklyPlanDrawer";
-import SearchableSelectField from "./SearchableSelectField";
+import DateRangeField from "./DateRangeField";
 import {
   WEEKLY_PLAN_STATUSES,
   weeklyPlanStatusMeta,
@@ -160,10 +160,8 @@ export default function WeeklyPlansClient({
     plan.assigned_personnel === viewer.id && plan.created_by !== viewer.id;
   const modalPlan = drawer?.plan ?? null;
 
-  const weekOptions = useMemo(
-    () => [...new Set(plans.map((plan) => groupKeyOf(plan)))].sort((a, b) => b.localeCompare(a)),
-    [plans],
-  );
+  const [weekFilterStart, weekFilterEnd] =
+    weekFilter === "all" ? ["", ""] : splitGroupKey(weekFilter);
 
   const filteredPlans = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -345,21 +343,13 @@ export default function WeeklyPlansClient({
         </div>
 
         <div className="w-full sm:w-64 shrink-0">
-          <SearchableSelectField
-            value={weekFilter}
-            onChange={resetPageAnd(setWeekFilter)}
-            options={[
-              { value: "all", label: "All weeks" },
-              ...weekOptions.map((week) => {
-                const [start, end] = splitGroupKey(week);
-                return {
-                  value: week,
-                  label: weeklyPlanWeekRange(start, end || undefined),
-                };
-              }),
-            ]}
+          <DateRangeField
+            start={weekFilterStart}
+            end={weekFilterEnd}
+            onChange={(start, end) =>
+              resetPageAnd(setWeekFilter)(start ? `${start}|${end}` : "all")
+            }
             placeholder="All weeks"
-            searchPlaceholder="Search weeks..."
           />
         </div>
 
