@@ -14,6 +14,13 @@ declare
 begin
   foreach child_table in array array['qa_document_history', 'project_module_status_history']
   loop
+    -- History rows whose module no longer exists would block the new foreign
+    -- key and can never be displayed; remove them first.
+    execute format(
+      'delete from public.%I h where not exists (select 1 from public.project_modules m where m.id = h.module_id)',
+      child_table
+    );
+
     for fk in
       select conname
       from pg_constraint
