@@ -9,9 +9,7 @@ import { toast } from "sonner";
 import {
   removeWeeklyPlanFiles,
   weeklyPlanModuleLabel,
-  weeklyPlanWeekInputValue,
   weeklyPlanWeekRange,
-  weeklyPlanWeekToMonday,
 } from "@/lib/weeklyPlans";
 import WeeklyPlanDrawer, { type DrawerMode } from "./WeeklyPlanDrawer";
 import SearchableSelectField from "./SearchableSelectField";
@@ -31,6 +29,15 @@ interface WeeklyPlansClientProps {
   moduleNames: Record<string, string>;
   moduleProjects: Record<string, string>;
   viewer: { id: string; role: string };
+}
+
+function groupKeyOf(plan: WeeklyPlan) {
+  return `${plan.date_weekly}|${plan.date_weekly_end ?? ""}`;
+}
+
+function splitGroupKey(key: string): [string, string] {
+  const [start, end] = key.split("|");
+  return [start, end ?? ""];
 }
 
 function ConfirmDeleteDialog({
@@ -154,7 +161,7 @@ export default function WeeklyPlansClient({
   const modalPlan = drawer?.plan ?? null;
 
   const weekOptions = useMemo(
-    () => [...new Set(plans.map((plan) => plan.date_weekly))].sort((a, b) => b.localeCompare(a)),
+    () => [...new Set(plans.map((plan) => groupKeyOf(plan)))].sort((a, b) => b.localeCompare(a)),
     [plans],
   );
 
@@ -163,7 +170,7 @@ export default function WeeklyPlansClient({
     const nameFor = (id: string) => peopleById.get(id) ?? "Unknown user";
     return plans.filter((plan) => {
       if (statusFilter !== "all" && plan.status !== statusFilter) return false;
-      if (weekFilter !== "all" && plan.date_weekly !== weekFilter) return false;
+      if (weekFilter !== "all" && groupKeyOf(plan) !== weekFilter) return false;
       if (scopeFilter === "mine" && plan.created_by !== viewer.id) return false;
       if (scopeFilter === "assigned" && plan.assigned_personnel !== viewer.id) return false;
       if (!term) return true;
@@ -183,10 +190,10 @@ export default function WeeklyPlansClient({
   const weekGroups = useMemo(() => {
     const groups = new Map<string, WeeklyPlan[]>();
     for (const plan of filteredPlans) {
-      const week = plan.date_weekly;
-      const list = groups.get(week);
+      const key = groupKeyOf(plan);
+      const list = groups.get(key);
       if (list) list.push(plan);
-      else groups.set(week, [plan]);
+      else groups.set(key, [plan]);
     }
     return [...groups.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [filteredPlans]);
@@ -256,28 +263,38 @@ export default function WeeklyPlansClient({
     setDragging(null);
     setDragOverWeek(null);
     if (!plan || !canEdit(plan)) return;
-    const target = weeklyPlanWeekToMonday(weeklyPlanWeekInputValue(weekKey));
-    if (plan.date_weekly === target) return;
-    const previous = plan.date_weekly;
+    const [targetStart, targetEnd] = splitGroupKey(weekKey);
+    if (plan.date_weekly === targetStart && (plan.date_weekly_end ?? "") === targetEnd) return;
+    const previousStart = plan.date_weekly;
+    const previousEnd = plan.date_weekly_end ?? "";
     setPlans((prev) =>
-      prev.map((item) => (item.id === plan.id ? { ...item, date_weekly: target } : item)),
+      prev.map((item) =>
+        item.id === plan.id
+          ? { ...item, date_weekly: targetStart, date_weekly_end: targetEnd || null }
+          : item,
+      ),
     );
     try {
       const { error } = await supabase
         .from("weekly_plans")
         .update({
-          date_weekly: target,
+          date_weekly: targetStart,
+          date_weekly_end: targetEnd || null,
           updated_by: viewer.id,
           updated_at: new Date().toISOString(),
         })
         .eq("id", plan.id);
       if (error) throw error;
-      toast.success(`Task moved to the week of ${weeklyPlanWeekRange(target)}.`);
+      toast.success(`Task moved to ${weeklyPlanWeekRange(targetStart, targetEnd || undefined)}.`);
       router.refresh();
     } catch (error) {
       console.error(error);
       setPlans((prev) =>
-        prev.map((item) => (item.id === plan.id ? { ...item, date_weekly: previous } : item)),
+        prev.map((item) =>
+          item.id === plan.id
+            ? { ...item, date_weekly: previousStart, date_weekly_end: previousEnd || null }
+            : item,
+        ),
       );
       toast.error("Could not move this task. Please try again.");
     }
@@ -333,10 +350,13 @@ export default function WeeklyPlansClient({
             onChange={resetPageAnd(setWeekFilter)}
             options={[
               { value: "all", label: "All weeks" },
-              ...weekOptions.map((week) => ({
-                value: week,
-                label: `Week of ${weeklyPlanWeekRange(week)}`,
-              })),
+              ...weekOptions.map((week) => {
+                const [start, end] = splitGroupKey(week);
+                return {
+                  value: week,
+                  label: weeklyPlanWeekRange(start, end || undefined),
+                };
+              }),
             ]}
             placeholder="All weeks"
             searchPlaceholder="Search weeks..."
@@ -369,7 +389,9 @@ export default function WeeklyPlansClient({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {paginatedWeeks.map(([weekKey, weekPlans]) => (
+          {paginatedWeeks.map(([weekKey, weekPlans]) => {
+            const [weekStart, weekEnd] = splitGroupKey(weekKey);
+            return (
             <div
               key={weekKey}
               onDragOver={(e) => {
@@ -396,7 +418,7 @@ export default function WeeklyPlansClient({
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Week of</p>
                   <h3 className="text-sm font-extrabold text-slate-900 dark:text-white truncate">
-                    {weeklyPlanWeekRange(weekKey)}
+                    {weeklyPlanWeekRange(weekStart, weekEnd || undefined)}
                   </h3>
                 </div>
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/15 text-[10px] font-bold text-indigo-600 dark:text-indigo-300 shrink-0">
@@ -526,7 +548,8 @@ export default function WeeklyPlansClient({
                 })}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

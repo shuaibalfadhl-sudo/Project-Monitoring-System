@@ -5,6 +5,7 @@ export interface WeeklyPlan {
   assigned_personnel: string | null
   module: string | null
   date_weekly: string
+  date_weekly_end: string | null
   title: string
   description: string | null
   status: WeeklyPlanStatus
