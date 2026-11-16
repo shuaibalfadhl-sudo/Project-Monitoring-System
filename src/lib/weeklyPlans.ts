@@ -82,3 +82,48 @@ export function weeklyPlanFileName(path: string) {
 export function isImageWeeklyPlanFile(path: string) {
   return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(weeklyPlanFileExtension(path))
 }
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Rows saved before modules became ids can still hold the module's text name; show that, but never a dangling id.
+export function weeklyPlanModuleLabel(module: string | null, names: Record<string, string>) {
+  if (!module) return null
+  const name = names[module]
+  if (name) return name
+  return UUID_PATTERN.test(module) ? null : module
+}
+
+// A plan stores the Monday of its week; the form picks whole weeks.
+export function weeklyPlanWeekInputValue(date: string | null): string {  if (!date) return ''
+  const parsed = new Date(`${date}T00:00:00Z`)
+  const day = parsed.getUTCDay() || 7
+  parsed.setUTCDate(parsed.getUTCDate() + 4 - day)
+  const yearStart = Date.UTC(parsed.getUTCFullYear(), 0, 1)
+  const week = Math.ceil(((parsed.getTime() - yearStart) / 86400000 + 1) / 7)
+  return `${parsed.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
+}
+
+export function weeklyPlanWeekToMonday(value: string): string {
+  const [yearPart, weekPart] = value.split('-W')
+  const year = Number(yearPart)
+  const week = Number(weekPart)
+  const jan4 = new Date(Date.UTC(year, 0, 4))
+  const jan4Day = jan4.getUTCDay() || 7
+  const monday = new Date(Date.UTC(year, 0, 4 - jan4Day + 1))
+  monday.setUTCDate(monday.getUTCDate() + (week - 1) * 7)
+  return monday.toISOString().slice(0, 10)
+}
+
+export function weeklyPlanWeekRange(date: string | null): string {
+  if (!date) return 'No week set'
+  const [year, month, day] = date.split('-').map(Number)
+  const monday = new Date(year, month - 1, day)
+  const sunday = new Date(year, month - 1, day + 6)
+  const start = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit' }).format(monday)
+  const end = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+  }).format(sunday)
+  return `${start} – ${end}`
+}

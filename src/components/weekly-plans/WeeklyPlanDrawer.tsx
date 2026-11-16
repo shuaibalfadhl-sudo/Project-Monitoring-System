@@ -9,17 +9,23 @@ import {
   isImageWeeklyPlanFile,
   weeklyPlanFileError,
   weeklyPlanFileName,
+  weeklyPlanModuleLabel,
   uploadWeeklyPlanFile,
   removeWeeklyPlanFiles,
   weeklyPlanSignedUrl,
+  weeklyPlanWeekInputValue,
+  weeklyPlanWeekRange,
+  weeklyPlanWeekToMonday,
 } from "@/lib/weeklyPlans";
 import {
   WEEKLY_PLAN_STATUSES,
   weeklyPlanStatusMeta,
   type WeeklyPlan,
+  type WeeklyPlanModule,
   type WeeklyPlanPerson,
   type WeeklyPlanStatus,
 } from "@/types/weeklyPlan";
+import SearchableSelectField from "./SearchableSelectField";
 
 export type DrawerMode = "create" | "view" | "edit";
 
@@ -27,19 +33,15 @@ interface WeeklyPlanDrawerProps {
   mode: DrawerMode;
   plan: WeeklyPlan | null;
   people: WeeklyPlanPerson[];
+  modules: WeeklyPlanModule[];
+  moduleNames: Record<string, string>;
+  moduleProjects: Record<string, string>;
   viewerId: string;
   onClose: () => void;
   onSaved: () => void;
-}
-
-function formatWeek(value: string | null) {
-  if (!value) return "Not set";
-  const [year, month, day] = value.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  }).format(new Date(year, month - 1, day));
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onMarkDone?: () => void;
 }
 
 function formatTimestamp(value: string | null) {
@@ -59,26 +61,45 @@ export default function WeeklyPlanDrawer({
   mode,
   plan,
   people,
+  modules,
+  moduleNames,
+  moduleProjects,
   viewerId,
   onClose,
   onSaved,
+  onEdit,
+  onDelete,
+  onMarkDone,
 }: WeeklyPlanDrawerProps) {
   const supabase = createClient();
-  const [assignedPersonnel, setAssignedPersonnel] = useState(plan?.assigned_personnel ?? viewerId);
+  const [assignedPersonnel, setAssignedPersonnel] = useState(plan?.assigned_personnel ?? "");
   const [module, setModule] = useState(plan?.module ?? "");
-  const [dateWeekly, setDateWeekly] = useState(plan?.date_weekly ?? "");
+  const [dateWeekly, setDateWeekly] = useState(weeklyPlanWeekInputValue(plan?.date_weekly ?? null));
   const [title, setTitle] = useState(plan?.title ?? "");
   const [description, setDescription] = useState(plan?.description ?? "");
   const [status, setStatus] = useState<WeeklyPlanStatus>(plan?.status ?? "pending");
   const [attachments, setAttachments] = useState<string[]>(plan?.document_attachments ?? []);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isForm = mode !== "view";
   const nameOf = (id: string | null) =>
     people.find((person) => person.id === id)?.full_name || "Unknown user";
+
+  const moduleOptions = modules.map((item) => ({
+    value: item.id,
+    label: `${item.name} · ${item.projectName}`,
+  }));
+  if (plan?.module && !moduleOptions.some((option) => option.value === plan.module)) {
+    moduleOptions.unshift({ value: plan.module, label: moduleNames[plan.module] ?? "Unknown module" });
+  }
+  const peopleOptions = people.map((person) => ({
+    value: person.id,
+    label: person.full_name || person.email || "Unnamed user",
+  }));
 
   useEffect(() => {
     if (mode !== "view" || attachments.length === 0) return;
@@ -131,15 +152,16 @@ export default function WeeklyPlanDrawer({
   };
 
   const handleSave = async () => {
-    if (!title.trim() || !module.trim() || !assignedPersonnel) {
-      toast.error("Title, module and assigned personnel are required.");
+    if (!title.trim() || !dateWeekly) {
+      setSubmitAttempted(true);
+      toast.error("Title and week are required.");
       return;
     }
     setSaving(true);
     const fields = {
-      assigned_personnel: assignedPersonnel,
-      module: module.trim(),
-      date_weekly: dateWeekly || null,
+      assigned_personnel: assignedPersonnel || null,
+      module: module || null,
+      date_weekly: weeklyPlanWeekToMonday(dateWeekly),
       title: title.trim(),
       description: description.trim() || null,
       status,
@@ -174,13 +196,20 @@ export default function WeeklyPlanDrawer({
   const statusMeta = weeklyPlanStatusMeta(mode === "view" ? plan?.status ?? status : status);
   const inputClass =
     "w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/30 focus:border-[var(--sys-primary)] transition-colors";
+  const invalidInputClass =
+    "w-full px-3.5 py-2.5 rounded-xl border border-red-400 bg-white dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400/30 focus:border-red-400 transition-colors";
   const labelClass =
     "block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5";
+  const requiredMark = <span className="text-red-500 ml-0.5">*</span>;
+  const titleInvalid = submitAttempted && !title.trim();
+  const weekInvalid = submitAttempted && !dateWeekly;
+  const linkedModule = plan ? weeklyPlanModuleLabel(plan.module, moduleNames) : null;
+  const linkedModuleProject = plan?.module ? moduleProjects[plan.module] ?? "" : "";
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex justify-end">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative h-full w-full max-w-xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-slide-in-right">
+      <div className="relative w-full max-w-2xl max-h-[90vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-scale-in">
         <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-gray-100 dark:border-slate-800">
           <div className="min-w-0">
             <h2 className="text-lg font-extrabold text-slate-900 dark:text-white truncate">{titleText}</h2>
@@ -206,45 +235,50 @@ export default function WeeklyPlanDrawer({
           {isForm ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass}>Title</label>
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>
+                    Title{requiredMark}
+                  </label>
                   <input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="e.g. Finish checkout API"
-                    className={inputClass}
+                    className={titleInvalid ? invalidInputClass : inputClass}
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Module</label>
-                  <input
+                  <label className={labelClass}>Module (optional)</label>
+                  <SearchableSelectField
                     value={module}
-                    onChange={(e) => setModule(e.target.value)}
-                    placeholder="e.g. Payments"
-                    className={inputClass}
+                    onChange={setModule}
+                    options={moduleOptions}
+                    placeholder={modules.length > 0 ? "Select a module" : "No modules available"}
+                    searchPlaceholder="Search modules..."
+                    allowClear
+                    clearLabel="No module"
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Assigned personnel</label>
-                  <select
+                  <label className={labelClass}>Assigned personnel (optional)</label>
+                  <SearchableSelectField
                     value={assignedPersonnel}
-                    onChange={(e) => setAssignedPersonnel(e.target.value)}
-                    className={inputClass}
-                  >
-                    {people.map((person) => (
-                      <option key={person.id} value={person.id}>
-                        {person.full_name || person.email || "Unnamed user"}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setAssignedPersonnel}
+                    options={peopleOptions}
+                    placeholder="Select a person"
+                    searchPlaceholder="Search people..."
+                    allowClear
+                    clearLabel="Unassigned"
+                  />
                 </div>
                 <div>
-                  <label className={labelClass}>Week of</label>
+                  <label className={labelClass}>
+                    Week{requiredMark}
+                  </label>
                   <input
-                    type="date"
+                    type="week"
                     value={dateWeekly}
                     onChange={(e) => setDateWeekly(e.target.value)}
-                    className={inputClass}
+                    className={weekInvalid ? invalidInputClass : inputClass}
                   />
                 </div>
                 <div>
@@ -341,15 +375,28 @@ export default function WeeklyPlanDrawer({
                     {statusMeta.label}
                   </span>
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                    {plan.module}
-                  </span>
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                    Week of {formatWeek(plan.date_weekly)}
+                    Week of {weeklyPlanWeekRange(plan.date_weekly)}
                   </span>
                 </div>
 
                 <div>
                   <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">{plan.title}</h3>
+                  {linkedModule && (
+                    <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[var(--sys-primary)]/25 bg-[var(--sys-primary)]/10 text-[11px] font-bold text-[var(--sys-primary-text)]">
+                      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                        />
+                      </svg>
+                      <span>{linkedModule}</span>
+                      {linkedModuleProject && (
+                        <span className="font-semibold opacity-70">· {linkedModuleProject}</span>
+                      )}
+                    </span>
+                  )}
                   <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
                     {plan.description || "No description."}
                   </p>
@@ -359,19 +406,7 @@ export default function WeeklyPlanDrawer({
                   <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-4 py-3">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned to</p>
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                      {nameOf(plan.assigned_personnel)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-4 py-3">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Created by</p>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                      {nameOf(plan.created_by)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-4 py-3">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Created (UTC stored)</p>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                      {formatTimestamp(plan.created_at)}
+                      {plan.assigned_personnel ? nameOf(plan.assigned_personnel) : "Unassigned"}
                     </p>
                   </div>
                   <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-4 py-3">
@@ -452,6 +487,15 @@ export default function WeeklyPlanDrawer({
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900">
+          {!isForm && onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="mr-auto px-4 py-2.5 rounded-xl text-red-500 text-sm font-bold hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+            >
+              Delete
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -459,7 +503,7 @@ export default function WeeklyPlanDrawer({
           >
             {isForm ? "Cancel" : "Close"}
           </button>
-          {isForm && (
+          {isForm ? (
             <button
               type="button"
               onClick={handleSave}
@@ -468,6 +512,27 @@ export default function WeeklyPlanDrawer({
             >
               {saving ? "Saving..." : mode === "create" ? "Create Plan" : "Save Changes"}
             </button>
+          ) : (
+            <>
+              {onMarkDone && (
+                <button
+                  type="button"
+                  onClick={onMarkDone}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-colors"
+                >
+                  Mark as done
+                </button>
+              )}
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className="px-5 py-2.5 rounded-xl bg-[var(--sys-primary)] text-white text-sm font-bold shadow-lg hover:opacity-90 transition-opacity"
+                >
+                  Edit
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

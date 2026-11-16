@@ -2,9 +2,9 @@ export type WeeklyPlanStatus = 'pending' | 'onhold' | 'in progress' | 'done' | '
 
 export interface WeeklyPlan {
   id: number
-  assigned_personnel: string
-  module: string
-  date_weekly: string | null
+  assigned_personnel: string | null
+  module: string | null
+  date_weekly: string
   title: string
   description: string | null
   status: WeeklyPlanStatus
@@ -19,6 +19,12 @@ export interface WeeklyPlanPerson {
   id: string
   full_name: string | null
   email: string | null
+}
+
+export interface WeeklyPlanModule {
+  id: string
+  name: string
+  projectName: string
 }
 
 export const WEEKLY_PLAN_STATUSES: {
@@ -48,14 +54,14 @@ export const WEEKLY_PLAN_STATUSES: {
   {
     value: 'done',
     label: 'Done',
-    badge: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/20',
-    dot: '#10B981',
+    badge: 'bg-green-50 text-green-600 border-green-200 dark:bg-green-400/10 dark:text-green-300 dark:border-green-400/20',
+    dot: '#22C55E',
   },
   {
     value: 'completed',
     label: 'Completed',
-    badge: 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-400/20',
-    dot: '#8B5CF6',
+    badge: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-500/15 dark:text-green-300 dark:border-green-400/20',
+    dot: '#15803D',
   },
 ]
 
