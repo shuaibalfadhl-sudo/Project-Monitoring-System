@@ -48,6 +48,10 @@ export default function SidebarNav({
       <Link href="/hall-of-fame" className={getLinkClasses('/hall-of-fame')}>
         Hall of Fame
       </Link>
+
+      <Link href="/weekly-plans" className={getLinkClasses('/weekly-plans')}>
+        Weekly Plans
+      </Link>
       
       <Link href="/modules" className={getLinkClasses('/modules')}>
         All Modules
