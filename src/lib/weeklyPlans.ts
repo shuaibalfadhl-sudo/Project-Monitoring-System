@@ -114,16 +114,23 @@ export function weeklyPlanWeekToMonday(value: string): string {
   return monday.toISOString().slice(0, 10)
 }
 
-export function weeklyPlanWeekRange(date: string | null): string {
+// Shows the plan's start to end span; without an end date it falls back to start + 6 days.
+export function weeklyPlanWeekRange(date: string | null, endDate?: string | null): string {
   if (!date) return 'No week set'
   const [year, month, day] = date.split('-').map(Number)
-  const monday = new Date(year, month - 1, day)
-  const sunday = new Date(year, month - 1, day + 6)
-  const start = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit' }).format(monday)
-  const end = new Intl.DateTimeFormat('en-US', {
+  const start = new Date(year, month - 1, day)
+  let end: Date
+  if (endDate) {
+    const [endYear, endMonth, endDay] = endDate.split('-').map(Number)
+    end = new Date(endYear, endMonth - 1, endDay)
+  } else {
+    end = new Date(year, month - 1, day + 6)
+  }
+  const startLabel = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit' }).format(start)
+  const endLabel = new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: '2-digit',
     year: 'numeric',
-  }).format(sunday)
-  return `${start} – ${end}`
+  }).format(end)
+  return `${startLabel} – ${endLabel}`
 }

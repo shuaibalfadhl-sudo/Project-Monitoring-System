@@ -13,9 +13,7 @@ import {
   uploadWeeklyPlanFile,
   removeWeeklyPlanFiles,
   weeklyPlanSignedUrl,
-  weeklyPlanWeekInputValue,
   weeklyPlanWeekRange,
-  weeklyPlanWeekToMonday,
 } from "@/lib/weeklyPlans";
 import {
   WEEKLY_PLAN_STATUSES,
@@ -26,6 +24,7 @@ import {
   type WeeklyPlanStatus,
 } from "@/types/weeklyPlan";
 import SearchableSelectField from "./SearchableSelectField";
+import DateRangeField from "./DateRangeField";
 
 export type DrawerMode = "create" | "view" | "edit";
 
@@ -74,7 +73,8 @@ export default function WeeklyPlanDrawer({
   const supabase = createClient();
   const [assignedPersonnel, setAssignedPersonnel] = useState(plan?.assigned_personnel ?? "");
   const [module, setModule] = useState(plan?.module ?? "");
-  const [dateWeekly, setDateWeekly] = useState(weeklyPlanWeekInputValue(plan?.date_weekly ?? null));
+  const [startDate, setStartDate] = useState(plan?.date_weekly ?? "");
+  const [endDate, setEndDate] = useState(plan?.date_weekly_end ?? "");
   const [title, setTitle] = useState(plan?.title ?? "");
   const [description, setDescription] = useState(plan?.description ?? "");
   const [status, setStatus] = useState<WeeklyPlanStatus>(plan?.status ?? "pending");
@@ -152,16 +152,17 @@ export default function WeeklyPlanDrawer({
   };
 
   const handleSave = async () => {
-    if (!title.trim() || !dateWeekly) {
+    if (!title.trim() || !startDate) {
       setSubmitAttempted(true);
-      toast.error("Title and week are required.");
+      toast.error("Title and start date are required.");
       return;
     }
     setSaving(true);
     const fields = {
       assigned_personnel: assignedPersonnel || null,
       module: module || null,
-      date_weekly: weeklyPlanWeekToMonday(dateWeekly),
+      date_weekly: startDate,
+      date_weekly_end: endDate || null,
       title: title.trim(),
       description: description.trim() || null,
       status,
@@ -202,7 +203,7 @@ export default function WeeklyPlanDrawer({
     "block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5";
   const requiredMark = <span className="text-red-500 ml-0.5">*</span>;
   const titleInvalid = submitAttempted && !title.trim();
-  const weekInvalid = submitAttempted && !dateWeekly;
+  const startInvalid = submitAttempted && !startDate;
   const linkedModule = plan ? weeklyPlanModuleLabel(plan.module, moduleNames) : null;
   const linkedModuleProject = plan?.module ? moduleProjects[plan.module] ?? "" : "";
 
@@ -272,13 +273,17 @@ export default function WeeklyPlanDrawer({
                 </div>
                 <div>
                   <label className={labelClass}>
-                    Week{requiredMark}
+                    Date range{requiredMark}
                   </label>
-                  <input
-                    type="week"
-                    value={dateWeekly}
-                    onChange={(e) => setDateWeekly(e.target.value)}
-                    className={weekInvalid ? invalidInputClass : inputClass}
+                  <DateRangeField
+                    start={startDate}
+                    end={endDate}
+                    onChange={(s, e) => {
+                      setStartDate(s);
+                      setEndDate(e);
+                    }}
+                    placeholder="Select start and end date"
+                    invalid={startInvalid}
                   />
                 </div>
                 <div>
@@ -375,7 +380,7 @@ export default function WeeklyPlanDrawer({
                     {statusMeta.label}
                   </span>
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                    Week of {weeklyPlanWeekRange(plan.date_weekly)}
+                    {weeklyPlanWeekRange(plan.date_weekly, plan.date_weekly_end)}
                   </span>
                 </div>
 

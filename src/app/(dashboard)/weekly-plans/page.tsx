@@ -33,7 +33,7 @@ export default async function WeeklyPlansPage() {
       supabase
         .from('weekly_plans')
         .select(
-          'id, assigned_personnel, module, date_weekly, title, description, status, document_attachments, created_by, created_at, updated_by, updated_at',
+          'id, assigned_personnel, module, date_weekly, date_weekly_end, title, description, status, document_attachments, created_by, created_at, updated_by, updated_at',
         )
         .order('date_weekly', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false }),
