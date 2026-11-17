@@ -22,7 +22,6 @@ export default async function DashboardLayout({
 
   const isManager = profile.role === 'project_manager'
   const isAuditor = profile.role === 'system_auditor'
-  const isSuperAdmin = profile.role === 'super_admin'
 
   // Fetch settings for dynamic logo and name in the sidebar
   const supabaseServer = await createClient()
@@ -57,6 +56,23 @@ export default async function DashboardLayout({
   let developmentCount = 0
   let revisionCount = 0
   let revisingCount = 0
+
+  const weeklyTasksQuery = supabaseServer
+    .from('weekly_plans')
+    .select('id', { count: 'exact', head: true })
+    .eq('assigned_personnel', profile.id)
+    .neq('status', 'done')
+  const doneTasksQuery = supabaseServer
+    .from('weekly_plans')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'done')
+    .eq('created_by', profile.id)
+  const [{ count: weeklyTasksCountResult }, { count: doneTasksCountResult }] = await Promise.all([
+    weeklyTasksQuery,
+    doneTasksQuery,
+  ])
+  const weeklyTasksCount = weeklyTasksCountResult ?? 0
+  const doneTasksCount = doneTasksCountResult ?? 0
 
   if (profile.role === 'system_auditor' || profile.role === 'super_admin') {
     if (profile.role === 'super_admin') {
@@ -279,6 +295,8 @@ export default async function DashboardLayout({
       initialDevelopmentCount={developmentCount}
       initialRevisionCount={revisionCount}
       initialRevisingCount={revisingCount}
+      initialWeeklyTasksCount={weeklyTasksCount}
+      initialDoneTasksCount={doneTasksCount}
       initialNotificationCount={notificationCount}
       initialNotifications={notifications}
     >

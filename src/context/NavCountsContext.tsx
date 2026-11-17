@@ -22,6 +22,8 @@ interface NavCountsContextType {
   developmentCount: number
   revisionCount: number
   revisingCount: number
+  weeklyTasksCount: number
+  doneTasksCount: number
   notifications: NotificationItem[]
   refreshCounts: () => Promise<void>
 }
@@ -35,6 +37,8 @@ const NavCountsContext = createContext<NavCountsContextType>({
   developmentCount: 0,
   revisionCount: 0,
   revisingCount: 0,
+  weeklyTasksCount: 0,
+  doneTasksCount: 0,
   notificationCount: 0,
   notifications: [],
   refreshCounts: async () => { },
@@ -69,6 +73,8 @@ interface NavCountsProviderProps {
   initialDevelopmentCount?: number
   initialRevisionCount?: number
   initialRevisingCount?: number
+  initialWeeklyTasksCount?: number
+  initialDoneTasksCount?: number
   initialNotificationCount: number
   initialNotifications: NotificationItem[]
   profile: {
@@ -88,6 +94,8 @@ export function NavCountsProvider({
   initialDevelopmentCount = 0,
   initialRevisionCount = 0,
   initialRevisingCount = 0,
+  initialWeeklyTasksCount = 0,
+  initialDoneTasksCount = 0,
   initialNotificationCount,
   initialNotifications,
   profile,
@@ -103,6 +111,8 @@ export function NavCountsProvider({
   const [developmentCount, setDevelopmentCount] = useState(initialDevelopmentCount);
   const [revisionCount, setRevisionCount] = useState(initialRevisionCount);
   const [revisingCount, setRevisingCount] = useState(initialRevisingCount);
+  const [weeklyTasksCount, setWeeklyTasksCount] = useState(initialWeeklyTasksCount);
+  const [doneTasksCount, setDoneTasksCount] = useState(initialDoneTasksCount);
 
   const prevNotifCountRef = useRef(initialNotificationCount)
   const router = useRouter()
@@ -119,6 +129,8 @@ export function NavCountsProvider({
     setDevelopmentCount(initialDevelopmentCount)
     setRevisionCount(initialRevisionCount)
     setRevisingCount(initialRevisingCount)
+    setWeeklyTasksCount(initialWeeklyTasksCount)
+    setDoneTasksCount(initialDoneTasksCount)
     setNotificationCount(initialNotificationCount)
     setNotifications(initialNotifications)
   }, [
@@ -130,6 +142,8 @@ export function NavCountsProvider({
     initialDevelopmentCount,
     initialRevisionCount,
     initialRevisingCount,
+    initialWeeklyTasksCount,
+    initialDoneTasksCount,
     initialNotificationCount,
     initialNotifications,
   ])
@@ -358,6 +372,25 @@ export function NavCountsProvider({
         depCount = count
       }
 
+      // Weekly pipeline counts (all roles): tasks assigned to me that are not
+      // done, and done tasks I created.
+      const weeklyTasksQuery = supabase
+        .from('weekly_plans')
+        .select('id', { count: 'exact', head: true })
+        .eq('assigned_personnel', profile.id)
+        .neq('status', 'done')
+      const doneTasksQuery = supabase
+        .from('weekly_plans')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'done')
+        .eq('created_by', profile.id)
+      const [{ count: weeklyCount }, { count: doneCount }] = await Promise.all([
+        weeklyTasksQuery,
+        doneTasksQuery,
+      ])
+      setWeeklyTasksCount(weeklyCount ?? 0)
+      setDoneTasksCount(doneCount ?? 0)
+
       // Check for toast notification on count increase
       if (notifCount > prevNotifCountRef.current) {
         toast.info('You have new tasks that need your attention!')
@@ -419,6 +452,13 @@ export function NavCountsProvider({
           handleSync()
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'weekly_plans' },
+        () => {
+          handleSync()
+        }
+      )
       .subscribe()
 
     // Polling fallback every 60 seconds (realtime keeps the counts current); skipped while the tab is hidden
@@ -462,6 +502,8 @@ export function NavCountsProvider({
         developmentCount,
         revisionCount,
         revisingCount,
+        weeklyTasksCount,
+        doneTasksCount,
         notifications,
         refreshCounts: fetchCounts,
       }}

@@ -41,6 +41,8 @@ interface WeeklyPlanDrawerProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onMarkDone?: () => void;
+  statusOptions?: WeeklyPlanStatus[];
+  onStatusChange?: (next: WeeklyPlanStatus) => void;
 }
 
 function formatTimestamp(value: string | null) {
@@ -69,6 +71,8 @@ export default function WeeklyPlanDrawer({
   onEdit,
   onDelete,
   onMarkDone,
+  statusOptions,
+  onStatusChange,
 }: WeeklyPlanDrawerProps) {
   const supabase = createClient();
   const [assignedPersonnel, setAssignedPersonnel] = useState(plan?.assigned_personnel ?? "");
@@ -373,12 +377,41 @@ export default function WeeklyPlanDrawer({
             plan && (
               <>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold ${statusMeta.badge}`}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusMeta.dot }} />
-                    {statusMeta.label}
-                  </span>
+                  {onStatusChange && statusOptions && statusOptions.length > 0 ? (
+                    <div className="relative inline-flex">
+                      <select
+                        value={plan.status}
+                        onChange={(e) => onStatusChange(e.target.value as WeeklyPlanStatus)}
+                        aria-label="Change status"
+                        className={`appearance-none pl-2.5 pr-6 py-1 rounded-full border text-[11px] font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/30 transition-colors ${statusMeta.badge}`}
+                      >
+                        {statusOptions.map((value) => (
+                          <option
+                            key={value}
+                            value={value}
+                            className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white"
+                          >
+                            {weeklyPlanStatusMeta(value).label}
+                          </option>
+                        ))}
+                      </select>
+                      <svg
+                        className="pointer-events-none absolute right-2 top-1/2 h-2.5 w-2.5 -translate-y-1/2 opacity-60"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold ${statusMeta.badge}`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusMeta.dot }} />
+                      {statusMeta.label}
+                    </span>
+                  )}
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-600 dark:text-slate-300">
                     {weeklyPlanWeekRange(plan.date_weekly, plan.date_weekly_end)}
                   </span>
