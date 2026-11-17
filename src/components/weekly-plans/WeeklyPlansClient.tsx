@@ -13,6 +13,7 @@ import {
 } from "@/lib/weeklyPlans";
 import WeeklyPlanDrawer, { type DrawerMode } from "./WeeklyPlanDrawer";
 import DateRangeField from "./DateRangeField";
+import SearchableSelectField from "./SearchableSelectField";
 import ConfirmStatusDialog from "./ConfirmStatusDialog";
 import {
   WEEKLY_PLAN_STATUSES,
@@ -397,19 +398,17 @@ export default function WeeklyPlansClient({
           />
         </div>
 
-        <select
-          value={creatorFilter}
-          onChange={(e) => setCreatorFilter(e.target.value)}
-          className={inputClass}
-          aria-label="Filter by creator"
-        >
-          <option value="all">All Creators</option>
-          {creatorOptions.map((creator) => (
-            <option key={creator.id} value={creator.id}>
-              {creator.name}
-            </option>
-          ))}
-        </select>
+        <SearchableSelectField
+          className="relative shrink-0"
+          triggerClassName={`${inputClass} flex items-center justify-between gap-2 text-left whitespace-nowrap`}
+          value={creatorFilter === "all" ? "" : creatorFilter}
+          onChange={(value) => setCreatorFilter(value || "all")}
+          options={creatorOptions.map((creator) => ({ value: creator.id, label: creator.name }))}
+          placeholder="All Creators"
+          searchPlaceholder="Search creators..."
+          allowClear
+          clearLabel="All Creators"
+        />
 
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={inputClass}>
           <option value="all">All Statuses</option>

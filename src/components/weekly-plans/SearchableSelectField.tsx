@@ -15,6 +15,8 @@ interface SearchableSelectFieldProps {
   searchPlaceholder?: string;
   allowClear?: boolean;
   clearLabel?: string;
+  className?: string;
+  triggerClassName?: string;
 }
 
 export default function SearchableSelectField({
@@ -25,6 +27,8 @@ export default function SearchableSelectField({
   searchPlaceholder = "Search...",
   allowClear = false,
   clearLabel = "Clear selection",
+  className,
+  triggerClassName,
 }: SearchableSelectFieldProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -46,13 +50,16 @@ export default function SearchableSelectField({
   );
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className={className ?? "relative"}>
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-left flex justify-between items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/30 focus:border-[var(--sys-primary)] transition-colors"
+        className={
+          triggerClassName ??
+          "w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-left flex justify-between items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/30 focus:border-[var(--sys-primary)] transition-colors"
+        }
       >
         <span className={`truncate ${selected ? "text-slate-800 dark:text-white" : "text-slate-400"}`}>
           {selected ? selected.label : placeholder}
@@ -68,7 +75,7 @@ export default function SearchableSelectField({
       </button>
 
       {open && (
-        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 flex flex-col overflow-hidden">
+        <div className="absolute z-50 w-full min-w-56 mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 flex flex-col overflow-hidden">
           <div className="p-2 border-b border-gray-100 dark:border-slate-700">
             <input
               type="text"
