@@ -90,7 +90,10 @@ export default function WeeklyTasksClient({
   const isAssigneeOnly = (plan: WeeklyPlan) =>
     plan.assigned_personnel === viewer.id && plan.created_by !== viewer.id;
 
-  const activePlans = useMemo(() => plans.filter((plan) => plan.status !== "done"), [plans]);
+  const activePlans = useMemo(
+    () => plans.filter((plan) => plan.status !== "done" && plan.status !== "completed"),
+    [plans],
+  );
 
   const filteredPlans = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -121,7 +124,9 @@ export default function WeeklyTasksClient({
   const paginatedPlans = filteredPlans.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage);
 
   const statusOptionsFor = (plan: WeeklyPlan) => {
-    if (canEdit(plan)) return WEEKLY_PLAN_STATUSES;
+    if (canEdit(plan)) {
+      return WEEKLY_PLAN_STATUSES.filter((option) => option.value !== "completed");
+    }
     if (isAssigneeOnly(plan) && plan.status === "pending") {
       return WEEKLY_PLAN_STATUSES.filter(
         (option) => option.value === "pending" || option.value === "in progress",
@@ -209,7 +214,9 @@ export default function WeeklyTasksClient({
           aria-label="Filter by status"
         >
           <option value="all">All Statuses</option>
-          {WEEKLY_PLAN_STATUSES.filter((option) => option.value !== "done").map((option) => (
+          {WEEKLY_PLAN_STATUSES.filter(
+            (option) => option.value !== "done" && option.value !== "completed",
+          ).map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
