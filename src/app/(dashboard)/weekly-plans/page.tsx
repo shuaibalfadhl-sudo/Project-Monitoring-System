@@ -134,7 +134,7 @@ export default async function WeeklyPlansPage() {
   const { data: people } = await peopleQuery.order('full_name')
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full min-h-full flex flex-col space-y-6">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
           Weekly Plans
