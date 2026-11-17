@@ -94,19 +94,26 @@ export default function WeeklyTasksClient({
 
   const filteredPlans = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    return activePlans.filter((plan) => {
-      if (statusFilter !== "all" && plan.status !== statusFilter) return false;
-      if (weekStart) {
-        const selectedEnd = weekEnd || weekStart;
-        if (
-          !(plan.date_weekly <= selectedEnd && (plan.date_weekly_end ?? plan.date_weekly) >= weekStart)
-        )
-          return false;
-      }
-      if (!term) return true;
-      const moduleLabel = weeklyPlanModuleLabel(plan.module, moduleNames) ?? "";
-      return `${plan.title} ${moduleLabel}`.toLowerCase().includes(term);
-    });
+    return activePlans
+      .filter((plan) => {
+        if (statusFilter !== "all" && plan.status !== statusFilter) return false;
+        if (weekStart) {
+          const selectedEnd = weekEnd || weekStart;
+          if (
+            !(plan.date_weekly <= selectedEnd && (plan.date_weekly_end ?? plan.date_weekly) >= weekStart)
+          )
+            return false;
+        }
+        if (!term) return true;
+        const moduleLabel = weeklyPlanModuleLabel(plan.module, moduleNames) ?? "";
+        return `${plan.title} ${moduleLabel}`.toLowerCase().includes(term);
+      })
+      .sort(
+        (a, b) =>
+          a.date_weekly.localeCompare(b.date_weekly) ||
+          (a.date_weekly_end ?? a.date_weekly).localeCompare(b.date_weekly_end ?? b.date_weekly) ||
+          a.created_at.localeCompare(b.created_at),
+      );
   }, [activePlans, searchTerm, statusFilter, weekStart, weekEnd, moduleNames]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPlans.length / itemsPerPage));
