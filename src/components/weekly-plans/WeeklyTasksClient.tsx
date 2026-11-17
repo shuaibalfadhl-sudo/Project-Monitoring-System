@@ -242,13 +242,14 @@ export default function WeeklyTasksClient({
                   const moduleLabel = weeklyPlanModuleLabel(plan.module, moduleNames);
                   const moduleProject = plan.module ? moduleProjects[plan.module] ?? "" : "";
                   const options = statusOptionsFor(plan);
-                  const advance: WeeklyPlanStatus | null = isAssigneeOnly(plan)
-                    ? plan.status === "pending"
-                      ? "in progress"
-                      : plan.status === "in progress"
-                        ? "done"
-                        : null
-                    : null;
+                  const advance: WeeklyPlanStatus | null =
+                    plan.assigned_personnel === viewer.id
+                      ? plan.status === "pending"
+                        ? "in progress"
+                        : plan.status === "in progress"
+                          ? "done"
+                          : null
+                      : null;
                   return (
                     <tr
                       key={plan.id}
