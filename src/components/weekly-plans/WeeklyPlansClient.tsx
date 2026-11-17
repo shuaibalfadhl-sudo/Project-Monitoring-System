@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -39,6 +39,10 @@ function groupKeyOf(plan: WeeklyPlan) {
 function splitGroupKey(key: string): [string, string] {
   const [start, end] = key.split("|");
   return [start, end ?? ""];
+}
+
+function firstWord(name: string) {
+  return name.trim().split(/\s+/)[0] || name;
 }
 
 function ConfirmDeleteDialog({
@@ -97,14 +101,6 @@ function ConfirmDeleteDialog({
   );
 }
 
-function generatePagination(currentPage: number, totalPages: number) {
-  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
-  if (currentPage <= 3) return [1, 2, 3, 4, "...", totalPages];
-  if (currentPage >= totalPages - 2)
-    return [1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-  return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
-}
-
 export default function WeeklyPlansClient({
   initialPlans,
   people,
@@ -123,16 +119,24 @@ export default function WeeklyPlansClient({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [weekFilter, setWeekFilter] = useState("all");
+  const [creatorFilter, setCreatorFilter] = useState("all");
   const [scopeFilter, setScopeFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(6);
-  const [drawer, setDrawer] = useState<{ mode: DrawerMode; plan: WeeklyPlan | null } | null>(null);
+  const [drawer, setDrawer] = useState<{
+    mode: DrawerMode;
+    plan: WeeklyPlan | null;
+    range?: { start: string; end: string };
+  } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WeeklyPlan | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [statusTarget, setStatusTarget] = useState<{ plan: WeeklyPlan; next: WeeklyPlanStatus } | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
   const [dragging, setDragging] = useState<WeeklyPlan | null>(null);
   const [dragOverWeek, setDragOverWeek] = useState<string | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [isSliding, setIsSliding] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const slideState = useRef<{ startX: number; scrollLeft: number; moved: boolean } | null>(null);
+  const suppressClick = useRef(false);
 
   const supabase = createClient();
   const router = useRouter();
@@ -157,6 +161,22 @@ export default function WeeklyPlansClient({
   );
   const nameOf = (id: string | null) => (id ? peopleById.get(id) ?? "Unknown user" : "Unknown user");
 
+  // The native drag ghost is browser-dimmed and cannot be styled, so track the
+  // cursor during the drag and render our own full-opacity clone instead.
+  useEffect(() => {
+    if (!dragging) return;
+    const move = (e: DragEvent) => setDragPos({ x: e.clientX, y: e.clientY });
+    document.addEventListener("dragover", move);
+    return () => document.removeEventListener("dragover", move);
+  }, [dragging]);
+
+  const creatorOptions = useMemo(() => {
+    const ids = [...new Set(plans.map((plan) => plan.created_by))];
+    return ids
+      .map((id) => ({ id, name: peopleById.get(id) ?? "Unknown user" }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [plans, peopleById]);
+
   const canEdit = (plan: WeeklyPlan) => plan.created_by === viewer.id || isSuperAdmin;
   const canDelete = (plan: WeeklyPlan) => plan.created_by === viewer.id || isSuperAdmin;
   const isAssigneeOnly = (plan: WeeklyPlan) =>
@@ -174,6 +194,7 @@ export default function WeeklyPlansClient({
     return plans.filter((plan) => {
       if (statusFilter !== "all" && plan.status !== statusFilter) return false;
       if (weekFilter !== "all" && groupKeyOf(plan) !== weekFilter) return false;
+      if (creatorFilter !== "all" && plan.created_by !== creatorFilter) return false;
       if (scopeFilter === "mine" && plan.created_by !== viewer.id) return false;
       if (scopeFilter === "assigned" && plan.assigned_personnel !== viewer.id) return false;
       if (!term) return true;
@@ -188,7 +209,7 @@ export default function WeeklyPlansClient({
         .toLowerCase()
         .includes(term);
     });
-  }, [plans, searchTerm, statusFilter, weekFilter, scopeFilter, viewer.id, peopleById, moduleNames]);
+  }, [plans, searchTerm, statusFilter, weekFilter, creatorFilter, scopeFilter, viewer.id, peopleById, moduleNames]);
 
   const weekGroups = useMemo(() => {
     const groups = new Map<string, WeeklyPlan[]>();
@@ -200,10 +221,6 @@ export default function WeeklyPlansClient({
     }
     return [...groups.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [filteredPlans]);
-
-  const totalPages = Math.max(1, Math.ceil(weekGroups.length / itemsPerPage));
-  const safePage = Math.min(currentPage, totalPages);
-  const paginatedWeeks = weekGroups.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage);
 
   const statusOptionsFor = (plan: WeeklyPlan) => {
     if (canEdit(plan)) return WEEKLY_PLAN_STATUSES;
@@ -283,6 +300,7 @@ export default function WeeklyPlansClient({
     const plan = dragging;
     setDragging(null);
     setDragOverWeek(null);
+    setDragPos(null);
     if (!plan || !canEdit(plan)) return;
     const [targetStart, targetEnd] = splitGroupKey(weekKey);
     if (plan.date_weekly === targetStart && (plan.date_weekly_end ?? "") === targetEnd) return;
@@ -324,13 +342,18 @@ export default function WeeklyPlansClient({
   const inputClass =
     "px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/30 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors";
 
-  const resetPageAnd = <T,>(setter: (value: T) => void) => (value: T) => {
-    setter(value);
-    setCurrentPage(1);
+  const slideBy = (direction: number) => {
+    trackRef.current?.scrollBy({ left: direction * 400, behavior: "smooth" });
+  };
+
+  const endSlide = () => {
+    if (slideState.current?.moved) suppressClick.current = true;
+    slideState.current = null;
+    setIsSliding(false);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-1 min-h-0 flex-col space-y-6">
       <div className="flex flex-wrap items-center justify-end gap-3">
         <button
           type="button"
@@ -359,7 +382,7 @@ export default function WeeklyPlansClient({
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => resetPageAnd(setSearchTerm)(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search title, module, people..."
             className={`${inputClass} w-full pl-10`}
           />
@@ -369,14 +392,26 @@ export default function WeeklyPlansClient({
           <DateRangeField
             start={weekFilterStart}
             end={weekFilterEnd}
-            onChange={(start, end) =>
-              resetPageAnd(setWeekFilter)(start ? `${start}|${end}` : "all")
-            }
+            onChange={(start, end) => setWeekFilter(start ? `${start}|${end}` : "all")}
             placeholder="All weeks"
           />
         </div>
 
-        <select value={statusFilter} onChange={(e) => resetPageAnd(setStatusFilter)(e.target.value)} className={inputClass}>
+        <select
+          value={creatorFilter}
+          onChange={(e) => setCreatorFilter(e.target.value)}
+          className={inputClass}
+          aria-label="Filter by creator"
+        >
+          <option value="all">All Creators</option>
+          {creatorOptions.map((creator) => (
+            <option key={creator.id} value={creator.id}>
+              {creator.name}
+            </option>
+          ))}
+        </select>
+
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={inputClass}>
           <option value="all">All Statuses</option>
           {WEEKLY_PLAN_STATUSES.map((option) => (
             <option key={option.value} value={option.value}>
@@ -385,14 +420,14 @@ export default function WeeklyPlansClient({
           ))}
         </select>
 
-        <select value={scopeFilter} onChange={(e) => resetPageAnd(setScopeFilter)(e.target.value)} className={inputClass}>
+        <select value={scopeFilter} onChange={(e) => setScopeFilter(e.target.value)} className={inputClass}>
           <option value="all">All Plans</option>
           <option value="mine">Created by me</option>
           <option value="assigned">Assigned to me</option>
         </select>
       </div>
 
-      {paginatedWeeks.length === 0 ? (
+      {weekGroups.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl shadow-sm p-10 text-center">
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 italic">
             {plans.length === 0
@@ -401,8 +436,72 @@ export default function WeeklyPlansClient({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {paginatedWeeks.map(([weekKey, weekPlans]) => {
+        <div className="flex flex-1 min-h-64 flex-col space-y-2">
+          <div className="flex items-center justify-end gap-1">
+            <button
+              type="button"
+              onClick={() => slideBy(-1)}
+              aria-label="Slide to previous weeks"
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => slideBy(1)}
+              aria-label="Slide to next weeks"
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
+          <div
+            ref={trackRef}
+            onPointerDown={(e) => {
+              if (e.pointerType !== "mouse" || e.button !== 0) return;
+              const el = trackRef.current;
+              if (!el) return;
+              slideState.current = { startX: e.clientX, scrollLeft: el.scrollLeft, moved: false };
+            }}
+            onPointerMove={(e) => {
+              const state = slideState.current;
+              const el = trackRef.current;
+              if (!state || !el) return;
+              const dx = e.clientX - state.startX;
+              if (!state.moved) {
+                if (Math.abs(dx) < 6) return;
+                state.moved = true;
+                setIsSliding(true);
+                el.setPointerCapture(e.pointerId);
+              }
+              el.scrollLeft = state.scrollLeft - dx;
+            }}
+            onPointerUp={endSlide}
+            onPointerCancel={endSlide}
+            onClickCapture={(e) => {
+              if (suppressClick.current) {
+                suppressClick.current = false;
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            className={`flex flex-1 min-h-0 items-start gap-4 overflow-x-auto pb-2 ${
+              isSliding ? "cursor-grabbing select-none" : "cursor-grab"
+            }`}
+          >
+          {weekGroups.map(([weekKey, weekPlans]) => {
             const [weekStart, weekEnd] = splitGroupKey(weekKey);
             return (
             <div
@@ -421,7 +520,7 @@ export default function WeeklyPlansClient({
                 e.preventDefault();
                 void handleDrop(weekKey);
               }}
-              className={`bg-white dark:bg-slate-900 rounded-2xl shadow-sm flex flex-col transition-all ${
+              className={`w-80 sm:w-96 shrink-0 max-h-full bg-white dark:bg-slate-900 rounded-2xl shadow-sm flex flex-col transition-all ${
                 dragOverWeek === weekKey
                   ? "border-2 border-[var(--sys-primary)] ring-2 ring-[var(--sys-primary)]/20 -translate-y-0.5"
                   : "border border-gray-100 dark:border-slate-800"
@@ -434,12 +533,26 @@ export default function WeeklyPlansClient({
                     {weeklyPlanWeekRange(weekStart, weekEnd || undefined)}
                   </h3>
                 </div>
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/15 text-[10px] font-bold text-indigo-600 dark:text-indigo-300 shrink-0">
-                  {weekPlans.length} {weekPlans.length === 1 ? "task" : "tasks"}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/15 text-[10px] font-bold text-indigo-600 dark:text-indigo-300">
+                    {weekPlans.length} {weekPlans.length === 1 ? "task" : "tasks"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDrawer({ mode: "create", plan: null, range: { start: weekStart, end: weekEnd } })
+                    }
+                    aria-label={`Add a plan to the week of ${weeklyPlanWeekRange(weekStart, weekEnd || undefined)}`}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-[var(--sys-primary)] text-white hover:opacity-90 transition-opacity shadow-sm"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
-              <div className="p-3 space-y-2">
+              <div className="p-3 space-y-2 min-h-0 flex-1 overflow-y-auto">
                 {weekPlans.map((plan) => {
                   const meta = weeklyPlanStatusMeta(plan.status);
                   const attachments = plan.document_attachments ?? [];
@@ -461,15 +574,23 @@ export default function WeeklyPlansClient({
                       onDragStart={(e) => {
                         e.dataTransfer.setData("text/plain", String(plan.id));
                         e.dataTransfer.effectAllowed = "move";
+                        const ghost = new Image();
+                        ghost.src =
+                          "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+                        e.dataTransfer.setDragImage(ghost, 0, 0);
+                        slideState.current = null;
+                        setIsSliding(false);
                         setDragging(plan);
+                        setDragPos({ x: e.clientX, y: e.clientY });
                       }}
                       onDragEnd={() => {
                         setDragging(null);
                         setDragOverWeek(null);
+                        setDragPos(null);
                       }}
                       className={`group rounded-xl border border-gray-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-3 py-2.5 transition-colors hover:border-[var(--sys-primary)]/40 hover:bg-white dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/30 ${
                         draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
-                      } ${dragging?.id === plan.id ? "opacity-50" : ""}`}
+                      } ${dragging && dragging.id !== plan.id ? "opacity-50" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-bold text-slate-800 dark:text-slate-100 line-clamp-2">
@@ -523,9 +644,14 @@ export default function WeeklyPlansClient({
                         )}
                       </div>
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                        <span className="truncate max-w-[9rem]">
-                          {plan.assigned_personnel ? nameOf(plan.assigned_personnel) : "Unassigned"}
+                        <span className="basis-full truncate">
+                          Assigned To: {plan.assigned_personnel ? firstWord(nameOf(plan.assigned_personnel)) : "Unassigned"}
                         </span>
+                        {isSuperAdmin && (
+                          <span className="basis-full truncate">
+                            Created by: {firstWord(nameOf(plan.created_by))}
+                          </span>
+                        )}
                         {moduleLabel && (
                           <span className="truncate max-w-[9rem]">{moduleLabel}</span>
                         )}
@@ -563,100 +689,16 @@ export default function WeeklyPlansClient({
             </div>
             );
           })}
-        </div>
-      )}
-
-      {weekGroups.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-              Showing{" "}
-              <span className="font-bold">
-                {(safePage - 1) * itemsPerPage + (paginatedWeeks.length > 0 ? 1 : 0)}
-              </span>{" "}
-              to <span className="font-bold">{Math.min(safePage * itemsPerPage, weekGroups.length)}</span> of{" "}
-              <span className="font-bold">{weekGroups.length}</span> weeks
-            </p>
-            <select
-              value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300"
-            >
-              <option value={3}>3</option>
-              <option value={6}>6</option>
-              <option value={9}>9</option>
-              <option value={12}>12</option>
-            </select>
           </div>
-
-          {totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setCurrentPage(Math.max(safePage - 1, 1))}
-                disabled={safePage === 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 transition-colors"
-                aria-label="Previous page"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path
-                    fillRule="evenodd"
-                    d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-              {generatePagination(safePage, totalPages).map((page, index) =>
-                page === "..." ? (
-                  <span
-                    key={`ellipsis-${index}`}
-                    className="w-8 h-8 flex items-center justify-center text-slate-400 font-bold text-xs"
-                  >
-                    ...
-                  </span>
-                ) : (
-                  <button
-                    key={`page-${page}`}
-                    type="button"
-                    onClick={() => setCurrentPage(page as number)}
-                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-colors ${
-                      safePage === page
-                        ? "bg-[var(--sys-primary)] text-white shadow-sm"
-                        : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ),
-              )}
-              <button
-                type="button"
-                onClick={() => setCurrentPage(Math.min(safePage + 1, totalPages))}
-                disabled={safePage === totalPages}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 transition-colors"
-                aria-label="Next page"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path
-                    fillRule="evenodd"
-                    d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-            </div>
-          )}
         </div>
       )}
 
       {drawer && (
         <WeeklyPlanDrawer
-          key={`${drawer.mode}-${drawer.plan?.id ?? "new"}`}
+          key={`${drawer.mode}-${drawer.plan?.id ?? "new"}-${drawer.range?.start ?? ""}`}
           mode={drawer.mode}
           plan={modalPlan}
+          initialRange={drawer.range}
           people={people}
           modules={modules}
           moduleNames={moduleNames}
@@ -704,6 +746,38 @@ export default function WeeklyPlansClient({
           onConfirm={() => void confirmStatusChange()}
         />
       )}
+
+      {dragging && dragPos &&
+        createPortal(
+          <div
+            className="fixed z-[120] w-80 pointer-events-none -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[var(--sys-primary)] bg-white dark:bg-slate-800 px-3 py-2.5 shadow-2xl"
+            style={{ left: dragPos.x, top: dragPos.y }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-100 line-clamp-2">
+                {dragging.title}
+              </p>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-bold shrink-0 ${weeklyPlanStatusMeta(dragging.status).badge}`}
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: weeklyPlanStatusMeta(dragging.status).dot }}
+                />
+                {weeklyPlanStatusMeta(dragging.status).label}
+              </span>
+            </div>
+            <div className="mt-1.5 space-y-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              <p className="truncate">
+                Assigned To: {dragging.assigned_personnel ? firstWord(nameOf(dragging.assigned_personnel)) : "Unassigned"}
+              </p>
+              {isSuperAdmin && (
+                <p className="truncate">Created by: {firstWord(nameOf(dragging.created_by))}</p>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

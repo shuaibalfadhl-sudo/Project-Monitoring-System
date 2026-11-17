@@ -43,6 +43,7 @@ interface WeeklyPlanDrawerProps {
   onMarkDone?: () => void;
   statusOptions?: WeeklyPlanStatus[];
   onStatusChange?: (next: WeeklyPlanStatus) => void;
+  initialRange?: { start: string; end: string };
 }
 
 function formatTimestamp(value: string | null) {
@@ -73,12 +74,13 @@ export default function WeeklyPlanDrawer({
   onMarkDone,
   statusOptions,
   onStatusChange,
+  initialRange,
 }: WeeklyPlanDrawerProps) {
   const supabase = createClient();
   const [assignedPersonnel, setAssignedPersonnel] = useState(plan?.assigned_personnel ?? "");
   const [module, setModule] = useState(plan?.module ?? "");
-  const [startDate, setStartDate] = useState(plan?.date_weekly ?? "");
-  const [endDate, setEndDate] = useState(plan?.date_weekly_end ?? "");
+  const [startDate, setStartDate] = useState(plan?.date_weekly ?? initialRange?.start ?? "");
+  const [endDate, setEndDate] = useState(plan?.date_weekly_end ?? initialRange?.end ?? "");
   const [title, setTitle] = useState(plan?.title ?? "");
   const [description, setDescription] = useState(plan?.description ?? "");
   const [status, setStatus] = useState<WeeklyPlanStatus>(plan?.status ?? "pending");
