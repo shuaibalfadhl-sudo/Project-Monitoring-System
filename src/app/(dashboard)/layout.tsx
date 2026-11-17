@@ -62,6 +62,7 @@ export default async function DashboardLayout({
     .select('id', { count: 'exact', head: true })
     .eq('assigned_personnel', profile.id)
     .neq('status', 'done')
+    .neq('status', 'completed')
   const doneTasksQuery = supabaseServer
     .from('weekly_plans')
     .select('id', { count: 'exact', head: true })

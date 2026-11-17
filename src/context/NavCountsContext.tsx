@@ -373,12 +373,13 @@ export function NavCountsProvider({
       }
 
       // Weekly pipeline counts (all roles): tasks assigned to me that are not
-      // done, and done tasks I created.
+      // done or completed, and done tasks I created.
       const weeklyTasksQuery = supabase
         .from('weekly_plans')
         .select('id', { count: 'exact', head: true })
         .eq('assigned_personnel', profile.id)
         .neq('status', 'done')
+        .neq('status', 'completed')
       const doneTasksQuery = supabase
         .from('weekly_plans')
         .select('id', { count: 'exact', head: true })

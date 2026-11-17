@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 import { ASSIGNABLE_ROLES, ASSIGNABLE_ROLE_VALUES, UserRole } from '@/types/user'
+import AvatarViewer from '@/components/users/AvatarViewer'
 
 interface UserRow {
   id: string
@@ -11,10 +12,47 @@ interface UserRow {
   email: string | null
   role: string
   created_at: string
+  avatar_path?: string | null
 }
 
 const roleLabel = (value: string) =>
   ASSIGNABLE_ROLES.find((r) => r.value === value)?.label ?? value.replace('_', ' ');
+
+function UserAvatar({ user, onOpen }: { user: UserRow; onOpen: () => void }) {
+  const [failed, setFailed] = useState(false)
+  const initial = (user.full_name || 'U').charAt(0).toUpperCase()
+
+  if (!user.avatar_path || failed) {
+    return (
+      <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-700 text-[var(--sys-primary-text)] flex items-center justify-center font-bold text-sm shrink-0">
+        {initial}
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      title="View avatar"
+      aria-label={`View ${user.full_name || 'user'} avatar`}
+      className="relative w-9 h-9 rounded-full overflow-hidden shrink-0 ring-2 ring-transparent hover:ring-[var(--sys-primary)] transition-all group cursor-zoom-in"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={user.avatar_path}
+        alt={user.full_name || 'User avatar'}
+        className="w-full h-full object-cover"
+        onError={() => setFailed(true)}
+      />
+      <span className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+        <svg className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+        </svg>
+      </span>
+    </button>
+  )
+}
 
 export default function UsersClient({ initialUsers }: { initialUsers: any[] }) {
   const [users, setUsers] = useState<UserRow[]>(initialUsers)
@@ -27,6 +65,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: any[] }) {
   const [roleTarget, setRoleTarget] = useState<UserRow | null>(null)
   const [roleDraft, setRoleDraft] = useState<UserRole>('developer')
   const [passwordTarget, setPasswordTarget] = useState<UserRow | null>(null)
+  const [avatarTarget, setAvatarTarget] = useState<UserRow | null>(null)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -169,9 +208,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: any[] }) {
                 <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-[var(--sys-primary-text)] flex items-center justify-center font-bold text-sm shrink-0">
-                        {(user.full_name || 'U').charAt(0).toUpperCase()}
-                      </div>
+                      <UserAvatar user={user} onOpen={() => setAvatarTarget(user)} />
                       <span className="font-semibold text-slate-900 dark:text-white">
                         {user.full_name || 'No Name'}
                       </span>
@@ -401,6 +438,14 @@ export default function UsersClient({ initialUsers }: { initialUsers: any[] }) {
           </div>,
           document.body
         )}
+
+      {mounted && avatarTarget?.avatar_path && (
+        <AvatarViewer
+          src={avatarTarget.avatar_path}
+          name={avatarTarget.full_name || 'User'}
+          onClose={() => setAvatarTarget(null)}
+        />
+      )}
     </div>
   )
 }
