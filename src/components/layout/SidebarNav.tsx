@@ -71,11 +71,11 @@ function NavGroup({
   );
 }
 
-export default function SidebarNav({ 
+export default function SidebarNav({
   role,
   forQaCount = 0,
   qaRevisionCount = 0
-}: { 
+}: {
   role: string,
   forQaCount?: number,
   qaRevisionCount?: number
@@ -121,126 +121,207 @@ export default function SidebarNav({
     if (insideGroup(weeklyLinks)) setWeeklyOpen(true);
   }
 
+  const [search, setSearch] = useState('');
+  const query = search.trim().toLowerCase();
+  const searching = query.length > 0;
+  const matches = (label: string) => label.toLowerCase().includes(query);
+  const show = (label: string) => !searching || matches(label);
+  const shownLinks = (label: string, links: NavGroupLink[]) =>
+    searching && !matches(label) ? links.filter((link) => matches(link.label)) : links;
+  const groupVisible = (label: string, links: NavGroupLink[]) =>
+    !searching || matches(label) || links.some((link) => matches(link.label));
+
+  const weeklyShown = shownLinks('Weekly Pipeline', weeklyLinks);
+  const pipelineShown = shownLinks('Module Pipeline', pipelineLinks);
+  const weeklyVisible = groupVisible('Weekly Pipeline', weeklyLinks);
+  const pipelineVisible = groupVisible('Module Pipeline', pipelineLinks);
+  const anyVisible =
+    show('Dashboard') ||
+    show('Hall of Fame') ||
+    weeklyVisible ||
+    show('All Modules') ||
+    (isManager && (show('Projects') || pipelineVisible)) ||
+    (isAuditor && (show('Assigned Projects') || show('QA Monitoring'))) ||
+    (isDeveloper && (show('Assigned Projects') || show('Dev Workspace'))) ||
+    (isDevOps && (show('Dev Workspace') || show('For Deployment'))) ||
+    (isSuperAdmin && (show('All Projects') || pipelineVisible || show('Users') || show('System Settings')));
+
   const getLinkClasses = (path: string) => {
     // Exact match for dashboard to prevent it from matching /dashboard/projects if that existed
-    const isActive = path === '/dashboard' 
+    const isActive = path === '/dashboard'
       ? pathname === '/dashboard'
       : pathname === path || pathname.startsWith(`${path}/`);
-    
+
     return isActive
       ? "block px-4 py-3 rounded-xl transition-all duration-300 font-bold text-sm bg-[var(--sys-primary)] text-white shadow-lg translate-x-2"
       : "block px-4 py-3 rounded-xl transition-all duration-300 font-bold text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:translate-x-1";
   };
 
   return (
-    <nav className="flex-1 space-y-2 mt-4">
-      <Link href="/dashboard" className={getLinkClasses('/dashboard')}>
-        Dashboard
-      </Link>
-      
-      <Link href="/hall-of-fame" className={getLinkClasses('/hall-of-fame')}>
-        Hall of Fame
-      </Link>
+    <div className="flex-1 min-h-0 flex flex-col mt-4">
+      <div className="relative shrink-0 mb-3">
+        <svg
+          className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search menu..."
+          className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium bg-white dark:bg-slate-800 text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/30 focus:border-[var(--sys-primary)] transition-colors"
+        />
+      </div>
 
-      <NavGroup
-        label="Weekly Pipeline"
-        links={weeklyLinks}
-        open={weeklyOpen}
-        onToggle={() => setWeeklyOpen((open) => !open)}
-        getLinkClasses={getLinkClasses}
-      />
-      
-      <Link href="/modules" className={getLinkClasses('/modules')}>
-        All Modules
-      </Link>
-      {isManager && (
-        <>
-          <Link href="/projects" className={getLinkClasses('/projects')}>
-            Projects
+      <nav className="no-scrollbar flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
+        {show('Dashboard') && (
+          <Link href="/dashboard" className={getLinkClasses('/dashboard')}>
+            Dashboard
           </Link>
+        )}
+
+        {show('Hall of Fame') && (
+          <Link href="/hall-of-fame" className={getLinkClasses('/hall-of-fame')}>
+            Hall of Fame
+          </Link>
+        )}
+
+        {weeklyVisible && (
           <NavGroup
-            label="Module Pipeline"
-            links={pipelineLinks}
-            open={pipelineOpen}
-            onToggle={() => setPipelineOpen((open) => !open)}
+            label="Weekly Pipeline"
+            links={weeklyShown}
+            open={weeklyOpen || searching}
+            onToggle={() => setWeeklyOpen((open) => !open)}
             getLinkClasses={getLinkClasses}
           />
-        </>
-      )}
+        )}
 
-      {isAuditor && (
-        <>
-          <Link href="/projects" className={getLinkClasses('/projects')}>
-            Assigned Projects
+        {show('All Modules') && (
+          <Link href="/modules" className={getLinkClasses('/modules')}>
+            All Modules
           </Link>
-          <Link href="/qa-monitoring" className={getLinkClasses('/qa-monitoring')}>
-            <span className="flex items-center justify-between">
-              <span>QA Monitoring</span>
-              {currentForQaCount > 0 && (
-                <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentForQaCount}</span>
-              )}
-            </span>
-          </Link>
-        </>
-      )}
+        )}
+        {isManager && (
+          <>
+            {show('Projects') && (
+              <Link href="/projects" className={getLinkClasses('/projects')}>
+                Projects
+              </Link>
+            )}
+            {pipelineVisible && (
+              <NavGroup
+                label="Module Pipeline"
+                links={pipelineShown}
+                open={pipelineOpen || searching}
+                onToggle={() => setPipelineOpen((open) => !open)}
+                getLinkClasses={getLinkClasses}
+              />
+            )}
+          </>
+        )}
 
-      {isDeveloper && (
-        <>
-          <Link href="/projects" className={getLinkClasses('/projects')}>
-            Assigned Projects
-          </Link>
-          <Link href="/dev-workspace" className={getLinkClasses('/dev-workspace')}>
-            <span className="flex items-center justify-between">
-              <span>Dev Workspace</span>
-              {currentDevWorkspaceCount > 0 && (
-                <span className="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDevWorkspaceCount}</span>
-              )}
-            </span>
-          </Link>
-        </>
-      )}
+        {isAuditor && (
+          <>
+            {show('Assigned Projects') && (
+              <Link href="/projects" className={getLinkClasses('/projects')}>
+                Assigned Projects
+              </Link>
+            )}
+            {show('QA Monitoring') && (
+              <Link href="/qa-monitoring" className={getLinkClasses('/qa-monitoring')}>
+                <span className="flex items-center justify-between">
+                  <span>QA Monitoring</span>
+                  {currentForQaCount > 0 && (
+                    <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentForQaCount}</span>
+                  )}
+                </span>
+              </Link>
+            )}
+          </>
+        )}
 
-      {isDevOps && (
-        <>
-          <Link href="/dev-workspace" className={getLinkClasses('/dev-workspace')}>
-            <span className="flex items-center justify-between">
-              <span>Dev Workspace</span>
-              {currentDevWorkspaceCount > 0 && (
-                <span className="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDevWorkspaceCount}</span>
-              )}
-            </span>
-          </Link>
-          <Link href="/deployment" className={getLinkClasses('/deployment')}>
-            <span className="flex items-center justify-between">
-              <span>For Deployment</span>
-              {currentDeploymentCount > 0 && (
-                <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDeploymentCount}</span>
-              )}
-            </span>
-          </Link>
-        </>
-      )}
+        {isDeveloper && (
+          <>
+            {show('Assigned Projects') && (
+              <Link href="/projects" className={getLinkClasses('/projects')}>
+                Assigned Projects
+              </Link>
+            )}
+            {show('Dev Workspace') && (
+              <Link href="/dev-workspace" className={getLinkClasses('/dev-workspace')}>
+                <span className="flex items-center justify-between">
+                  <span>Dev Workspace</span>
+                  {currentDevWorkspaceCount > 0 && (
+                    <span className="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDevWorkspaceCount}</span>
+                  )}
+                </span>
+              </Link>
+            )}
+          </>
+        )}
 
-      {isSuperAdmin && (
-        <>
-          <Link href="/projects" className={getLinkClasses('/projects')}>
-            All Projects
-          </Link>
-          <NavGroup
-            label="Module Pipeline"
-            links={pipelineLinks}
-            open={pipelineOpen}
-            onToggle={() => setPipelineOpen((open) => !open)}
-            getLinkClasses={getLinkClasses}
-          />
-          <Link href="/users" className={getLinkClasses('/users')}>
-            Users
-          </Link>
-          <Link href="/settings" className={getLinkClasses('/settings')}>
-            System Settings
-          </Link>
-        </>
-      )}
-    </nav>
+        {isDevOps && (
+          <>
+            {show('Dev Workspace') && (
+              <Link href="/dev-workspace" className={getLinkClasses('/dev-workspace')}>
+                <span className="flex items-center justify-between">
+                  <span>Dev Workspace</span>
+                  {currentDevWorkspaceCount > 0 && (
+                    <span className="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDevWorkspaceCount}</span>
+                  )}
+                </span>
+              </Link>
+            )}
+            {show('For Deployment') && (
+              <Link href="/deployment" className={getLinkClasses('/deployment')}>
+                <span className="flex items-center justify-between">
+                  <span>For Deployment</span>
+                  {currentDeploymentCount > 0 && (
+                    <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDeploymentCount}</span>
+                  )}
+                </span>
+              </Link>
+            )}
+          </>
+        )}
+
+        {isSuperAdmin && (
+          <>
+            {show('All Projects') && (
+              <Link href="/projects" className={getLinkClasses('/projects')}>
+                All Projects
+              </Link>
+            )}
+            {pipelineVisible && (
+              <NavGroup
+                label="Module Pipeline"
+                links={pipelineShown}
+                open={pipelineOpen || searching}
+                onToggle={() => setPipelineOpen((open) => !open)}
+                getLinkClasses={getLinkClasses}
+              />
+            )}
+            {show('Users') && (
+              <Link href="/users" className={getLinkClasses('/users')}>
+                Users
+              </Link>
+            )}
+            {show('System Settings') && (
+              <Link href="/settings" className={getLinkClasses('/settings')}>
+                System Settings
+              </Link>
+            )}
+          </>
+        )}
+
+        {searching && !anyVisible && (
+          <p className="px-4 py-3 text-xs font-medium text-slate-400 italic">No menu items match.</p>
+        )}
+      </nav>
+    </div>
   );
 }

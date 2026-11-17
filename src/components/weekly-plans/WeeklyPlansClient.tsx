@@ -496,7 +496,7 @@ export default function WeeklyPlansClient({
                 e.stopPropagation();
               }
             }}
-            className={`flex flex-1 min-h-0 items-start gap-4 overflow-x-auto pb-2 ${
+            className={`no-scrollbar flex flex-1 min-h-0 items-start gap-4 overflow-x-auto pb-2 ${
               isSliding ? "cursor-grabbing select-none" : "cursor-grab"
             }`}
           >
@@ -551,7 +551,7 @@ export default function WeeklyPlansClient({
                 </div>
               </div>
 
-              <div className="p-3 space-y-2 min-h-0 flex-1 overflow-y-auto">
+              <div className="no-scrollbar p-3 space-y-2 min-h-0 flex-1 overflow-y-auto">
                 {weekPlans.map((plan) => {
                   const meta = weeklyPlanStatusMeta(plan.status);
                   const attachments = plan.document_attachments ?? [];
