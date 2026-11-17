@@ -13,6 +13,7 @@ import {
 } from "@/lib/weeklyPlans";
 import WeeklyPlanDrawer, { type DrawerMode } from "./WeeklyPlanDrawer";
 import DateRangeField from "./DateRangeField";
+import ConfirmStatusDialog from "./ConfirmStatusDialog";
 import {
   WEEKLY_PLAN_STATUSES,
   weeklyPlanStatusMeta,
@@ -128,6 +129,8 @@ export default function WeeklyPlansClient({
   const [drawer, setDrawer] = useState<{ mode: DrawerMode; plan: WeeklyPlan | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WeeklyPlan | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [statusTarget, setStatusTarget] = useState<{ plan: WeeklyPlan; next: WeeklyPlanStatus } | null>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
   const [dragging, setDragging] = useState<WeeklyPlan | null>(null);
   const [dragOverWeek, setDragOverWeek] = useState<string | null>(null);
 
@@ -158,7 +161,9 @@ export default function WeeklyPlansClient({
   const canDelete = (plan: WeeklyPlan) => plan.created_by === viewer.id || isSuperAdmin;
   const isAssigneeOnly = (plan: WeeklyPlan) =>
     plan.assigned_personnel === viewer.id && plan.created_by !== viewer.id;
-  const modalPlan = drawer?.plan ?? null;
+  const modalPlan = drawer?.plan
+    ? plans.find((plan) => plan.id === drawer.plan!.id) ?? drawer.plan
+    : null;
 
   const [weekFilterStart, weekFilterEnd] =
     weekFilter === "all" ? ["", ""] : splitGroupKey(weekFilter);
@@ -202,6 +207,11 @@ export default function WeeklyPlansClient({
 
   const statusOptionsFor = (plan: WeeklyPlan) => {
     if (canEdit(plan)) return WEEKLY_PLAN_STATUSES;
+    if (isAssigneeOnly(plan) && plan.status === "pending") {
+      return WEEKLY_PLAN_STATUSES.filter(
+        (option) => option.value === "pending" || option.value === "in progress",
+      );
+    }
     if (isAssigneeOnly(plan) && plan.status === "in progress") {
       return WEEKLY_PLAN_STATUSES.filter(
         (option) => option.value === "in progress" || option.value === "done",
@@ -210,12 +220,25 @@ export default function WeeklyPlansClient({
     return [];
   };
 
+  const requestStatusChange = (plan: WeeklyPlan, next: WeeklyPlanStatus) => {
+    if (next === plan.status) return;
+    setStatusTarget({ plan, next });
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusTarget) return;
+    setStatusSaving(true);
+    await handleStatusChange(statusTarget.plan, statusTarget.next);
+    setStatusSaving(false);
+    setStatusTarget(null);
+  };
+
   const handleStatusChange = async (plan: WeeklyPlan, next: WeeklyPlanStatus) => {
     if (next === plan.status) return;
     const previous = plan.status;
     setPlans((prev) => prev.map((item) => (item.id === plan.id ? { ...item, status: next } : item)));
     try {
-      // An assignee may only flip in progress -> done, so the audit columns are sent by the creator/admin only.
+      // Assignees may only move pending -> in progress -> done, so audit columns are sent by the creator/admin only.
       const fields = canEdit(plan)
         ? { status: next, updated_by: viewer.id, updated_at: new Date().toISOString() }
         : { status: next };
@@ -230,7 +253,7 @@ export default function WeeklyPlansClient({
     }
   };
 
-  const handleMarkDone = (plan: WeeklyPlan) => handleStatusChange(plan, "done");
+  const handleMarkDone = (plan: WeeklyPlan) => requestStatusChange(plan, "done");
 
   const handleMarkDoneFromModal = (plan: WeeklyPlan) => {
     setDrawer(null);
@@ -461,7 +484,7 @@ export default function WeeklyPlansClient({
                             <select
                               value={plan.status}
                               onChange={(e) =>
-                                void handleStatusChange(plan, e.target.value as WeeklyPlanStatus)
+                                requestStatusChange(plan, e.target.value as WeeklyPlanStatus)
                               }
                               aria-label={`Status of ${plan.title}`}
                               className={`appearance-none pl-2 pr-5 py-0.5 rounded-full border text-[10px] font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/30 transition-colors ${meta.badge}`}
@@ -633,7 +656,7 @@ export default function WeeklyPlansClient({
         <WeeklyPlanDrawer
           key={`${drawer.mode}-${drawer.plan?.id ?? "new"}`}
           mode={drawer.mode}
-          plan={drawer.plan}
+          plan={modalPlan}
           people={people}
           modules={modules}
           moduleNames={moduleNames}
@@ -655,6 +678,10 @@ export default function WeeklyPlansClient({
               ? () => handleMarkDoneFromModal(modalPlan)
               : undefined
           }
+          statusOptions={modalPlan ? statusOptionsFor(modalPlan).map((option) => option.value) : undefined}
+          onStatusChange={
+            modalPlan ? (next) => requestStatusChange(modalPlan, next) : undefined
+          }
         />
       )}
 
@@ -664,6 +691,17 @@ export default function WeeklyPlansClient({
           busy={deleting}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={handleDelete}
+        />
+      )}
+
+      {statusTarget && (
+        <ConfirmStatusDialog
+          title={statusTarget.plan.title}
+          next={statusTarget.next}
+          irreversible={!canEdit(statusTarget.plan)}
+          busy={statusSaving}
+          onCancel={() => setStatusTarget(null)}
+          onConfirm={() => void confirmStatusChange()}
         />
       )}
     </div>
