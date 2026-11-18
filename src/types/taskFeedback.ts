@@ -4,7 +4,7 @@ export interface TaskFeedback {
   task_id: number
   is_task_owner: boolean
   feedback: string | null
-  file_path: string | null
+  file_paths: string[]
   created_at: string
   created_by: string
 }

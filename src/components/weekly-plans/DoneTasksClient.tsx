@@ -132,24 +132,24 @@ export default function DoneTasksClient({
     if (!reviewPlan) return;
     const plan = reviewPlan;
     let insertedId: number | null = null;
-    let uploadedPath: string | null = null;
+    const uploadedPaths: string[] = [];
 
     if (next === "revision" && feedback) {
       setStatusSaving(true);
       try {
-        if (feedback.file) {
-          uploadedPath = await uploadTaskFeedbackFile(supabase, viewer.id, feedback.file);
+        for (const file of feedback.files) {
+          uploadedPaths.push(await uploadTaskFeedbackFile(supabase, viewer.id, file));
         }
         const { data, error } = await supabase
           .from("task_feedback")
-          .insert({ task_id: plan.id, feedback: feedback.message, file_path: uploadedPath })
+          .insert({ task_id: plan.id, feedback: feedback.message, file_paths: uploadedPaths })
           .select("id")
           .single();
         if (error) throw error;
         insertedId = data.id;
       } catch (error) {
         console.error(error);
-        if (uploadedPath) await removeTaskFeedbackFiles(supabase, [uploadedPath]);
+        await removeTaskFeedbackFiles(supabase, uploadedPaths);
         toast.error("Could not save the feedback. Please try again.");
         setStatusSaving(false);
         return;
@@ -167,7 +167,7 @@ export default function DoneTasksClient({
         const { error } = await supabase.from("task_feedback").delete().eq("id", insertedId);
         if (error) console.error(error);
       }
-      if (uploadedPath) await removeTaskFeedbackFiles(supabase, [uploadedPath]);
+      await removeTaskFeedbackFiles(supabase, uploadedPaths);
       return;
     }
     setReviewPlanId(null);

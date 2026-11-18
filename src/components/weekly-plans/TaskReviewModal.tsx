@@ -25,7 +25,7 @@ type Decision = "completed" | "revision";
 
 export interface RevisionFeedback {
   message: string;
-  file: File | null;
+  files: File[];
 }
 
 interface TaskReviewModalProps {
@@ -96,7 +96,7 @@ export default function TaskReviewModal({
   const [feedbackLoading, setFeedbackLoading] = useState(true);
   const [feedbackUrls, setFeedbackUrls] = useState<Record<string, string>>({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
-  const [feedbackFile, setFeedbackFile] = useState<File | null>(null);
+  const [feedbackFiles, setFeedbackFiles] = useState<File[]>([]);
   const [feedbackTouched, setFeedbackTouched] = useState(false);
   const attachments = useMemo(() => plan.document_attachments ?? [], [plan.document_attachments]);
   const meta = weeklyPlanStatusMeta(plan.status);
@@ -153,9 +153,7 @@ export default function TaskReviewModal({
   }, [plan.id, supabase]);
 
   useEffect(() => {
-    const paths = feedback
-      .map((row) => row.file_path)
-      .filter((path): path is string => Boolean(path));
+    const paths = feedback.flatMap((row) => row.file_paths ?? []);
     if (paths.length === 0) return;
     let cancelled = false;
     (async () => {
@@ -176,15 +174,33 @@ export default function TaskReviewModal({
     };
   }, [feedback, supabase]);
 
-  const handleFeedbackFile = (files: FileList | null) => {
-    const file = files?.[0];
-    if (!file) return;
-    const problem = weeklyPlanFileError(file);
-    if (problem) {
-      toast.error(problem);
-      return;
+  const handleFeedbackFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const accepted: File[] = [];
+    const rejected: string[] = [];
+    for (const file of Array.from(files)) {
+      const problem = weeklyPlanFileError(file);
+      if (problem) rejected.push(problem);
+      else accepted.push(file);
     }
-    setFeedbackFile(file);
+    if (rejected.length > 0) {
+      toast.error(
+        rejected.length === 1
+          ? rejected[0]
+          : `${rejected.length} files were skipped. ${rejected[0]}`,
+      );
+    }
+    if (accepted.length === 0) return;
+    setFeedbackFiles((prev) => {
+      const key = (file: File) => `${file.name}:${file.size}`;
+      const seen = new Set(prev.map(key));
+      const fresh = accepted.filter((file) => {
+        if (seen.has(key(file))) return false;
+        seen.add(key(file));
+        return true;
+      });
+      return [...prev, ...fresh];
+    });
   };
 
   const handleRemoveFeedback = async (row: TaskFeedback) => {
@@ -195,9 +211,8 @@ export default function TaskReviewModal({
       return;
     }
     setFeedback((prev) => prev.filter((item) => item.id !== row.id));
-    if (row.file_path && row.file_path.startsWith(`${viewerId}/`)) {
-      await removeTaskFeedbackFiles(supabase, [row.file_path]);
-    }
+    const ownPaths = (row.file_paths ?? []).filter((path) => path.startsWith(`${viewerId}/`));
+    await removeTaskFeedbackFiles(supabase, ownPaths);
     toast.success("Feedback removed.");
   };
 
@@ -209,7 +224,7 @@ export default function TaskReviewModal({
         setFeedbackTouched(true);
         return;
       }
-      onConfirm(choice, { message, file: feedbackFile });
+      onConfirm(choice, { message, files: feedbackFiles });
       return;
     }
     onConfirm(choice);
@@ -384,7 +399,7 @@ export default function TaskReviewModal({
             ) : (
               <ul className="space-y-2">
                 {feedback.map((row) => {
-                  const url = row.file_path ? feedbackUrls[row.file_path] : undefined;
+                  const paths = row.file_paths ?? [];
                   const removable = row.created_by === viewerId || isSuperAdmin;
                   return (
                     <li
@@ -425,50 +440,60 @@ export default function TaskReviewModal({
                           {row.feedback}
                         </p>
                       )}
-                      {row.file_path && (
-                        <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-3 py-2">
-                          <span className="flex items-center gap-2 min-w-0">
-                            {isImageWeeklyPlanFile(row.file_path) && url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={url}
-                                alt={weeklyPlanFileName(row.file_path)}
-                                className="h-8 w-8 rounded-lg object-cover shrink-0"
-                              />
-                            ) : (
-                              <span className="h-8 w-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center shrink-0">
-                                <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                                  />
-                                </svg>
-                              </span>
-                            )}
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-                              {weeklyPlanFileName(row.file_path)}
-                            </span>
-                          </span>
-                          {url ? (
-                            <span className="flex items-center gap-3 shrink-0 text-[11px] font-bold">
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[var(--sys-primary-text)] hover:underline"
+                      {paths.length > 0 && (
+                        <ul className="space-y-1.5">
+                          {paths.map((path) => {
+                            const url = feedbackUrls[path];
+                            return (
+                              <li
+                                key={path}
+                                className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-3 py-2"
                               >
-                                Preview
-                              </a>
-                              <a href={url} download className="text-slate-500 dark:text-slate-400 hover:underline">
-                                Download
-                              </a>
-                            </span>
-                          ) : (
-                            <span className="text-[11px] font-medium text-slate-400 shrink-0">Loading...</span>
-                          )}
-                        </div>
+                                <span className="flex items-center gap-2 min-w-0">
+                                  {isImageWeeklyPlanFile(path) && url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={url}
+                                      alt={weeklyPlanFileName(path)}
+                                      className="h-8 w-8 rounded-lg object-cover shrink-0"
+                                    />
+                                  ) : (
+                                    <span className="h-8 w-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center shrink-0">
+                                      <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                        />
+                                      </svg>
+                                    </span>
+                                  )}
+                                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                                    {weeklyPlanFileName(path)}
+                                  </span>
+                                </span>
+                                {url ? (
+                                  <span className="flex items-center gap-3 shrink-0 text-[11px] font-bold">
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-[var(--sys-primary-text)] hover:underline"
+                                    >
+                                      Preview
+                                    </a>
+                                    <a href={url} download className="text-slate-500 dark:text-slate-400 hover:underline">
+                                      Download
+                                    </a>
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] font-medium text-slate-400 shrink-0">Loading...</span>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
                       )}
                     </li>
                   );
@@ -565,37 +590,62 @@ export default function TaskReviewModal({
                           d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
                         />
                       </svg>
-                      Attach file (optional)
+                      Attach files (optional)
                       <input
                         type="file"
+                        multiple
                         accept={WEEKLY_PLAN_ACCEPT}
                         disabled={busy}
                         onChange={(e) => {
-                          handleFeedbackFile(e.target.files);
+                          handleFeedbackFiles(e.target.files);
                           e.target.value = "";
                         }}
                         className="hidden"
                       />
                     </label>
-                    {feedbackFile && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-[11px] font-semibold text-slate-600 dark:text-slate-300 max-w-56">
-                        <span className="truncate">{feedbackFile.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => setFeedbackFile(null)}
-                          disabled={busy}
-                          aria-label="Remove attached file"
-                          className="shrink-0 text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                        >
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                    {feedbackFiles.length > 0 && (
+                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                        {feedbackFiles.length} {feedbackFiles.length === 1 ? "file" : "files"} attached
                       </span>
                     )}
                   </div>
+                  {feedbackFiles.length > 0 && (
+                    <ul className="mt-2 space-y-1.5">
+                      {feedbackFiles.map((file, index) => (
+                        <li
+                          key={`${file.name}-${file.size}-${index}`}
+                          className="flex items-center justify-between gap-2 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-2.5 py-1.5"
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            <svg className="h-3.5 w-3.5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                              />
+                            </svg>
+                            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 truncate">
+                              {file.name}
+                            </span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setFeedbackFiles((prev) => prev.filter((_, i) => i !== index))}
+                            disabled={busy}
+                            aria-label={`Remove ${file.name}`}
+                            className="shrink-0 text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <p className="text-[11px] font-medium text-slate-400 mt-2">
-                    Images and documents, up to 20 MB.
+                    Images and documents, up to 20 MB each. Pick several at once, or attach more before confirming.
                   </p>
                 </div>
               )}
