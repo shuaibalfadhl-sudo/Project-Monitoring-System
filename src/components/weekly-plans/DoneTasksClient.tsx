@@ -8,13 +8,11 @@ import { toast } from "sonner";
 import { weeklyPlanModuleLabel, weeklyPlanWeekRange } from "@/lib/weeklyPlans";
 import { removeTaskFeedbackFiles, uploadTaskFeedbackFile } from "@/lib/taskFeedback";
 import {
-  WEEKLY_PLAN_STATUSES,
   weeklyPlanStatusMeta,
   type WeeklyPlan,
   type WeeklyPlanPerson,
   type WeeklyPlanStatus,
 } from "@/types/weeklyPlan";
-import ConfirmStatusDialog from "./ConfirmStatusDialog";
 import TaskReviewModal, { type RevisionFeedback } from "./TaskReviewModal";
 import TablePagination from "./TablePagination";
 
@@ -56,7 +54,6 @@ export default function DoneTasksClient({
   const [reviewPlanId, setReviewPlanId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [statusTarget, setStatusTarget] = useState<{ plan: WeeklyPlan; next: WeeklyPlanStatus } | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
   const reviewPlan = plans.find((plan) => plan.id === reviewPlanId) ?? null;
 
@@ -89,11 +86,6 @@ export default function DoneTasksClient({
   const safePage = Math.min(currentPage, totalPages);
   const paginatedPlans = donePlans.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage);
 
-  const requestStatusChange = (plan: WeeklyPlan, next: WeeklyPlanStatus) => {
-    if (next === plan.status || !canEdit(plan)) return;
-    setStatusTarget({ plan, next });
-  };
-
   const performStatusChange = async (
     plan: WeeklyPlan,
     next: WeeklyPlanStatus,
@@ -119,13 +111,6 @@ export default function DoneTasksClient({
     } finally {
       setStatusSaving(false);
     }
-  };
-
-  const confirmStatusChange = async () => {
-    if (!statusTarget) return;
-    const { plan, next } = statusTarget;
-    await performStatusChange(plan, next);
-    setStatusTarget(null);
   };
 
   const confirmDecision = async (next: "completed" | "revision", feedback?: RevisionFeedback) => {
@@ -187,7 +172,7 @@ export default function DoneTasksClient({
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[720px]">
+            <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-slate-800 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   <th className="px-5 py-3.5">Task</th>
@@ -197,6 +182,7 @@ export default function DoneTasksClient({
                   <th className="px-5 py-3.5">Date range</th>
                   <th className="px-5 py-3.5">Marked done</th>
                   <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -256,47 +242,24 @@ export default function DoneTasksClient({
                         )}
                       </td>
                       <td className="px-5 py-3.5">
-                        {canEdit(plan) ? (
-                          <div
-                            className="relative inline-block"
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => e.stopPropagation()}
-                          >
-                            <select
-                              value={plan.status}
-                              onChange={(e) =>
-                                requestStatusChange(plan, e.target.value as WeeklyPlanStatus)
-                              }
-                              aria-label={`Status of ${plan.title}`}
-                              className={`appearance-none pl-2.5 pr-6 py-1 rounded-full border text-[11px] font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/30 transition-colors ${meta.badge}`}
-                            >
-                              {WEEKLY_PLAN_STATUSES.map((option) => (
-                                <option
-                                  key={option.value}
-                                  value={option.value}
-                                  className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white"
-                                >
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                            <svg
-                              className="pointer-events-none absolute right-2 top-1/2 h-2.5 w-2.5 -translate-y-1/2 opacity-60"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        ) : (
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold ${meta.badge}`}
-                          >
-                            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.dot }} />
-                            {meta.label}
-                          </span>
-                        )}
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold ${meta.badge}`}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.dot }} />
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReviewPlanId(plan.id);
+                          }}
+                          className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[var(--sys-primary)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
+                        >
+                          Review Result
+                        </button>
                       </td>
                     </tr>
                   );
@@ -319,25 +282,12 @@ export default function DoneTasksClient({
         )}
       </div>
 
-      {statusTarget && (
-        <ConfirmStatusDialog
-          title={statusTarget.plan.title}
-          next={statusTarget.next}
-          irreversible={false}
-          busy={statusSaving}
-          onCancel={() => setStatusTarget(null)}
-          onConfirm={() => void confirmStatusChange()}
-        />
-      )}
-
       {reviewPlan && (
         <TaskReviewModal
           plan={reviewPlan}
           people={people}
           moduleNames={moduleNames}
           moduleProjects={moduleProjects}
-          viewerId={viewer.id}
-          isSuperAdmin={isSuperAdmin}
           canEdit={canEdit(reviewPlan)}
           busy={statusSaving}
           onClose={() => setReviewPlanId(null)}

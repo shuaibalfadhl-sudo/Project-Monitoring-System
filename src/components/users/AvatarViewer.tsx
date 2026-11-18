@@ -7,12 +7,13 @@ interface AvatarViewerProps {
   src: string
   name: string
   onClose: () => void
+  eyebrow?: string
 }
 
 const MIN_SCALE = 0.25
 const MAX_SCALE = 6
 
-export default function AvatarViewer({ src, name, onClose }: AvatarViewerProps) {
+export default function AvatarViewer({ src, name, onClose, eyebrow = 'Avatar preview' }: AvatarViewerProps) {
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [rotation, setRotation] = useState(0)
   const [scale, setScale] = useState(1)
@@ -53,9 +54,11 @@ export default function AvatarViewer({ src, name, onClose }: AvatarViewerProps) 
       else if (e.key === '0') reset()
       else return
       e.preventDefault()
+      // Capture phase: keep Esc/zoom keys from also reaching an underlying modal.
+      e.stopPropagation()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [onClose, zoomBy, reset])
 
   const toolButton =
@@ -66,11 +69,11 @@ export default function AvatarViewer({ src, name, onClose }: AvatarViewerProps) 
       className="fixed inset-0 z-[130] bg-slate-950/85 backdrop-blur-md flex flex-col animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
-      aria-label={`${name} avatar viewer`}
+      aria-label={`${name} preview`}
     >
       <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-4">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-white/50">Avatar preview</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-white/50">{eyebrow}</p>
           <h3 className="text-sm font-extrabold text-white truncate">{name}</h3>
         </div>
         <button type="button" onClick={onClose} aria-label="Close viewer" title="Close (Esc)" className={toolButton}>
@@ -118,17 +121,17 @@ export default function AvatarViewer({ src, name, onClose }: AvatarViewerProps) 
       >
         {failed ? (
           <div className="px-6 py-5 rounded-2xl bg-white/10 border border-white/15 text-center">
-            <p className="text-sm font-bold text-white">This avatar couldn&apos;t be loaded.</p>
-            <p className="text-xs text-white/60 mt-1">The image may have been removed from storage.</p>
+            <p className="text-sm font-bold text-white">This image couldn&apos;t be loaded.</p>
+            <p className="text-xs text-white/60 mt-1">The file may have been removed or is not a valid image.</p>
           </div>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={src}
-            alt={`${name} avatar`}
+            alt={name}
             draggable={false}
             onError={() => {
-              console.error('Avatar image failed to load:', src)
+              console.error('Image failed to load:', src)
               setFailed(true)
             }}
             onDoubleClick={() => setScale((s) => (s > 1 ? 1 : 2.2))}

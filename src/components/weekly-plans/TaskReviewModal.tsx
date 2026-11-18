@@ -3,23 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
+import AvatarViewer from "@/components/users/AvatarViewer";
 import {
   isImageWeeklyPlanFile,
-  WEEKLY_PLAN_ACCEPT,
-  weeklyPlanFileError,
   weeklyPlanFileName,
   weeklyPlanModuleLabel,
   weeklyPlanSignedUrl,
   weeklyPlanWeekRange,
 } from "@/lib/weeklyPlans";
-import { removeTaskFeedbackFiles, taskFeedbackSignedUrl } from "@/lib/taskFeedback";
 import {
   weeklyPlanStatusMeta,
   type WeeklyPlan,
   type WeeklyPlanPerson,
 } from "@/types/weeklyPlan";
-import type { TaskFeedback } from "@/types/taskFeedback";
+import TaskFeedbackList from "./TaskFeedbackList";
+import TaskFeedbackHistoryModal from "./TaskFeedbackHistoryModal";
+import FeedbackFilePicker from "./FeedbackFilePicker";
 
 type Decision = "completed" | "revision";
 
@@ -33,8 +32,6 @@ interface TaskReviewModalProps {
   people: WeeklyPlanPerson[];
   moduleNames: Record<string, string>;
   moduleProjects: Record<string, string>;
-  viewerId: string;
-  isSuperAdmin: boolean;
   canEdit: boolean;
   busy: boolean;
   onClose: () => void;
@@ -82,8 +79,6 @@ export default function TaskReviewModal({
   people,
   moduleNames,
   moduleProjects,
-  viewerId,
-  isSuperAdmin,
   canEdit,
   busy,
   onClose,
@@ -92,11 +87,10 @@ export default function TaskReviewModal({
   const supabase = createClient();
   const [choice, setChoice] = useState<Decision | null>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
-  const [feedback, setFeedback] = useState<TaskFeedback[]>([]);
-  const [feedbackLoading, setFeedbackLoading] = useState(true);
-  const [feedbackUrls, setFeedbackUrls] = useState<Record<string, string>>({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
-  const [feedbackFiles, setFeedbackFiles] = useState<File[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [viewer, setViewer] = useState<{ src: string; name: string } | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [feedbackTouched, setFeedbackTouched] = useState(false);
   const attachments = useMemo(() => plan.document_attachments ?? [], [plan.document_attachments]);
   const meta = weeklyPlanStatusMeta(plan.status);
@@ -129,93 +123,6 @@ export default function TaskReviewModal({
     };
   }, [attachments, supabase]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("task_feedback")
-        .select("*")
-        .eq("task_id", plan.id)
-        .order("created_at", { ascending: true });
-      if (cancelled) return;
-      if (error) {
-        console.error(error);
-        toast.error("Could not load the feedback for this task.");
-        setFeedbackLoading(false);
-        return;
-      }
-      setFeedback((data ?? []) as TaskFeedback[]);
-      setFeedbackLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [plan.id, supabase]);
-
-  useEffect(() => {
-    const paths = feedback.flatMap((row) => row.file_paths ?? []);
-    if (paths.length === 0) return;
-    let cancelled = false;
-    (async () => {
-      const entries = await Promise.all(
-        paths.map(async (path) => {
-          try {
-            return [path, await taskFeedbackSignedUrl(supabase, path)] as const;
-          } catch {
-            return null;
-          }
-        }),
-      );
-      if (cancelled) return;
-      setFeedbackUrls(Object.fromEntries(entries.filter((entry) => entry !== null)));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [feedback, supabase]);
-
-  const handleFeedbackFiles = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const accepted: File[] = [];
-    const rejected: string[] = [];
-    for (const file of Array.from(files)) {
-      const problem = weeklyPlanFileError(file);
-      if (problem) rejected.push(problem);
-      else accepted.push(file);
-    }
-    if (rejected.length > 0) {
-      toast.error(
-        rejected.length === 1
-          ? rejected[0]
-          : `${rejected.length} files were skipped. ${rejected[0]}`,
-      );
-    }
-    if (accepted.length === 0) return;
-    setFeedbackFiles((prev) => {
-      const key = (file: File) => `${file.name}:${file.size}`;
-      const seen = new Set(prev.map(key));
-      const fresh = accepted.filter((file) => {
-        if (seen.has(key(file))) return false;
-        seen.add(key(file));
-        return true;
-      });
-      return [...prev, ...fresh];
-    });
-  };
-
-  const handleRemoveFeedback = async (row: TaskFeedback) => {
-    const { error } = await supabase.from("task_feedback").delete().eq("id", row.id);
-    if (error) {
-      console.error(error);
-      toast.error("Could not remove the feedback. Please try again.");
-      return;
-    }
-    setFeedback((prev) => prev.filter((item) => item.id !== row.id));
-    const ownPaths = (row.file_paths ?? []).filter((path) => path.startsWith(`${viewerId}/`));
-    await removeTaskFeedbackFiles(supabase, ownPaths);
-    toast.success("Feedback removed.");
-  };
-
   const handleConfirm = () => {
     if (!choice || busy) return;
     if (choice === "revision") {
@@ -224,7 +131,7 @@ export default function TaskReviewModal({
         setFeedbackTouched(true);
         return;
       }
-      onConfirm(choice, { message, files: feedbackFiles });
+      onConfirm(choice, { message, files: pendingFiles });
       return;
     }
     onConfirm(choice);
@@ -232,11 +139,11 @@ export default function TaskReviewModal({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !busy) onClose();
+      if (e.key === "Escape" && !busy && !viewer && !historyOpen) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [busy, onClose]);
+  }, [busy, onClose, viewer, historyOpen]);
 
   return createPortal(
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -325,54 +232,70 @@ export default function TaskReviewModal({
             {attachments.length === 0 ? (
               <p className="text-xs font-medium text-slate-400 italic">No files attached.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="flex flex-wrap items-start gap-2.5 pt-1">
                 {attachments.map((path) => {
                   const url = signedUrls[path];
+                  const image = isImageWeeklyPlanFile(path);
+                  const name = weeklyPlanFileName(path);
                   return (
-                    <li
-                      key={path}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-slate-700 px-3.5 py-2.5"
-                    >
-                      <span className="flex items-center gap-2 min-w-0">
-                        {isImageWeeklyPlanFile(path) && url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={url}
-                            alt={weeklyPlanFileName(path)}
-                            className="h-9 w-9 rounded-lg object-cover shrink-0"
-                          />
+                    <li key={path} className="group relative shrink-0">
+                      <button
+                        type="button"
+                        disabled={!url}
+                        onClick={() => {
+                          if (!url) return;
+                          if (image) setViewer({ src: url, name });
+                          else window.open(url, "_blank", "noopener");
+                        }}
+                        title={image ? `View ${name}` : `Open ${name}`}
+                        className={
+                          image
+                            ? "block h-16 w-16 overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 transition-shadow hover:ring-2 hover:ring-[var(--sys-primary)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/50 disabled:cursor-default"
+                            : "flex h-16 w-32 items-center gap-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-2.5 text-left transition-shadow hover:ring-2 hover:ring-[var(--sys-primary)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/50 disabled:cursor-default"
+                        }
+                      >
+                        {image ? (
+                          url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={url} alt={name} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="block h-full w-full animate-pulse bg-slate-200 dark:bg-slate-700" />
+                          )
                         ) : (
-                          <span className="h-9 w-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                            <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                              />
-                            </svg>
-                          </span>
+                          <>
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-slate-900">
+                              <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                />
+                              </svg>
+                            </span>
+                            <span className="min-w-0 text-[10px] font-bold leading-tight text-slate-700 dark:text-slate-100 line-clamp-2 break-words">
+                              {name}
+                            </span>
+                          </>
                         )}
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-                          {weeklyPlanFileName(path)}
-                        </span>
-                      </span>
-                      {url ? (
-                        <span className="flex items-center gap-3 shrink-0 text-[11px] font-bold">
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[var(--sys-primary-text)] hover:underline"
-                          >
-                            Preview
-                          </a>
-                          <a href={url} download className="text-slate-500 dark:text-slate-400 hover:underline">
-                            Download
-                          </a>
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-medium text-slate-400 shrink-0">Loading...</span>
+                      </button>
+                      {url && (
+                        <a
+                          href={url}
+                          download
+                          title="Download"
+                          aria-label={`Download ${name}`}
+                          className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/70 text-white opacity-0 transition-opacity hover:bg-slate-900 focus:opacity-100 group-hover:opacity-100"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"
+                            />
+                          </svg>
+                        </a>
                       )}
                     </li>
                   );
@@ -382,124 +305,29 @@ export default function TaskReviewModal({
           </div>
 
           <div className="border-t border-gray-100 dark:border-slate-800 pt-5">
-            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Feedback
-              {feedback.length > 0 && (
-                <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                  {feedback.length}
-                </span>
-              )}
-            </p>
-            {feedbackLoading ? (
-              <p className="text-xs font-medium text-slate-400 italic">Loading feedback...</p>
-            ) : feedback.length === 0 ? (
-              <p className="text-xs font-medium text-slate-400 italic">
-                No feedback yet. Feedback is added when a task is sent back for revision.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {feedback.map((row) => {
-                  const paths = row.file_paths ?? [];
-                  const removable = row.created_by === viewerId || isSuperAdmin;
-                  return (
-                    <li
-                      key={row.id}
-                      className="rounded-xl border border-gray-200 dark:border-slate-700 px-3.5 py-2.5 space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="flex items-center gap-1.5 flex-wrap min-w-0">
-                          <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                            {nameOf(row.created_by)}
-                          </span>
-                          <span
-                            className={`px-1.5 py-px rounded-full text-[9px] font-bold uppercase tracking-wide ${
-                              row.is_task_owner
-                                ? "bg-[var(--sys-primary)]/10 text-[var(--sys-primary-text)]"
-                                : "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
-                            }`}
-                          >
-                            {row.is_task_owner ? "Owner" : "Assignee"}
-                          </span>
-                          <span className="text-[10px] font-medium text-slate-400">
-                            {formatTimestamp(row.created_at)}
-                          </span>
-                        </span>
-                        {removable && (
-                          <button
-                            type="button"
-                            onClick={() => void handleRemoveFeedback(row)}
-                            disabled={busy}
-                            className="text-[11px] font-bold text-red-500 hover:text-red-600 hover:underline shrink-0 disabled:opacity-50"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                      {row.feedback && (
-                        <p className="text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                          {row.feedback}
-                        </p>
-                      )}
-                      {paths.length > 0 && (
-                        <ul className="space-y-1.5">
-                          {paths.map((path) => {
-                            const url = feedbackUrls[path];
-                            return (
-                              <li
-                                key={path}
-                                className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-3 py-2"
-                              >
-                                <span className="flex items-center gap-2 min-w-0">
-                                  {isImageWeeklyPlanFile(path) && url ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                      src={url}
-                                      alt={weeklyPlanFileName(path)}
-                                      className="h-8 w-8 rounded-lg object-cover shrink-0"
-                                    />
-                                  ) : (
-                                    <span className="h-8 w-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center shrink-0">
-                                      <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                                        />
-                                      </svg>
-                                    </span>
-                                  )}
-                                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-                                    {weeklyPlanFileName(path)}
-                                  </span>
-                                </span>
-                                {url ? (
-                                  <span className="flex items-center gap-3 shrink-0 text-[11px] font-bold">
-                                    <a
-                                      href={url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="text-[var(--sys-primary-text)] hover:underline"
-                                    >
-                                      Preview
-                                    </a>
-                                    <a href={url} download className="text-slate-500 dark:text-slate-400 hover:underline">
-                                      Download
-                                    </a>
-                                  </span>
-                                ) : (
-                                  <span className="text-[11px] font-medium text-slate-400 shrink-0">Loading...</span>
-                                )}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            <TaskFeedbackList
+              taskId={plan.id}
+              people={people}
+              heading="Latest feedback"
+              limit={1}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[var(--sys-primary)]/30 bg-[var(--sys-primary)]/10 text-[11px] font-bold text-[var(--sys-primary-text)] hover:bg-[var(--sys-primary)]/20 transition-colors"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  View all feedback history
+                </button>
+              }
+            />
           </div>
 
           {canEdit && (
@@ -576,77 +404,7 @@ export default function TaskReviewModal({
                       Please write the feedback before sending the task back.
                     </p>
                   )}
-                  <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                    <label
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--sys-primary)] text-white text-[11px] font-bold hover:opacity-90 transition-opacity shadow-sm cursor-pointer ${
-                        busy ? "opacity-50 pointer-events-none" : ""
-                      }`}
-                    >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                        />
-                      </svg>
-                      Attach files (optional)
-                      <input
-                        type="file"
-                        multiple
-                        accept={WEEKLY_PLAN_ACCEPT}
-                        disabled={busy}
-                        onChange={(e) => {
-                          handleFeedbackFiles(e.target.files);
-                          e.target.value = "";
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                    {feedbackFiles.length > 0 && (
-                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                        {feedbackFiles.length} {feedbackFiles.length === 1 ? "file" : "files"} attached
-                      </span>
-                    )}
-                  </div>
-                  {feedbackFiles.length > 0 && (
-                    <ul className="mt-2 space-y-1.5">
-                      {feedbackFiles.map((file, index) => (
-                        <li
-                          key={`${file.name}-${file.size}-${index}`}
-                          className="flex items-center justify-between gap-2 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-2.5 py-1.5"
-                        >
-                          <span className="flex items-center gap-2 min-w-0">
-                            <svg className="h-3.5 w-3.5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                              />
-                            </svg>
-                            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 truncate">
-                              {file.name}
-                            </span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setFeedbackFiles((prev) => prev.filter((_, i) => i !== index))}
-                            disabled={busy}
-                            aria-label={`Remove ${file.name}`}
-                            className="shrink-0 text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                          >
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <p className="text-[11px] font-medium text-slate-400 mt-2">
-                    Images and documents, up to 20 MB each. Pick several at once, or attach more before confirming.
-                  </p>
+                  <FeedbackFilePicker busy={busy} onChange={setPendingFiles} />
                 </div>
               )}
             </div>
@@ -675,6 +433,21 @@ export default function TaskReviewModal({
           )}
         </div>
       </div>
+      {historyOpen && (
+        <TaskFeedbackHistoryModal
+          plan={plan}
+          people={people}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
+      {viewer && (
+        <AvatarViewer
+          src={viewer.src}
+          name={viewer.name}
+          eyebrow="Attachment preview"
+          onClose={() => setViewer(null)}
+        />
+      )}
     </div>,
     document.body,
   );
