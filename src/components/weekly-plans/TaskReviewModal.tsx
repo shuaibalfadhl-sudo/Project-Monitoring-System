@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -13,11 +13,7 @@ import {
   weeklyPlanSignedUrl,
   weeklyPlanWeekRange,
 } from "@/lib/weeklyPlans";
-import {
-  removeTaskFeedbackFiles,
-  taskFeedbackSignedUrl,
-  uploadTaskFeedbackFile,
-} from "@/lib/taskFeedback";
+import { removeTaskFeedbackFiles, taskFeedbackSignedUrl } from "@/lib/taskFeedback";
 import {
   weeklyPlanStatusMeta,
   type WeeklyPlan,
@@ -26,6 +22,11 @@ import {
 import type { TaskFeedback } from "@/types/taskFeedback";
 
 type Decision = "completed" | "revision";
+
+export interface RevisionFeedback {
+  message: string;
+  file: File | null;
+}
 
 interface TaskReviewModalProps {
   plan: WeeklyPlan;
@@ -37,7 +38,7 @@ interface TaskReviewModalProps {
   canEdit: boolean;
   busy: boolean;
   onClose: () => void;
-  onConfirm: (next: Decision) => void;
+  onConfirm: (next: Decision, feedback?: RevisionFeedback) => void;
 }
 
 const CHOICES: {
@@ -94,13 +95,16 @@ export default function TaskReviewModal({
   const [feedback, setFeedback] = useState<TaskFeedback[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(true);
   const [feedbackUrls, setFeedbackUrls] = useState<Record<string, string>>({});
-  const [uploadingFeedback, setUploadingFeedback] = useState(false);
-  const feedbackInputRef = useRef<HTMLInputElement>(null);
-  const canFeedback = viewerId === plan.created_by || viewerId === plan.assigned_personnel;
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackFile, setFeedbackFile] = useState<File | null>(null);
+  const [feedbackTouched, setFeedbackTouched] = useState(false);
   const attachments = useMemo(() => plan.document_attachments ?? [], [plan.document_attachments]);
   const meta = weeklyPlanStatusMeta(plan.status);
   const nameOf = (id: string | null) =>
     people.find((person) => person.id === id)?.full_name || "Unknown user";
+  const assigneeFirst = plan.assigned_personnel
+    ? nameOf(plan.assigned_personnel).split(" ")[0]
+    : "the assignee";
   const linkedModule = weeklyPlanModuleLabel(plan.module, moduleNames);
   const linkedModuleProject = plan.module ? moduleProjects[plan.module] ?? "" : "";
 
@@ -149,13 +153,16 @@ export default function TaskReviewModal({
   }, [plan.id, supabase]);
 
   useEffect(() => {
-    if (feedback.length === 0) return;
+    const paths = feedback
+      .map((row) => row.file_path)
+      .filter((path): path is string => Boolean(path));
+    if (paths.length === 0) return;
     let cancelled = false;
     (async () => {
       const entries = await Promise.all(
-        feedback.map(async (row) => {
+        paths.map(async (path) => {
           try {
-            return [row.file_path, await taskFeedbackSignedUrl(supabase, row.file_path)] as const;
+            return [path, await taskFeedbackSignedUrl(supabase, path)] as const;
           } catch {
             return null;
           }
@@ -169,36 +176,15 @@ export default function TaskReviewModal({
     };
   }, [feedback, supabase]);
 
-  const handleFeedbackFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    setUploadingFeedback(true);
-    try {
-      for (const file of Array.from(files)) {
-        const problem = weeklyPlanFileError(file);
-        if (problem) {
-          toast.error(problem);
-          continue;
-        }
-        const path = await uploadTaskFeedbackFile(supabase, viewerId, file);
-        const { data, error } = await supabase
-          .from("task_feedback")
-          .insert({ task_id: plan.id, file_path: path })
-          .select()
-          .single();
-        if (error) {
-          await removeTaskFeedbackFiles(supabase, [path]);
-          throw error;
-        }
-        setFeedback((prev) => [...prev, data as TaskFeedback]);
-        toast.success("Feedback added.");
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Could not add the feedback. Please try again.");
-    } finally {
-      setUploadingFeedback(false);
-      if (feedbackInputRef.current) feedbackInputRef.current.value = "";
+  const handleFeedbackFile = (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    const problem = weeklyPlanFileError(file);
+    if (problem) {
+      toast.error(problem);
+      return;
     }
+    setFeedbackFile(file);
   };
 
   const handleRemoveFeedback = async (row: TaskFeedback) => {
@@ -209,10 +195,24 @@ export default function TaskReviewModal({
       return;
     }
     setFeedback((prev) => prev.filter((item) => item.id !== row.id));
-    if (row.file_path.startsWith(`${viewerId}/`)) {
+    if (row.file_path && row.file_path.startsWith(`${viewerId}/`)) {
       await removeTaskFeedbackFiles(supabase, [row.file_path]);
     }
     toast.success("Feedback removed.");
+  };
+
+  const handleConfirm = () => {
+    if (!choice || busy) return;
+    if (choice === "revision") {
+      const message = feedbackMessage.trim();
+      if (!message) {
+        setFeedbackTouched(true);
+        return;
+      }
+      onConfirm(choice, { message, file: feedbackFile });
+      return;
+    }
+    onConfirm(choice);
   };
 
   useEffect(() => {
@@ -367,111 +367,92 @@ export default function TaskReviewModal({
           </div>
 
           <div className="border-t border-gray-100 dark:border-slate-800 pt-5">
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Feedback
-                {feedback.length > 0 && (
-                  <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                    {feedback.length}
-                  </span>
-                )}
-              </p>
-              {canFeedback && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => feedbackInputRef.current?.click()}
-                    disabled={uploadingFeedback}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--sys-primary)] text-white text-[11px] font-bold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50"
-                  >
-                    {uploadingFeedback ? (
-                      <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                        />
-                      </svg>
-                    )}
-                    {uploadingFeedback ? "Uploading..." : "Add file"}
-                  </button>
-                  <input
-                    ref={feedbackInputRef}
-                    type="file"
-                    multiple
-                    accept={WEEKLY_PLAN_ACCEPT}
-                    onChange={(e) => void handleFeedbackFiles(e.target.files)}
-                    className="hidden"
-                  />
-                </>
+            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+              Feedback
+              {feedback.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                  {feedback.length}
+                </span>
               )}
-            </div>
+            </p>
             {feedbackLoading ? (
               <p className="text-xs font-medium text-slate-400 italic">Loading feedback...</p>
             ) : feedback.length === 0 ? (
               <p className="text-xs font-medium text-slate-400 italic">
-                No feedback yet.{canFeedback ? " Attach a file to leave feedback for the other party." : ""}
+                No feedback yet. Feedback is added when a task is sent back for revision.
               </p>
             ) : (
               <ul className="space-y-2">
                 {feedback.map((row) => {
-                  const url = feedbackUrls[row.file_path];
+                  const url = row.file_path ? feedbackUrls[row.file_path] : undefined;
                   const removable = row.created_by === viewerId || isSuperAdmin;
                   return (
                     <li
                       key={row.id}
-                      className="rounded-xl border border-gray-200 dark:border-slate-700 px-3.5 py-2.5"
+                      className="rounded-xl border border-gray-200 dark:border-slate-700 px-3.5 py-2.5 space-y-2"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <span className="flex items-center gap-2 min-w-0">
-                          {isImageWeeklyPlanFile(row.file_path) && url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={url}
-                              alt={weeklyPlanFileName(row.file_path)}
-                              className="h-9 w-9 rounded-lg object-cover shrink-0"
-                            />
-                          ) : (
-                            <span className="h-9 w-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                              <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                                />
-                              </svg>
-                            </span>
-                          )}
-                          <span className="min-w-0">
-                            <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-                              {weeklyPlanFileName(row.file_path)}
-                            </span>
-                            <span className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                {nameOf(row.created_by)}
-                              </span>
-                              <span
-                                className={`px-1.5 py-px rounded-full text-[9px] font-bold uppercase tracking-wide ${
-                                  row.is_task_owner
-                                    ? "bg-[var(--sys-primary)]/10 text-[var(--sys-primary-text)]"
-                                    : "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
-                                }`}
-                              >
-                                {row.is_task_owner ? "Owner" : "Assignee"}
-                              </span>
-                              <span className="text-[10px] font-medium text-slate-400">
-                                {formatTimestamp(row.created_at)}
-                              </span>
-                            </span>
+                        <span className="flex items-center gap-1.5 flex-wrap min-w-0">
+                          <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                            {nameOf(row.created_by)}
+                          </span>
+                          <span
+                            className={`px-1.5 py-px rounded-full text-[9px] font-bold uppercase tracking-wide ${
+                              row.is_task_owner
+                                ? "bg-[var(--sys-primary)]/10 text-[var(--sys-primary-text)]"
+                                : "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+                            }`}
+                          >
+                            {row.is_task_owner ? "Owner" : "Assignee"}
+                          </span>
+                          <span className="text-[10px] font-medium text-slate-400">
+                            {formatTimestamp(row.created_at)}
                           </span>
                         </span>
-                        <span className="flex items-center gap-3 shrink-0 text-[11px] font-bold">
+                        {removable && (
+                          <button
+                            type="button"
+                            onClick={() => void handleRemoveFeedback(row)}
+                            disabled={busy}
+                            className="text-[11px] font-bold text-red-500 hover:text-red-600 hover:underline shrink-0 disabled:opacity-50"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      {row.feedback && (
+                        <p className="text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                          {row.feedback}
+                        </p>
+                      )}
+                      {row.file_path && (
+                        <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-3 py-2">
+                          <span className="flex items-center gap-2 min-w-0">
+                            {isImageWeeklyPlanFile(row.file_path) && url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={url}
+                                alt={weeklyPlanFileName(row.file_path)}
+                                className="h-8 w-8 rounded-lg object-cover shrink-0"
+                              />
+                            ) : (
+                              <span className="h-8 w-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center shrink-0">
+                                <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                  />
+                                </svg>
+                              </span>
+                            )}
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                              {weeklyPlanFileName(row.file_path)}
+                            </span>
+                          </span>
                           {url ? (
-                            <>
+                            <span className="flex items-center gap-3 shrink-0 text-[11px] font-bold">
                               <a
                                 href={url}
                                 target="_blank"
@@ -483,28 +464,16 @@ export default function TaskReviewModal({
                               <a href={url} download className="text-slate-500 dark:text-slate-400 hover:underline">
                                 Download
                               </a>
-                            </>
+                            </span>
                           ) : (
-                            <span className="font-medium text-slate-400">Loading...</span>
+                            <span className="text-[11px] font-medium text-slate-400 shrink-0">Loading...</span>
                           )}
-                          {removable && (
-                            <button
-                              type="button"
-                              onClick={() => void handleRemoveFeedback(row)}
-                              className="text-red-500 hover:text-red-600 hover:underline"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </span>
-                      </div>
+                        </div>
+                      )}
                     </li>
                   );
                 })}
               </ul>
-            )}
-            {canFeedback && (
-              <p className="text-[11px] font-medium text-slate-400 mt-2">Images and documents, up to 20 MB each.</p>
             )}
           </div>
 
@@ -552,6 +521,84 @@ export default function TaskReviewModal({
                   );
                 })}
               </div>
+
+              {choice === "revision" && (
+                <div className="mt-4 rounded-2xl border-2 border-rose-200 dark:border-rose-400/25 bg-rose-50/60 dark:bg-rose-500/5 p-4 animate-fade-in">
+                  <label
+                    htmlFor="revision-feedback"
+                    className="flex items-center gap-1 text-xs font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-300"
+                  >
+                    Revision feedback <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">
+                    Tell {assigneeFirst} what needs to change. This message is saved with the task and shown to them.
+                  </p>
+                  <textarea
+                    id="revision-feedback"
+                    value={feedbackMessage}
+                    onChange={(e) => setFeedbackMessage(e.target.value)}
+                    disabled={busy}
+                    rows={3}
+                    placeholder="e.g. The login flow still fails on expired sessions — please rework and resubmit."
+                    className={`mt-2 w-full rounded-xl border bg-white dark:bg-slate-900 px-3.5 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-colors resize-none disabled:opacity-50 ${
+                      feedbackTouched && !feedbackMessage.trim()
+                        ? "border-red-400 focus:ring-red-300/40"
+                        : "border-gray-200 dark:border-slate-700 focus:border-[var(--sys-primary)] focus:ring-[var(--sys-primary)]/30"
+                    }`}
+                  />
+                  {feedbackTouched && !feedbackMessage.trim() && (
+                    <p className="text-[11px] font-bold text-red-500 mt-1">
+                      Please write the feedback before sending the task back.
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                    <label
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--sys-primary)] text-white text-[11px] font-bold hover:opacity-90 transition-opacity shadow-sm cursor-pointer ${
+                        busy ? "opacity-50 pointer-events-none" : ""
+                      }`}
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                        />
+                      </svg>
+                      Attach file (optional)
+                      <input
+                        type="file"
+                        accept={WEEKLY_PLAN_ACCEPT}
+                        disabled={busy}
+                        onChange={(e) => {
+                          handleFeedbackFile(e.target.files);
+                          e.target.value = "";
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    {feedbackFile && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-[11px] font-semibold text-slate-600 dark:text-slate-300 max-w-56">
+                        <span className="truncate">{feedbackFile.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setFeedbackFile(null)}
+                          disabled={busy}
+                          aria-label="Remove attached file"
+                          className="shrink-0 text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] font-medium text-slate-400 mt-2">
+                    Images and documents, up to 20 MB.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -568,7 +615,7 @@ export default function TaskReviewModal({
           {canEdit && (
             <button
               type="button"
-              onClick={() => choice && onConfirm(choice)}
+              onClick={handleConfirm}
               disabled={!choice || busy}
               className="px-5 py-2.5 rounded-xl text-white text-sm font-bold bg-[var(--sys-primary)] hover:opacity-90 transition-opacity shadow-lg disabled:opacity-50 flex items-center gap-2"
             >

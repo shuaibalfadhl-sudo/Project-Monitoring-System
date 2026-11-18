@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { requestRefresh } from "@/lib/coalescedRefresh";
 import { toast } from "sonner";
 import { weeklyPlanModuleLabel, weeklyPlanWeekRange } from "@/lib/weeklyPlans";
+import { removeTaskFeedbackFiles, uploadTaskFeedbackFile } from "@/lib/taskFeedback";
 import {
   WEEKLY_PLAN_STATUSES,
   weeklyPlanStatusMeta,
@@ -14,7 +15,7 @@ import {
   type WeeklyPlanStatus,
 } from "@/types/weeklyPlan";
 import ConfirmStatusDialog from "./ConfirmStatusDialog";
-import TaskReviewModal from "./TaskReviewModal";
+import TaskReviewModal, { type RevisionFeedback } from "./TaskReviewModal";
 import TablePagination from "./TablePagination";
 
 interface DoneTasksClientProps {
@@ -97,7 +98,7 @@ export default function DoneTasksClient({
     plan: WeeklyPlan,
     next: WeeklyPlanStatus,
     message = "Status updated.",
-  ) => {
+  ): Promise<boolean> => {
     setStatusSaving(true);
     const previous = plan.status;
     setPlans((prev) => prev.map((item) => (item.id === plan.id ? { ...item, status: next } : item)));
@@ -109,10 +110,12 @@ export default function DoneTasksClient({
       if (error) throw error;
       toast.success(message);
       router.refresh();
+      return true;
     } catch (error) {
       console.error(error);
       setPlans((prev) => prev.map((item) => (item.id === plan.id ? { ...item, status: previous } : item)));
       toast.error("Could not update the status. Please try again.");
+      return false;
     } finally {
       setStatusSaving(false);
     }
@@ -125,14 +128,48 @@ export default function DoneTasksClient({
     setStatusTarget(null);
   };
 
-  const confirmDecision = async (next: "completed" | "revision") => {
+  const confirmDecision = async (next: "completed" | "revision", feedback?: RevisionFeedback) => {
     if (!reviewPlan) return;
     const plan = reviewPlan;
-    await performStatusChange(
+    let insertedId: number | null = null;
+    let uploadedPath: string | null = null;
+
+    if (next === "revision" && feedback) {
+      setStatusSaving(true);
+      try {
+        if (feedback.file) {
+          uploadedPath = await uploadTaskFeedbackFile(supabase, viewer.id, feedback.file);
+        }
+        const { data, error } = await supabase
+          .from("task_feedback")
+          .insert({ task_id: plan.id, feedback: feedback.message, file_path: uploadedPath })
+          .select("id")
+          .single();
+        if (error) throw error;
+        insertedId = data.id;
+      } catch (error) {
+        console.error(error);
+        if (uploadedPath) await removeTaskFeedbackFiles(supabase, [uploadedPath]);
+        toast.error("Could not save the feedback. Please try again.");
+        setStatusSaving(false);
+        return;
+      }
+      setStatusSaving(false);
+    }
+
+    const ok = await performStatusChange(
       plan,
       next,
       next === "completed" ? "Task marked as completed." : "Task sent back for revision.",
     );
+    if (!ok) {
+      if (insertedId !== null) {
+        const { error } = await supabase.from("task_feedback").delete().eq("id", insertedId);
+        if (error) console.error(error);
+      }
+      if (uploadedPath) await removeTaskFeedbackFiles(supabase, [uploadedPath]);
+      return;
+    }
     setReviewPlanId(null);
   };
 
@@ -304,7 +341,7 @@ export default function DoneTasksClient({
           canEdit={canEdit(reviewPlan)}
           busy={statusSaving}
           onClose={() => setReviewPlanId(null)}
-          onConfirm={(next) => void confirmDecision(next)}
+          onConfirm={(next, feedback) => void confirmDecision(next, feedback)}
         />
       )}
     </div>
