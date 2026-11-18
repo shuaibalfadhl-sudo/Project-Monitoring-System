@@ -75,8 +75,8 @@ function ConfirmDeleteDialog({
           Delete Weekly Plan
         </h3>
         <p className="text-sm text-center text-slate-500 dark:text-slate-400 mb-6">
-          Delete <span className="font-bold text-slate-700 dark:text-slate-200">&quot;{title}&quot;</span> and
-          its attachments? This cannot be undone.
+          Delete <span className="font-bold text-slate-700 dark:text-slate-200">&quot;{title}&quot;</span>,
+          its attachments and all of its feedback? This cannot be undone.
         </p>
         <div className="flex justify-center gap-3">
           <button
@@ -228,6 +228,11 @@ export default function WeeklyPlansClient({
     if (isAssigneeOnly(plan) && plan.status === "pending") {
       return WEEKLY_PLAN_STATUSES.filter(
         (option) => option.value === "pending" || option.value === "in progress",
+      );
+    }
+    if (isAssigneeOnly(plan) && plan.status === "revision") {
+      return WEEKLY_PLAN_STATUSES.filter(
+        (option) => option.value === "revision" || option.value === "in progress",
       );
     }
     if (isAssigneeOnly(plan) && plan.status === "in progress") {

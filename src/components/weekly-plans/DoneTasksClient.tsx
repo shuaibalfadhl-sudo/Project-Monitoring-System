@@ -6,15 +6,14 @@ import { createClient } from "@/lib/supabase/client";
 import { requestRefresh } from "@/lib/coalescedRefresh";
 import { toast } from "sonner";
 import { weeklyPlanModuleLabel, weeklyPlanWeekRange } from "@/lib/weeklyPlans";
+import { removeTaskFeedbackFiles, uploadTaskFeedbackFile } from "@/lib/taskFeedback";
 import {
-  WEEKLY_PLAN_STATUSES,
   weeklyPlanStatusMeta,
   type WeeklyPlan,
   type WeeklyPlanPerson,
   type WeeklyPlanStatus,
 } from "@/types/weeklyPlan";
-import WeeklyPlanDrawer from "./WeeklyPlanDrawer";
-import ConfirmStatusDialog from "./ConfirmStatusDialog";
+import TaskReviewModal, { type RevisionFeedback } from "./TaskReviewModal";
 import TablePagination from "./TablePagination";
 
 interface DoneTasksClientProps {
@@ -52,12 +51,11 @@ export default function DoneTasksClient({
     setPlans(initialPlans);
   }
 
-  const [viewPlanId, setViewPlanId] = useState<number | null>(null);
+  const [reviewPlanId, setReviewPlanId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [statusTarget, setStatusTarget] = useState<{ plan: WeeklyPlan; next: WeeklyPlanStatus } | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
-  const viewPlan = plans.find((plan) => plan.id === viewPlanId) ?? null;
+  const reviewPlan = plans.find((plan) => plan.id === reviewPlanId) ?? null;
 
   const supabase = createClient();
   const router = useRouter();
@@ -88,14 +86,11 @@ export default function DoneTasksClient({
   const safePage = Math.min(currentPage, totalPages);
   const paginatedPlans = donePlans.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage);
 
-  const requestStatusChange = (plan: WeeklyPlan, next: WeeklyPlanStatus) => {
-    if (next === plan.status || !canEdit(plan)) return;
-    setStatusTarget({ plan, next });
-  };
-
-  const confirmStatusChange = async () => {
-    if (!statusTarget) return;
-    const { plan, next } = statusTarget;
+  const performStatusChange = async (
+    plan: WeeklyPlan,
+    next: WeeklyPlanStatus,
+    message = "Status updated.",
+  ): Promise<boolean> => {
     setStatusSaving(true);
     const previous = plan.status;
     setPlans((prev) => prev.map((item) => (item.id === plan.id ? { ...item, status: next } : item)));
@@ -105,16 +100,62 @@ export default function DoneTasksClient({
         .update({ status: next, updated_by: viewer.id, updated_at: new Date().toISOString() })
         .eq("id", plan.id);
       if (error) throw error;
-      toast.success("Status updated.");
+      toast.success(message);
       router.refresh();
+      return true;
     } catch (error) {
       console.error(error);
       setPlans((prev) => prev.map((item) => (item.id === plan.id ? { ...item, status: previous } : item)));
       toast.error("Could not update the status. Please try again.");
+      return false;
     } finally {
       setStatusSaving(false);
-      setStatusTarget(null);
     }
+  };
+
+  const confirmDecision = async (next: "completed" | "revision", feedback?: RevisionFeedback) => {
+    if (!reviewPlan) return;
+    const plan = reviewPlan;
+    let insertedId: number | null = null;
+    const uploadedPaths: string[] = [];
+
+    if (next === "revision" && feedback) {
+      setStatusSaving(true);
+      try {
+        for (const file of feedback.files) {
+          uploadedPaths.push(await uploadTaskFeedbackFile(supabase, viewer.id, file));
+        }
+        const { data, error } = await supabase
+          .from("task_feedback")
+          .insert({ task_id: plan.id, feedback: feedback.message, file_paths: uploadedPaths })
+          .select("id")
+          .single();
+        if (error) throw error;
+        insertedId = data.id;
+      } catch (error) {
+        console.error(error);
+        await removeTaskFeedbackFiles(supabase, uploadedPaths);
+        toast.error("Could not save the feedback. Please try again.");
+        setStatusSaving(false);
+        return;
+      }
+      setStatusSaving(false);
+    }
+
+    const ok = await performStatusChange(
+      plan,
+      next,
+      next === "completed" ? "Task marked as completed." : "Task sent back for revision.",
+    );
+    if (!ok) {
+      if (insertedId !== null) {
+        const { error } = await supabase.from("task_feedback").delete().eq("id", insertedId);
+        if (error) console.error(error);
+      }
+      await removeTaskFeedbackFiles(supabase, uploadedPaths);
+      return;
+    }
+    setReviewPlanId(null);
   };
 
   return (
@@ -131,7 +172,7 @@ export default function DoneTasksClient({
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[720px]">
+            <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-slate-800 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   <th className="px-5 py-3.5">Task</th>
@@ -141,6 +182,7 @@ export default function DoneTasksClient({
                   <th className="px-5 py-3.5">Date range</th>
                   <th className="px-5 py-3.5">Marked done</th>
                   <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -153,11 +195,11 @@ export default function DoneTasksClient({
                       key={plan.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => setViewPlanId(plan.id)}
+                      onClick={() => setReviewPlanId(plan.id)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          setViewPlanId(plan.id);
+                          setReviewPlanId(plan.id);
                         }
                       }}
                       className="border-b last:border-0 border-gray-50 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/40"
@@ -200,47 +242,24 @@ export default function DoneTasksClient({
                         )}
                       </td>
                       <td className="px-5 py-3.5">
-                        {canEdit(plan) ? (
-                          <div
-                            className="relative inline-block"
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => e.stopPropagation()}
-                          >
-                            <select
-                              value={plan.status}
-                              onChange={(e) =>
-                                requestStatusChange(plan, e.target.value as WeeklyPlanStatus)
-                              }
-                              aria-label={`Status of ${plan.title}`}
-                              className={`appearance-none pl-2.5 pr-6 py-1 rounded-full border text-[11px] font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)]/30 transition-colors ${meta.badge}`}
-                            >
-                              {WEEKLY_PLAN_STATUSES.map((option) => (
-                                <option
-                                  key={option.value}
-                                  value={option.value}
-                                  className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white"
-                                >
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                            <svg
-                              className="pointer-events-none absolute right-2 top-1/2 h-2.5 w-2.5 -translate-y-1/2 opacity-60"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        ) : (
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold ${meta.badge}`}
-                          >
-                            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.dot }} />
-                            {meta.label}
-                          </span>
-                        )}
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold ${meta.badge}`}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.dot }} />
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReviewPlanId(plan.id);
+                          }}
+                          className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[var(--sys-primary)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
+                        >
+                          Review Result
+                        </button>
                       </td>
                     </tr>
                   );
@@ -263,30 +282,16 @@ export default function DoneTasksClient({
         )}
       </div>
 
-      {statusTarget && (
-        <ConfirmStatusDialog
-          title={statusTarget.plan.title}
-          next={statusTarget.next}
-          irreversible={false}
-          busy={statusSaving}
-          onCancel={() => setStatusTarget(null)}
-          onConfirm={() => void confirmStatusChange()}
-        />
-      )}
-
-      {viewPlan && (
-        <WeeklyPlanDrawer
-          mode="view"
-          plan={viewPlan}
+      {reviewPlan && (
+        <TaskReviewModal
+          plan={reviewPlan}
           people={people}
-          modules={[]}
           moduleNames={moduleNames}
           moduleProjects={moduleProjects}
-          viewerId={viewer.id}
-          onClose={() => setViewPlanId(null)}
-          onSaved={() => router.refresh()}
-          statusOptions={canEdit(viewPlan) ? WEEKLY_PLAN_STATUSES.map((option) => option.value) : undefined}
-          onStatusChange={canEdit(viewPlan) ? (next) => requestStatusChange(viewPlan, next) : undefined}
+          canEdit={canEdit(reviewPlan)}
+          busy={statusSaving}
+          onClose={() => setReviewPlanId(null)}
+          onConfirm={(next, feedback) => void confirmDecision(next, feedback)}
         />
       )}
     </div>

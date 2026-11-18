@@ -25,6 +25,9 @@ import {
 } from "@/types/weeklyPlan";
 import SearchableSelectField from "./SearchableSelectField";
 import DateRangeField from "./DateRangeField";
+import TaskFeedbackList from "./TaskFeedbackList";
+import TaskFeedbackHistoryModal from "./TaskFeedbackHistoryModal";
+import FeedbackFilePicker from "./FeedbackFilePicker";
 
 export type DrawerMode = "create" | "view" | "edit";
 
@@ -41,6 +44,7 @@ interface WeeklyPlanDrawerProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onMarkDone?: () => void;
+  onMarkDoneWithFeedback?: (message: string, files: File[]) => void;
   statusOptions?: WeeklyPlanStatus[];
   onStatusChange?: (next: WeeklyPlanStatus) => void;
   initialRange?: { start: string; end: string };
@@ -72,6 +76,7 @@ export default function WeeklyPlanDrawer({
   onEdit,
   onDelete,
   onMarkDone,
+  onMarkDoneWithFeedback,
   statusOptions,
   onStatusChange,
   initialRange,
@@ -89,6 +94,9 @@ export default function WeeklyPlanDrawer({
   const [saving, setSaving] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [historyPlanId, setHistoryPlanId] = useState<number | null>(null);
+  const [doneMessage, setDoneMessage] = useState("");
+  const [doneFiles, setDoneFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isForm = mode !== "view";
@@ -521,6 +529,57 @@ export default function WeeklyPlanDrawer({
                     </ul>
                   )}
                 </div>
+
+                <div className="border-t border-gray-100 dark:border-slate-800 pt-5">
+                  <TaskFeedbackList
+                    taskId={plan.id}
+                    people={people}
+                    heading="Latest feedback"
+                    limit={1}
+                    hideWhenEmpty
+                    action={
+                      <button
+                        type="button"
+                        onClick={() => setHistoryPlanId(plan.id)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[var(--sys-primary)]/30 bg-[var(--sys-primary)]/10 text-[11px] font-bold text-[var(--sys-primary-text)] hover:bg-[var(--sys-primary)]/20 transition-colors"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        View all feedback history
+                      </button>
+                    }
+                  />
+                </div>
+
+                {onMarkDoneWithFeedback && (
+                  <div className="rounded-2xl border-2 border-[var(--sys-primary)]/25 bg-[var(--sys-primary)]/5 p-4">
+                    <label
+                      htmlFor="done-feedback"
+                      className="flex items-center gap-1 text-xs font-extrabold uppercase tracking-wider text-[var(--sys-primary-text)]"
+                    >
+                      Feedback for the owner (optional)
+                    </label>
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">
+                      Add a note or proof of work. It is saved with the task and shown to the owner when you mark it
+                      done.
+                    </p>
+                    <textarea
+                      id="done-feedback"
+                      value={doneMessage}
+                      onChange={(e) => setDoneMessage(e.target.value)}
+                      rows={3}
+                      placeholder="e.g. Checkout API finished and tested — screenshots attached."
+                      className="mt-2 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:border-[var(--sys-primary)] focus:ring-[var(--sys-primary)]/30 transition-colors resize-none"
+                    />
+                    <FeedbackFilePicker onChange={setDoneFiles} />
+                  </div>
+                )}
               </>
             )
           )}
@@ -554,6 +613,15 @@ export default function WeeklyPlanDrawer({
             </button>
           ) : (
             <>
+              {onMarkDoneWithFeedback && (
+                <button
+                  type="button"
+                  onClick={() => onMarkDoneWithFeedback(doneMessage.trim(), doneFiles)}
+                  className="px-5 py-2.5 rounded-xl bg-[var(--sys-primary)] text-white text-sm font-bold shadow-lg hover:opacity-90 transition-opacity"
+                >
+                  Mark as Done
+                </button>
+              )}
               {onMarkDone && (
                 <button
                   type="button"
@@ -576,6 +644,13 @@ export default function WeeklyPlanDrawer({
           )}
         </div>
       </div>
+      {plan && historyPlanId === plan.id && (
+        <TaskFeedbackHistoryModal
+          plan={plan}
+          people={people}
+          onClose={() => setHistoryPlanId(null)}
+        />
+      )}
     </div>,
     document.body,
   );

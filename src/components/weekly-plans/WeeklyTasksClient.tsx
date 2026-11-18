@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { requestRefresh } from "@/lib/coalescedRefresh";
 import { toast } from "sonner";
 import { weeklyPlanModuleLabel, weeklyPlanWeekRange } from "@/lib/weeklyPlans";
+import { removeTaskFeedbackFiles, uploadTaskFeedbackFile } from "@/lib/taskFeedback";
 import {
   WEEKLY_PLAN_STATUSES,
   weeklyPlanStatusMeta,
@@ -59,7 +60,11 @@ export default function WeeklyTasksClient({
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [statusTarget, setStatusTarget] = useState<{ plan: WeeklyPlan; next: WeeklyPlanStatus } | null>(null);
+  const [statusTarget, setStatusTarget] = useState<{
+    plan: WeeklyPlan;
+    next: WeeklyPlanStatus;
+    feedback?: { message: string; files: File[] };
+  } | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
   const [viewPlanId, setViewPlanId] = useState<number | null>(null);
   const viewPlan = plans.find((plan) => plan.id === viewPlanId) ?? null;
@@ -132,6 +137,11 @@ export default function WeeklyTasksClient({
         (option) => option.value === "pending" || option.value === "in progress",
       );
     }
+    if (isAssigneeOnly(plan) && plan.status === "revision") {
+      return WEEKLY_PLAN_STATUSES.filter(
+        (option) => option.value === "revision" || option.value === "in progress",
+      );
+    }
     if (isAssigneeOnly(plan) && plan.status === "in progress") {
       return WEEKLY_PLAN_STATUSES.filter(
         (option) => option.value === "in progress" || option.value === "done",
@@ -147,8 +157,32 @@ export default function WeeklyTasksClient({
 
   const confirmStatusChange = async () => {
     if (!statusTarget) return;
-    const { plan, next } = statusTarget;
+    const { plan, next, feedback } = statusTarget;
+    const hasFeedback = Boolean(feedback && (feedback.message || feedback.files.length > 0));
     setStatusSaving(true);
+    let insertedId: number | null = null;
+    const uploadedPaths: string[] = [];
+    if (feedback && hasFeedback) {
+      try {
+        for (const file of feedback.files) {
+          uploadedPaths.push(await uploadTaskFeedbackFile(supabase, viewer.id, file));
+        }
+        const { data, error } = await supabase
+          .from("task_feedback")
+          .insert({ task_id: plan.id, feedback: feedback.message || null, file_paths: uploadedPaths })
+          .select("id")
+          .single();
+        if (error) throw error;
+        insertedId = data.id;
+      } catch (error) {
+        console.error(error);
+        await removeTaskFeedbackFiles(supabase, uploadedPaths);
+        toast.error("Could not save the feedback. Please try again.");
+        setStatusSaving(false);
+        setStatusTarget(null);
+        return;
+      }
+    }
     const previous = plan.status;
     setPlans((prev) => prev.map((item) => (item.id === plan.id ? { ...item, status: next } : item)));
     try {
@@ -157,11 +191,17 @@ export default function WeeklyTasksClient({
         : { status: next };
       const { error } = await supabase.from("weekly_plans").update(fields).eq("id", plan.id);
       if (error) throw error;
-      toast.success("Status updated.");
+      toast.success(hasFeedback ? "Task marked as done with your feedback." : "Status updated.");
       router.refresh();
+      if (hasFeedback) setViewPlanId(null);
     } catch (error) {
       console.error(error);
       setPlans((prev) => prev.map((item) => (item.id === plan.id ? { ...item, status: previous } : item)));
+      if (insertedId !== null) {
+        const { error: deleteError } = await supabase.from("task_feedback").delete().eq("id", insertedId);
+        if (deleteError) console.error(deleteError);
+      }
+      await removeTaskFeedbackFiles(supabase, uploadedPaths);
       toast.error("Could not update the status. Please try again.");
     } finally {
       setStatusSaving(false);
@@ -258,7 +298,7 @@ export default function WeeklyTasksClient({
                   const options = statusOptionsFor(plan);
                   const advance: WeeklyPlanStatus | null =
                     plan.assigned_personnel === viewer.id
-                      ? plan.status === "pending"
+                      ? plan.status === "pending" || plan.status === "revision"
                         ? "in progress"
                         : plan.status === "in progress"
                           ? "done"
@@ -329,7 +369,11 @@ export default function WeeklyTasksClient({
                             }}
                             className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[var(--sys-primary)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
                           >
-                            {advance === "in progress" ? "Start Task" : "Mark as Done"}
+                            {advance === "in progress"
+                              ? plan.status === "revision"
+                                ? "Start Rework"
+                                : "Start Task"
+                              : "Mark as Done"}
                           </button>
                         ) : options.length > 0 ? (
                           <div
@@ -413,6 +457,11 @@ export default function WeeklyTasksClient({
           onSaved={() => router.refresh()}
           statusOptions={statusOptionsFor(viewPlan).map((option) => option.value)}
           onStatusChange={(next) => requestStatusChange(viewPlan, next)}
+          onMarkDoneWithFeedback={
+            viewPlan.assigned_personnel === viewer.id && viewPlan.status === "in progress"
+              ? (message, files) => setStatusTarget({ plan: viewPlan, next: "done", feedback: { message, files } })
+              : undefined
+          }
         />
       )}
     </div>

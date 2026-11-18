@@ -11,6 +11,7 @@ import DocumentHistorySection from "@/components/modules/DocumentHistorySection"
 import StatusHistorySection from "@/components/modules/StatusHistorySection";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
+import PrototypeSection from "@/components/modules/PrototypeSection";
 import { STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
 
 const PRIORITY_RANK: Record<string, number> = {
@@ -30,6 +31,7 @@ interface QaModule {
   qa_result_document_url?: string | null;
   qa_remarks?: string | null;
   website_link?: string | null;
+  prototype?: string | null;
   qa_acknowledged_by?: string | null;
   auditor_name?: string | null;
   assigned_developer_id?: string | null;
@@ -1010,6 +1012,13 @@ export default function QaMonitoringClient({
                   )}
                 </div>
               </div>
+
+              <PrototypeSection
+                projectId={selectedModule.project.id}
+                moduleId={selectedModule.id}
+                prototypePath={selectedModule.prototype}
+                canManage={false}
+              />
 
               {/* Developer Feedback (read-only) */}
               <div>
