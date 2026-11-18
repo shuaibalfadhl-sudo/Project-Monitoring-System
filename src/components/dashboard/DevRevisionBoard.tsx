@@ -1,16 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
-import { useTimeRange } from "@/components/dashboard/TimeRangeContext";
-import { computeRevisionShares } from "@/lib/revisionShares";
+import { useTimeRange, timeRangeLabel } from "@/components/dashboard/TimeRangeContext";
+import MemberAvatar from "@/components/dashboard/MemberAvatar";
+import { useRevisionRanking, type RevisionModuleRow } from "@/components/dashboard/useRevisionRanking";
 
-export interface RevisionModuleRow {
-  devId: string;
-  devName: string;
-  devAvatar: string | null;
-  revisionCount: number;
-  revisionDate: string | null;
-}
+const CARD_SHELL =
+  "bg-white dark:bg-slate-900 border border-gray-200/70 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden flex flex-col";
 
 export default function DevRevisionBoard({
   revisionModules,
@@ -18,125 +13,89 @@ export default function DevRevisionBoard({
   revisionModules: RevisionModuleRow[];
 }) {
   const ctx = useTimeRange();
-  const bounds = ctx?.bounds;
-
-  const { rows, teamRAvg } = useMemo(() => {
-    if (!bounds) return { rows: [], teamRAvg: 0 };
-
-    const stats: Record<string, { devId: string; devName: string; devAvatar: string | null; totalRevisions: number; revisedModules: number }> = {};
-
-    revisionModules.forEach((m) => {
-      if (!m.devId || !m.revisionDate) return;
-      const d = new Date(m.revisionDate);
-      if (d < bounds.startDate || d > bounds.endDate) return;
-      // Only modules that actually have a revision count are summed into the base.
-      if (!m.revisionCount || m.revisionCount <= 0) return;
-
-      if (!stats[m.devId]) {
-        stats[m.devId] = {
-          devId: m.devId,
-          devName: m.devName || "Unknown Developer",
-          devAvatar: m.devAvatar,
-          totalRevisions: 0,
-          revisedModules: 0,
-        };
-      }
-      stats[m.devId].totalRevisions += m.revisionCount;
-      stats[m.devId].revisedModules += 1;
-    });
-
-    const perDev = Object.values(stats).map((s) => ({
-      devId: s.devId,
-      devName: s.devName,
-      devAvatar: s.devAvatar,
-      totalRevisions: s.totalRevisions,
-      totalModulesAssigned: s.revisedModules,
-    }));
-
-    // Revision Share % normalizes R_avg across every developer that has
-    // revised modules in the period, so shares sum to 100 as a team metric.
-    const { shares, teamRAvg: avg } = computeRevisionShares(perDev);
-
-    const ranked = [...shares]
-      .sort((a, b) => b.sharePct - a.sharePct)
-      .slice(0, 3)
-      .map((s) => ({ ...s, share: s }));
-
-    return { rows: ranked, teamRAvg: avg };
-  }, [revisionModules, bounds]);
+  const { rows } = useRevisionRanking(revisionModules);
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex-1 animate-slide-up" style={{ animationDelay: "0.2s" }}>
-      <div className="flex justify-between items-start mb-6">
-        <div className="flex gap-3 items-start">
-          <div className="w-10 h-10 shrink-0 bg-orange-50 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-            <svg className="w-5 w-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <div>
-            <h2 className="text-base font-black text-gray-900 dark:text-gray-100 leading-tight">Highest Revision Share</h2>
-            <p className="text-xs font-medium text-gray-500 mt-1">
-              Revision intensity, normalized by revised modules · {ctx?.timeRange ?? "This Week"}.
+    <section className={`${CARD_SHELL} animate-slide-up`} style={{ animationDelay: "0.15s" }}>
+      <div className="flex items-start justify-between gap-3 px-6 pt-5 pb-4">
+        <div className="flex items-stretch gap-3 min-w-0">
+          <span className="w-1 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+          <div className="min-w-0">
+            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white leading-tight">
+              Highest Revision Share
+            </h2>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
+              Revision intensity, normalized by revised modules.
             </p>
           </div>
         </div>
-        <span className="text-[10px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-900/30 dark:text-orange-400 px-3 py-1.5 rounded-full uppercase tracking-wider shrink-0 mt-1">Top 3 Devs</span>
+        <span className="shrink-0 px-2.5 py-1 rounded-md bg-amber-50 dark:bg-amber-900/30 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+          Top 3 Devs
+        </span>
       </div>
 
-      <div className="flex flex-col gap-6">
-        {rows.length > 0 ? (
-          rows.map((dev, idx) => (
-            <div key={dev.devId} className="flex items-center gap-4">
-              <div className="w-8 h-8 shrink-0 bg-orange-50 dark:bg-orange-900/30 rounded-full flex items-center justify-center text-xs font-black text-orange-500">
+      <div className="grid grid-cols-[1.75rem_minmax(0,1fr)_4.5rem] gap-x-5 items-center bg-slate-50 dark:bg-slate-800/60 border-y border-gray-100 dark:border-slate-800 px-6 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        <span aria-hidden="true" />
+        <span>Rank / Team member</span>
+        <span className="text-right">Share</span>
+      </div>
+
+      {rows.length > 0 ? (
+        <ul className="flex-1 flex flex-col">
+          {rows.map((dev, idx) => (
+            <li
+              key={dev.devId}
+              className="flex-1 grid grid-cols-[1.75rem_minmax(0,1fr)_4.5rem] gap-x-5 items-center px-6 py-4 border-b last:border-0 border-gray-100 dark:border-slate-800"
+            >
+              <span
+                className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
+                  idx === 0
+                    ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                }`}
+              >
                 {idx + 1}
-              </div>
-              <div className="w-10 h-10 shrink-0 bg-amber-50 dark:bg-amber-900/30 rounded-full flex items-center justify-center text-sm font-black text-amber-500 dark:text-amber-400 overflow-hidden border-2 border-amber-100 dark:border-amber-800/50">
-                {dev.devAvatar ? (
-                  <img src={dev.devAvatar} alt={dev.devName} className="w-full h-full object-cover" />
-                ) : (
-                  dev.devName.charAt(0).toUpperCase()
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-none truncate">{dev.devName}</h3>
-                  {dev.share?.aboveTeamAverage && (
-                    <span className="text-[9px] font-black text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
-                      Above avg
-                    </span>
-                  )}
+              </span>
+              <div className="flex items-center gap-3 min-w-0">
+                <MemberAvatar
+                  name={dev.devName}
+                  src={dev.devAvatar}
+                  className="w-9 h-9 text-sm bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 ring-2 ring-amber-100 dark:ring-amber-900/50"
+                />
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+                    {dev.devName}
+                  </h3>
+                  <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-1.5">
+                    {dev.totalRevisions} revision{dev.totalRevisions !== 1 ? "s" : ""} ·{" "}
+                    {dev.rAvg.toFixed(2)} rev/module across {dev.totalModulesAssigned} revised module
+                    {dev.totalModulesAssigned !== 1 ? "s" : ""}
+                  </p>
+                  <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-0.5">
+                    {dev.sharePct.toFixed(1)}% of team
+                  </p>
                 </div>
-                <p className="text-xs mb-2">
-                  <span className="text-lg font-black text-orange-500">{dev.share ? Math.round(dev.share.sharePct) : 0}%</span>{" "}
-                  <span className="text-gray-500 font-medium">revision share</span>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-extrabold text-[var(--sys-primary-text)] leading-none tabular-nums">
+                  {Math.round(dev.sharePct)}%
                 </p>
-                <div className="w-full h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ${dev.share?.aboveTeamAverage ? "bg-red-500" : "bg-orange-500"}`}
-                    style={{ width: `${dev.share ? Math.min(dev.share.sharePct, 100) : 0}%` }}
-                  />
-                </div>
-                <p className="text-[10px] font-medium text-gray-400 mt-2">
-                  {dev.totalRevisions} revision{dev.totalRevisions !== 1 ? "s" : ""} ·{" "}
-                  {dev.share ? dev.share.rAvg.toFixed(2) : "0.00"} rev/module across {dev.totalModulesAssigned} revised module{dev.totalModulesAssigned !== 1 ? "s" : ""} ·{" "}
-                  {dev.share?.sharePct ? dev.share.sharePct.toFixed(1) : "0.0"}% of team
+                <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-1">
+                  revision share
                 </p>
               </div>
-            </div>
-          ))
-        ) : (
-          <div className="py-6 text-center text-sm text-gray-500 dark:text-slate-400 italic">
-            No revisions recorded in this period.
-          </div>
-        )}
-      </div>
-
-      {rows.length > 0 && (
-        <p className="text-[10px] font-medium text-gray-400 dark:text-slate-500 mt-6 pt-4 border-t border-gray-100 dark:border-slate-800">
-          Team average: {teamRAvg.toFixed(2)} revisions per module. Share % is each developer&apos;s revision intensity relative to the whole team.
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="flex-1 px-6 py-10 text-center text-sm font-medium text-slate-400 dark:text-slate-500 italic">
+          No revisions recorded in this period.
         </p>
       )}
-    </div>
+
+      <div className="bg-slate-50/70 dark:bg-slate-800/40 border-t border-gray-100 dark:border-slate-800 px-6 py-3 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+        {timeRangeLabel(ctx?.timeRange ?? "This Week")} · Ranked by revision intensity share
+      </div>
+    </section>
   );
 }
