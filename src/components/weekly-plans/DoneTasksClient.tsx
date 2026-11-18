@@ -13,9 +13,8 @@ import {
   type WeeklyPlanPerson,
   type WeeklyPlanStatus,
 } from "@/types/weeklyPlan";
-import WeeklyPlanDrawer from "./WeeklyPlanDrawer";
 import ConfirmStatusDialog from "./ConfirmStatusDialog";
-import ReviewDecisionModal from "./ReviewDecisionModal";
+import TaskReviewModal from "./TaskReviewModal";
 import TablePagination from "./TablePagination";
 
 interface DoneTasksClientProps {
@@ -53,13 +52,12 @@ export default function DoneTasksClient({
     setPlans(initialPlans);
   }
 
-  const [viewPlanId, setViewPlanId] = useState<number | null>(null);
+  const [reviewPlanId, setReviewPlanId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [statusTarget, setStatusTarget] = useState<{ plan: WeeklyPlan; next: WeeklyPlanStatus } | null>(null);
-  const [decisionTarget, setDecisionTarget] = useState<WeeklyPlan | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
-  const viewPlan = plans.find((plan) => plan.id === viewPlanId) ?? null;
+  const reviewPlan = plans.find((plan) => plan.id === reviewPlanId) ?? null;
 
   const supabase = createClient();
   const router = useRouter();
@@ -128,14 +126,14 @@ export default function DoneTasksClient({
   };
 
   const confirmDecision = async (next: "completed" | "revision") => {
-    if (!decisionTarget) return;
-    const plan = decisionTarget;
+    if (!reviewPlan) return;
+    const plan = reviewPlan;
     await performStatusChange(
       plan,
       next,
       next === "completed" ? "Task marked as completed." : "Task sent back for revision.",
     );
-    setDecisionTarget(null);
+    setReviewPlanId(null);
   };
 
   return (
@@ -174,12 +172,11 @@ export default function DoneTasksClient({
                       key={plan.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => (canEdit(plan) ? setDecisionTarget(plan) : setViewPlanId(plan.id))}
+                      onClick={() => setReviewPlanId(plan.id)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          if (canEdit(plan)) setDecisionTarget(plan);
-                          else setViewPlanId(plan.id);
+                          setReviewPlanId(plan.id);
                         }
                       }}
                       className="border-b last:border-0 border-gray-50 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/40"
@@ -296,32 +293,18 @@ export default function DoneTasksClient({
         />
       )}
 
-      {decisionTarget && (
-        <ReviewDecisionModal
-          title={decisionTarget.title}
-          busy={statusSaving}
-          onCancel={() => setDecisionTarget(null)}
-          onConfirm={(next) => void confirmDecision(next)}
-          onViewDetails={() => {
-            setViewPlanId(decisionTarget.id);
-            setDecisionTarget(null);
-          }}
-        />
-      )}
-
-      {viewPlan && (
-        <WeeklyPlanDrawer
-          mode="view"
-          plan={viewPlan}
+      {reviewPlan && (
+        <TaskReviewModal
+          plan={reviewPlan}
           people={people}
-          modules={[]}
           moduleNames={moduleNames}
           moduleProjects={moduleProjects}
           viewerId={viewer.id}
-          onClose={() => setViewPlanId(null)}
-          onSaved={() => router.refresh()}
-          statusOptions={canEdit(viewPlan) ? WEEKLY_PLAN_STATUSES.map((option) => option.value) : undefined}
-          onStatusChange={canEdit(viewPlan) ? (next) => requestStatusChange(viewPlan, next) : undefined}
+          isSuperAdmin={isSuperAdmin}
+          canEdit={canEdit(reviewPlan)}
+          busy={statusSaving}
+          onClose={() => setReviewPlanId(null)}
+          onConfirm={(next) => void confirmDecision(next)}
         />
       )}
     </div>
