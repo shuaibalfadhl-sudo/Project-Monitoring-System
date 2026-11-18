@@ -230,6 +230,11 @@ export default function WeeklyPlansClient({
         (option) => option.value === "pending" || option.value === "in progress",
       );
     }
+    if (isAssigneeOnly(plan) && plan.status === "revision") {
+      return WEEKLY_PLAN_STATUSES.filter(
+        (option) => option.value === "revision" || option.value === "in progress",
+      );
+    }
     if (isAssigneeOnly(plan) && plan.status === "in progress") {
       return WEEKLY_PLAN_STATUSES.filter(
         (option) => option.value === "in progress" || option.value === "done",

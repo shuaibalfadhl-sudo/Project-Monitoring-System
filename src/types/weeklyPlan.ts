@@ -1,4 +1,4 @@
-export type WeeklyPlanStatus = 'pending' | 'onhold' | 'in progress' | 'done' | 'completed'
+export type WeeklyPlanStatus = 'pending' | 'onhold' | 'in progress' | 'revision' | 'done' | 'completed'
 
 export interface WeeklyPlan {
   id: number
@@ -51,6 +51,12 @@ export const WEEKLY_PLAN_STATUSES: {
     label: 'In Progress',
     badge: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-400/20',
     dot: '#3B82F6',
+  },
+  {
+    value: 'revision',
+    label: 'Revision',
+    badge: 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/20',
+    dot: '#F43F5E',
   },
   {
     value: 'done',

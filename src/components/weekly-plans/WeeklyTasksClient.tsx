@@ -132,6 +132,11 @@ export default function WeeklyTasksClient({
         (option) => option.value === "pending" || option.value === "in progress",
       );
     }
+    if (isAssigneeOnly(plan) && plan.status === "revision") {
+      return WEEKLY_PLAN_STATUSES.filter(
+        (option) => option.value === "revision" || option.value === "in progress",
+      );
+    }
     if (isAssigneeOnly(plan) && plan.status === "in progress") {
       return WEEKLY_PLAN_STATUSES.filter(
         (option) => option.value === "in progress" || option.value === "done",
@@ -258,7 +263,7 @@ export default function WeeklyTasksClient({
                   const options = statusOptionsFor(plan);
                   const advance: WeeklyPlanStatus | null =
                     plan.assigned_personnel === viewer.id
-                      ? plan.status === "pending"
+                      ? plan.status === "pending" || plan.status === "revision"
                         ? "in progress"
                         : plan.status === "in progress"
                           ? "done"
@@ -329,7 +334,11 @@ export default function WeeklyTasksClient({
                             }}
                             className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[var(--sys-primary)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
                           >
-                            {advance === "in progress" ? "Start Task" : "Mark as Done"}
+                            {advance === "in progress"
+                              ? plan.status === "revision"
+                                ? "Start Rework"
+                                : "Start Task"
+                              : "Mark as Done"}
                           </button>
                         ) : options.length > 0 ? (
                           <div

@@ -15,6 +15,7 @@ import {
 } from "@/types/weeklyPlan";
 import WeeklyPlanDrawer from "./WeeklyPlanDrawer";
 import ConfirmStatusDialog from "./ConfirmStatusDialog";
+import ReviewDecisionModal from "./ReviewDecisionModal";
 import TablePagination from "./TablePagination";
 
 interface DoneTasksClientProps {
@@ -56,6 +57,7 @@ export default function DoneTasksClient({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [statusTarget, setStatusTarget] = useState<{ plan: WeeklyPlan; next: WeeklyPlanStatus } | null>(null);
+  const [decisionTarget, setDecisionTarget] = useState<WeeklyPlan | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
   const viewPlan = plans.find((plan) => plan.id === viewPlanId) ?? null;
 
@@ -93,9 +95,11 @@ export default function DoneTasksClient({
     setStatusTarget({ plan, next });
   };
 
-  const confirmStatusChange = async () => {
-    if (!statusTarget) return;
-    const { plan, next } = statusTarget;
+  const performStatusChange = async (
+    plan: WeeklyPlan,
+    next: WeeklyPlanStatus,
+    message = "Status updated.",
+  ) => {
     setStatusSaving(true);
     const previous = plan.status;
     setPlans((prev) => prev.map((item) => (item.id === plan.id ? { ...item, status: next } : item)));
@@ -105,7 +109,7 @@ export default function DoneTasksClient({
         .update({ status: next, updated_by: viewer.id, updated_at: new Date().toISOString() })
         .eq("id", plan.id);
       if (error) throw error;
-      toast.success("Status updated.");
+      toast.success(message);
       router.refresh();
     } catch (error) {
       console.error(error);
@@ -113,8 +117,25 @@ export default function DoneTasksClient({
       toast.error("Could not update the status. Please try again.");
     } finally {
       setStatusSaving(false);
-      setStatusTarget(null);
     }
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusTarget) return;
+    const { plan, next } = statusTarget;
+    await performStatusChange(plan, next);
+    setStatusTarget(null);
+  };
+
+  const confirmDecision = async (next: "completed" | "revision") => {
+    if (!decisionTarget) return;
+    const plan = decisionTarget;
+    await performStatusChange(
+      plan,
+      next,
+      next === "completed" ? "Task marked as completed." : "Task sent back for revision.",
+    );
+    setDecisionTarget(null);
   };
 
   return (
@@ -153,11 +174,12 @@ export default function DoneTasksClient({
                       key={plan.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => setViewPlanId(plan.id)}
+                      onClick={() => (canEdit(plan) ? setDecisionTarget(plan) : setViewPlanId(plan.id))}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          setViewPlanId(plan.id);
+                          if (canEdit(plan)) setDecisionTarget(plan);
+                          else setViewPlanId(plan.id);
                         }
                       }}
                       className="border-b last:border-0 border-gray-50 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/40"
@@ -271,6 +293,19 @@ export default function DoneTasksClient({
           busy={statusSaving}
           onCancel={() => setStatusTarget(null)}
           onConfirm={() => void confirmStatusChange()}
+        />
+      )}
+
+      {decisionTarget && (
+        <ReviewDecisionModal
+          title={decisionTarget.title}
+          busy={statusSaving}
+          onCancel={() => setDecisionTarget(null)}
+          onConfirm={(next) => void confirmDecision(next)}
+          onViewDetails={() => {
+            setViewPlanId(decisionTarget.id);
+            setDecisionTarget(null);
+          }}
         />
       )}
 
