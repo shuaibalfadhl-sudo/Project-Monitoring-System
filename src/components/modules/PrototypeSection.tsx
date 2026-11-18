@@ -76,7 +76,7 @@ export default function PrototypeSection({
       window.location.href = url;
     } catch (err) {
       console.error("Failed to download prototype", err);
-      toast.error("The prototype could not be downloaded. Please try again.");
+      toast.error("This prototype can't be downloaded. It may have been removed, or your account may not have access to it.");
     } finally {
       setDownloading(false);
     }

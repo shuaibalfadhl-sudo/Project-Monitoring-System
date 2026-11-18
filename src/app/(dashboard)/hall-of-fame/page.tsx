@@ -2,11 +2,8 @@ import { getUserProfile } from '@/lib/auth-utils'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import WeeklyActivityChart from '@/components/dashboard/WeeklyActivityChart'
-import DevRevisionBoard, { type RevisionModuleRow } from '@/components/dashboard/DevRevisionBoard'
-import { TimeRangeProvider } from '@/components/dashboard/TimeRangeContext'
-import FullscreenButton from '@/components/dashboard/FullscreenButton'
-import AnimatedProgress from '@/components/dashboard/AnimatedProgress'
+import HallOfFameClient from '@/components/dashboard/HallOfFameClient'
+import { type RevisionModuleRow } from '@/components/dashboard/useRevisionRanking'
 
 export default async function HallOfFamePage() {
   const profile = await getUserProfile()
@@ -141,110 +138,24 @@ export default async function HallOfFamePage() {
     });
   }
 
-  // Fetch total deployments and revisions across ALL projects for Weekly Activity
-  // We use an RPC to bypass RLS so all users can see company-wide progress
-  const { data: rpcActivityData, error: activityError } = await supabaseServer
-    .rpc('get_all_modules_activity', { p_company_id: activeCompanyId });
-
-  let modulesActivity = rpcActivityData || [];
-
-  if (activityError) {
-    // Fallback if the user hasn't created the RPC yet
-    const { data: fallbackActivity } = await supabaseServer
-      .from('project_modules')
-      .select('status, deployment_date:deployed_date, revision_date, projects!inner(company_id)');
-    modulesActivity = fallbackActivity?.filter((m: any) => !activeCompanyId || m.projects?.company_id === activeCompanyId) || [];
-  }
-
-  let totalDeployments = 0;
-  let totalRevisions = 0;
-
-  if (modulesActivity.length > 0) {
-    modulesActivity.forEach((m: any) => {
-      if (m.status === 'deployed') totalDeployments++;
-      if (m.status === 'revision') totalRevisions++;
-    });
+  // Older leaderboard RPCs may not return avatar columns; fill any gaps from profiles.
+  const missingAvatarIds = new Set<string>();
+  pmLeaderboard.forEach((pm) => { if (!pm.pmAvatar) missingAvatarIds.add(pm.pmId); });
+  revisionModules.forEach((m) => { if (!m.devAvatar) missingAvatarIds.add(m.devId); });
+  if (missingAvatarIds.size > 0) {
+    const { data: avatarProfiles } = await supabaseServer
+      .from('profiles')
+      .select('id, avatar_path')
+      .in('id', [...missingAvatarIds]);
+    const avatarMap = new Map(avatarProfiles?.map((p) => [p.id, p.avatar_path]) || []);
+    pmLeaderboard.forEach((pm) => { pm.pmAvatar = pm.pmAvatar || avatarMap.get(pm.pmId) || null; });
+    revisionModules.forEach((m) => { m.devAvatar = m.devAvatar || avatarMap.get(m.devId) || null; });
   }
 
   return (
-    <div id="hall-of-fame-container" className="w-full h-full min-h-screen bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-800 transition-colors duration-300 overflow-y-auto">
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">Hall of Fame</h1>
-          <p className="text-slate-500 font-medium"></p>
-        </div>
-        <FullscreenButton />
-      </div>
-
-      {(pmLeaderboard.length > 0 || revisionModules.length > 0) && (
-        <TimeRangeProvider>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
-
-          <div className="lg:col-span-1 flex flex-col gap-6 h-full">
-            {pmLeaderboard.length > 0 && (
-              <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex-1 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex gap-3 items-start">
-                    <div className="w-10 h-10 shrink-0 bg-red-50 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-                      <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h2 className="text-base font-black text-gray-900 dark:text-gray-100 leading-tight">Lowest Deployment Rates</h2>
-                      <p className="text-xs font-medium text-gray-500 mt-1">Developers with the lowest deployment rates.</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400 px-3 py-1.5 rounded-full uppercase tracking-wider shrink-0 mt-1">Top 3 PMs</span>
-                </div>
-
-                <div className="flex flex-col gap-6">
-                  {pmLeaderboard.map((pm, idx) => (
-                    <div key={pm.pmId} className="flex items-center gap-4">
-                      <div className="w-8 h-8 shrink-0 bg-red-50 dark:bg-red-900/30 rounded-full flex items-center justify-center text-xs font-black text-red-500">
-                        {idx + 1}
-                      </div>
-                      <div className="w-10 h-10 shrink-0 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-sm font-black text-indigo-500 dark:text-indigo-400 overflow-hidden border-2 border-indigo-100 dark:border-indigo-800/50">
-                        {pm.pmAvatar ? (
-                          <img src={pm.pmAvatar} alt={pm.pmName} className="w-full h-full object-cover" />
-                        ) : (
-                          pm.pmName.charAt(0).toUpperCase()
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-none mb-1">{pm.pmName}</h3>
-                        <p className="text-xs mb-2">
-                          <span className="text-lg font-black text-red-500">{Math.round(pm.deployedPercentage)}%</span> <span className="text-gray-500 font-medium">deployment rate</span>
-                        </p>
-                        <div className="w-full h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <AnimatedProgress percentage={pm.deployedPercentage} className="bg-red-500" />
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white leading-none">
-                          {pm.deployedModules} <span className="text-gray-400 font-medium">/ {pm.totalModules}</span>
-                        </p>
-                        <p className="text-[10px] font-medium text-gray-400 mt-1">deployed</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <DevRevisionBoard revisionModules={revisionModules} />
-          </div>
-          <div className="lg:col-span-2 h-full animate-slide-up" style={{ animationDelay: '0.3s' }}>
-            <WeeklyActivityChart
-              totalDeployments={totalDeployments}
-              totalRevisions={totalRevisions}
-              modulesActivity={modulesActivity}
-            />
-          </div>
-
-        </div>
-        </TimeRangeProvider>
-      )}
-    </div>
+    <HallOfFameClient
+      pmLeaderboard={pmLeaderboard}
+      revisionModules={revisionModules}
+    />
   )
 }

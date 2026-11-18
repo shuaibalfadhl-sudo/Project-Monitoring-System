@@ -114,3 +114,12 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Fullscreen leaves the dashboard shell behind, so the page carries its own backdrop. */
+#hall-of-fame-container:fullscreen {
+  background-color: #f8fafc;
+  padding: 1.5rem;
+}
+.dark #hall-of-fame-container:fullscreen {
+  background-color: #020617;
+}

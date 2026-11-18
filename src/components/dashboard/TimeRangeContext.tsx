@@ -4,6 +4,12 @@ import React, { createContext, useContext, useState, useMemo } from "react";
 
 export type TimeRange = "This Week" | "Last Week" | "This Month" | string;
 
+export const TIME_RANGES = ["This Week", "Last Week", "This Month"] as const;
+
+export function timeRangeLabel(range: string): string {
+  return range.charAt(0) + range.slice(1).toLowerCase();
+}
+
 // Single source of truth for converting a filter label into a concrete date window,
 // so the Weekly Activity chart and the revision leaderboard always agree.
 export function getRangeBounds(timeRange: string): { startDate: Date; endDate: Date } {
