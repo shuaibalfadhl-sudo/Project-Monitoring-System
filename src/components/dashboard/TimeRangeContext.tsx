@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useMemo } from "react";
 
 export type TimeRange = "This Week" | "Last Week" | "This Month" | string;
 
-export const TIME_RANGES = ["This Week", "Last Week", "This Month"] as const;
+export const TIME_RANGES = ["This Week", "Last Week", "This Month", "All Time"] as const;
 
 export function timeRangeLabel(range: string): string {
   return range.charAt(0) + range.slice(1).toLowerCase();
@@ -13,6 +13,10 @@ export function timeRangeLabel(range: string): string {
 // Single source of truth for converting a filter label into a concrete date window,
 // so the Weekly Activity chart and the revision leaderboard always agree.
 export function getRangeBounds(timeRange: string): { startDate: Date; endDate: Date } {
+  if (timeRange === "All Time") {
+    return { startDate: new Date(-8640000000000000), endDate: new Date(8640000000000000) };
+  }
+
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 

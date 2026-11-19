@@ -16,7 +16,7 @@ export function useRevisionRanking(revisionModules: RevisionModuleRow[]) {
   const bounds = useTimeRange()?.bounds;
 
   return useMemo(() => {
-    if (!bounds) return { rows: [] as DevRevisionShare[], teamRAvg: 0 };
+    if (!bounds) return { rows: [] as DevRevisionShare[], teamRAvg: 0, teamIntensitySum: 0, activeDevCount: 0 };
 
     const stats: Record<string, { devId: string; devName: string; devAvatar: string | null; totalRevisions: number; revisedModules: number }> = {};
 
@@ -56,6 +56,11 @@ export function useRevisionRanking(revisionModules: RevisionModuleRow[]) {
       .sort((a, b) => b.sharePct - a.sharePct)
       .slice(0, 3);
 
-    return { rows: ranked, teamRAvg: avg };
+    return {
+      rows: ranked,
+      teamRAvg: avg,
+      teamIntensitySum: shares.reduce((sum, s) => sum + s.rAvg, 0),
+      activeDevCount: shares.length,
+    };
   }, [revisionModules, bounds]);
 }

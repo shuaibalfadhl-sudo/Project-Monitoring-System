@@ -138,6 +138,22 @@ export default async function HallOfFamePage() {
     });
   }
 
+  // Company-wide module totals for the executive KPI strip.
+  const { data: rpcActivityData, error: activityError } = await supabaseServer
+    .rpc('get_all_modules_activity', { p_company_id: activeCompanyId });
+  let modulesActivity: { status: string | null }[] = rpcActivityData || [];
+  if (activityError) {
+    const { data: fallbackActivity } = await supabaseServer
+      .from('project_modules')
+      .select('status, projects!inner(company_id)');
+    modulesActivity = (fallbackActivity || []).filter((m) => {
+      const project = m.projects as unknown as { company_id: string } | null;
+      return !activeCompanyId || project?.company_id === activeCompanyId;
+    });
+  }
+  const totalModules = modulesActivity.length;
+  const deployedModules = modulesActivity.filter((m) => m.status === 'deployed').length;
+
   // Older leaderboard RPCs may not return avatar columns; fill any gaps from profiles.
   const missingAvatarIds = new Set<string>();
   pmLeaderboard.forEach((pm) => { if (!pm.pmAvatar) missingAvatarIds.add(pm.pmId); });
@@ -156,6 +172,8 @@ export default async function HallOfFamePage() {
     <HallOfFameClient
       pmLeaderboard={pmLeaderboard}
       revisionModules={revisionModules}
+      totalModules={totalModules}
+      deployedModules={deployedModules}
     />
   )
 }
