@@ -15,6 +15,8 @@ import WeeklyPlanDrawer, { type DrawerMode } from "./WeeklyPlanDrawer";
 import DateRangeField from "./DateRangeField";
 import SearchableSelectField from "./SearchableSelectField";
 import ConfirmStatusDialog from "./ConfirmStatusDialog";
+import WeeklyPlansTableView from "./WeeklyPlansTableView";
+import WeeklyPlansCalendarView from "./WeeklyPlansCalendarView";
 import {
   WEEKLY_PLAN_STATUSES,
   weeklyPlanStatusMeta,
@@ -118,6 +120,7 @@ export default function WeeklyPlansClient({
   }
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"board" | "table" | "calendar">("board");
   const [statusFilter, setStatusFilter] = useState("all");
   const [weekFilter, setWeekFilter] = useState("all");
   const [creatorFilter, setCreatorFilter] = useState("all");
@@ -360,7 +363,53 @@ export default function WeeklyPlansClient({
 
   return (
     <div className="flex flex-1 min-h-0 flex-col space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* View Mode Switcher */}
+        <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700/60 shadow-inner">
+          <button
+            type="button"
+            onClick={() => setViewMode("board")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === "board"
+                ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+            </svg>
+            Board
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("table")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === "table"
+                ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 4h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Table
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("calendar")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === "calendar"
+                ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Calendar
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={() => setDrawer({ mode: "create", plan: null })}
@@ -431,7 +480,7 @@ export default function WeeklyPlansClient({
         </select>
       </div>
 
-      {weekGroups.length === 0 ? (
+      {filteredPlans.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl shadow-sm p-10 text-center">
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 italic">
             {plans.length === 0
@@ -439,6 +488,65 @@ export default function WeeklyPlansClient({
               : "No plans match your filters."}
           </p>
         </div>
+      ) : viewMode === "table" ? (
+        <WeeklyPlansTableView
+          weekGroups={weekGroups}
+          moduleNames={moduleNames}
+          moduleProjects={moduleProjects}
+          nameOf={nameOf}
+          firstWord={firstWord}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          isAssigneeOnly={isAssigneeOnly}
+          isSuperAdmin={isSuperAdmin}
+          onSelectPlan={(plan) => setDrawer({ mode: "view", plan })}
+          onEditPlan={(plan) => setDrawer({ mode: "edit", plan })}
+          onDeletePlan={(plan) => setDeleteTarget(plan)}
+          onStatusChange={requestStatusChange}
+          statusOptionsFor={statusOptionsFor}
+          onCreatePlanForWeek={(range) => {
+            setDrawer({
+              mode: "create",
+              plan: null,
+              range,
+            });
+          }}
+          onDragStartPlan={(plan, e) => {
+            e.dataTransfer.setData("text/plain", String(plan.id));
+            e.dataTransfer.effectAllowed = "move";
+            const ghost = new Image();
+            ghost.src =
+              "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+            e.dataTransfer.setDragImage(ghost, 0, 0);
+            slideState.current = null;
+            setIsSliding(false);
+            setDragging(plan);
+            setDragPos({ x: e.clientX, y: e.clientY });
+          }}
+          onDragEndPlan={() => {
+            setDragging(null);
+            setDragOverWeek(null);
+            setDragPos(null);
+          }}
+          onDropOnWeek={(weekKey) => {
+            void handleDrop(weekKey);
+          }}
+          draggingPlan={dragging}
+          dragOverWeek={dragOverWeek}
+          setDragOverWeek={setDragOverWeek}
+        />
+      ) : viewMode === "calendar" ? (
+        <WeeklyPlansCalendarView
+          plans={filteredPlans}
+          moduleNames={moduleNames}
+          nameOf={nameOf}
+          firstWord={firstWord}
+          onSelectPlan={(plan) => setDrawer({ mode: "view", plan })}
+          onCreateForDate={(dateStr) => {
+            // Find Monday of the selected week or set start date
+            setDrawer({ mode: "create", plan: null, range: { start: dateStr, end: "" } });
+          }}
+        />
       ) : (
         <div className="flex flex-1 min-h-64 flex-col space-y-2">
           <div className="flex items-center justify-end gap-1">
