@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { weeklyPlanModuleLabel, weeklyPlanWeekRange } from "@/lib/weeklyPlans";
 import {
   weeklyPlanStatusMeta,
@@ -72,6 +72,22 @@ export default function WeeklyPlansTableView({
   // Collapsed week sections state
   const [collapsedWeeks, setCollapsedWeeks] = useState<Record<string, boolean>>({});
 
+  // Active status dropdown state: planId currently open
+  const [openStatusDropdownPlanId, setOpenStatusDropdownPlanId] = useState<number | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close status dropdown when clicking outside
+  useEffect(() => {
+    if (openStatusDropdownPlanId === null) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenStatusDropdownPlanId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openStatusDropdownPlanId]);
+
   const toggleGroupCollapse = (weekKey: string) => {
     setCollapsedWeeks((prev) => ({
       ...prev,
@@ -112,7 +128,7 @@ export default function WeeklyPlansTableView({
                 onDropOnWeek(weekKey);
               }
             }}
-            className={`w-full rounded-2xl bg-white dark:bg-[#0c0d12] shadow-sm overflow-hidden transition-all duration-150 ${
+            className={`w-full rounded-2xl bg-white dark:bg-[#0c0d12] shadow-sm transition-all duration-150 ${
               isDragOver
                 ? "border-2 border-[var(--sys-primary)] ring-4 ring-[var(--sys-primary)]/20 shadow-md"
                 : "border border-gray-200 dark:border-slate-800"
@@ -129,7 +145,7 @@ export default function WeeklyPlansTableView({
                   toggleGroupCollapse(weekKey);
                 }
               }}
-              className="w-full flex items-center justify-between px-5 py-3.5 bg-slate-50/80 dark:bg-slate-900/60 select-none cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-800/40 transition-colors"
+              className="w-full flex items-center justify-between px-5 py-3.5 bg-slate-50/80 dark:bg-slate-900/60 select-none cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-800/40 transition-colors rounded-t-2xl"
             >
               <div className="flex items-center gap-3">
                 {/* Chevron toggle icon */}
@@ -194,6 +210,9 @@ export default function WeeklyPlansTableView({
                     const deletable = canDelete(plan);
                     const draggable = editable;
                     const isBeingDragged = draggingPlan?.id === plan.id;
+                    const options = statusOptionsFor(plan);
+                    const canChangeStatus = options.length > 0;
+                    const isDropdownOpen = openStatusDropdownPlanId === plan.id;
 
                     return (
                       <div
@@ -218,7 +237,7 @@ export default function WeeklyPlansTableView({
                           draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
                         } ${isBeingDragged ? "opacity-40" : ""}`}
                       >
-                        {/* Left: Drag grip + Target Dot + Title + Description icon + Attachment icon */}
+                        {/* Left: Drag grip + Clickable Target Dot + Title + Description icon + Attachment icon */}
                         <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
                           {/* Drag handle */}
                           {draggable && (
@@ -237,18 +256,85 @@ export default function WeeklyPlansTableView({
                             </span>
                           )}
 
-                          {/* Target / status dot */}
+                          {/* Clickable Target / Status Dot with Dropdown Menu */}
                           <div
-                            className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 border"
-                            style={{
-                              borderColor: `${meta.dot}60`,
-                              backgroundColor: `${meta.dot}15`,
-                            }}
+                            className="relative shrink-0"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <div
-                              className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: meta.dot }}
-                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!canChangeStatus) return;
+                                setOpenStatusDropdownPlanId(isDropdownOpen ? null : plan.id);
+                              }}
+                              disabled={!canChangeStatus}
+                              title={
+                                canChangeStatus
+                                  ? `Status: ${meta.label}. Click to change status`
+                                  : `Status: ${meta.label}`
+                              }
+                              className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                                canChangeStatus
+                                  ? "cursor-pointer hover:scale-110 hover:ring-2 hover:ring-[var(--sys-primary)]/40 active:scale-95"
+                                  : "cursor-default"
+                              }`}
+                              style={{
+                                borderColor: `${meta.dot}70`,
+                                backgroundColor: `${meta.dot}18`,
+                                borderWidth: 1,
+                              }}
+                            >
+                              <div
+                                className="w-2 h-2 rounded-full transition-transform"
+                                style={{ backgroundColor: meta.dot }}
+                              />
+                            </button>
+
+                            {/* Dropdown Menu for selecting Status */}
+                            {isDropdownOpen && (
+                              <div
+                                ref={dropdownRef}
+                                className="absolute left-0 top-full mt-2 z-50 min-w-44 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100"
+                              >
+                                <div className="px-3 py-1.5 border-b border-gray-100 dark:border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                  Change Status
+                                </div>
+                                <div className="py-1">
+                                  {options.map((option) => {
+                                    const optMeta = weeklyPlanStatusMeta(option.value);
+                                    const isCurrent = option.value === plan.status;
+                                    return (
+                                      <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenStatusDropdownPlanId(null);
+                                          onStatusChange(plan, option.value);
+                                        }}
+                                        className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 ${
+                                          isCurrent
+                                            ? "text-slate-900 dark:text-white font-bold bg-slate-50 dark:bg-slate-800/60"
+                                            : "text-slate-600 dark:text-slate-300"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <span
+                                            className="w-2 h-2 rounded-full shrink-0"
+                                            style={{ backgroundColor: optMeta.dot }}
+                                          />
+                                          <span>{option.label}</span>
+                                        </div>
+                                        {isCurrent && (
+                                          <svg className="w-3.5 h-3.5 text-[var(--sys-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                          </svg>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           {/* Title & optional Module / Status Pill context */}
@@ -372,7 +458,7 @@ export default function WeeklyPlansTableView({
 
                 {/* "+ Add Task" bottom row */}
                 {onCreatePlanForWeek && (
-                  <div className="px-6 py-2.5 bg-slate-50/40 dark:bg-slate-900/30">
+                  <div className="px-6 py-2.5 bg-slate-50/40 dark:bg-slate-900/30 rounded-b-2xl">
                     <button
                       type="button"
                       onClick={() => onCreatePlanForWeek({ start: weekStart, end: weekEnd })}
