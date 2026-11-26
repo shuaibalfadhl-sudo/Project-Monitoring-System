@@ -38,6 +38,8 @@ export default async function DevWorkspacePage() {
           description,
           priority,
           status,
+          created_at,
+          updated_at,
           deadline,
           category,
           platform,
@@ -47,8 +49,6 @@ export default async function DevWorkspacePage() {
           module_document_url,
           website_link,
           qa_result_document_url,
-          qa_remarks,
-          developer_feedback,
           prototype
         )
       `);
@@ -85,6 +85,8 @@ export default async function DevWorkspacePage() {
             description,
             priority,
             status,
+            created_at,
+            updated_at,
             deadline,
             category,
             platform,
@@ -94,8 +96,6 @@ export default async function DevWorkspacePage() {
             module_document_url,
             website_link,
             qa_result_document_url,
-            qa_remarks,
-            developer_feedback,
             prototype
           )
         )
@@ -144,7 +144,6 @@ export default async function DevWorkspacePage() {
       <DevWorkspaceClient
         initialModules={devModules}
         isSuperAdmin={profile.role === "super_admin"}
-        canSubmitFeedback={profile.role === "developer" || profile.role === "super_admin"}
       />
     </div>
   );

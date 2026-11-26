@@ -8,12 +8,18 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import StatusHistorySection from "@/components/modules/StatusHistorySection";
+import ModuleFeedbackList from "@/components/weekly-plans/ModuleFeedbackList";
+import ModuleFeedbackForm from "@/components/modules/ModuleFeedbackForm";
+import { submitModuleStatusWithFeedback } from "@/lib/moduleFeedback";
+import type { ModuleFeedbackDraft } from "@/types/moduleFeedback";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import QaResultCard from "@/components/modules/QaResultCard";
 import PrototypeSection from "@/components/modules/PrototypeSection";
 import { statusLabel as registryStatusLabel, statusBadgeClass, STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
+import ModuleSortSelect from "@/components/ui/ModuleSortSelect";
+import { sortModuleList, type ModuleSortOrder } from "@/lib/moduleSorting";
 
 interface DevModule {
   id: string;
@@ -21,6 +27,8 @@ interface DevModule {
   description: string | null;
   priority: string;
   status: string;
+  created_at?: string | null;
+  updated_at?: string | null;
   deadline?: string | null;
   category?: string | null;
   platform?: string | null;
@@ -30,8 +38,6 @@ interface DevModule {
   module_document_url?: string | null;
   website_link?: string | null;
   qa_result_document_url?: string | null;
-  qa_remarks?: string | null;
-  developer_feedback?: string | null;
   prototype?: string | null;
   project: {
     id: string;
@@ -42,14 +48,14 @@ interface DevModule {
 interface DevWorkspaceClientProps {
   initialModules: DevModule[];
   isSuperAdmin?: boolean;
-  canSubmitFeedback?: boolean;
 }
 
-export default function DevWorkspaceClient({ initialModules, isSuperAdmin = false, canSubmitFeedback = false }: DevWorkspaceClientProps) {
+export default function DevWorkspaceClient({ initialModules, isSuperAdmin = false }: DevWorkspaceClientProps) {
   const [modules, setModules] = useState<DevModule[]>(initialModules);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<ModuleSortOrder>("default");
   const [projectFilter, setProjectFilter] = useState("all");
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
@@ -66,10 +72,15 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
   } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [feedbackDraft, setFeedbackDraft] = useState("");
+  const [moduleFeedbackDraft, setModuleFeedbackDraft] = useState<ModuleFeedbackDraft>({ text: "", files: [] });
 
   const router = useRouter();
   const supabase = createClient();
+
+  const closeModuleDetails = () => {
+    setSelectedModule(null);
+    setModuleFeedbackDraft({ text: "", files: [] });
+  };
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -105,25 +116,19 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
     const { module: mod, newStatus, actionLabel } = statusChangeTarget;
     setSubmittingId(mod.id);
     try {
-      const payload: Record<string, any> = { status: newStatus };
-      if (newStatus === "pm_review" && canSubmitFeedback) {
-        const trimmed = feedbackDraft.trim();
-        payload.developer_feedback = trimmed === "" ? null : trimmed;
-      }
+      const payload = { status: newStatus };
 
-      const { error } = await supabase
-        .from("project_modules")
-        .update(payload)
-        .eq("id", mod.id);
+      await submitModuleStatusWithFeedback(supabase, {
+        moduleId: mod.id,
+        draft: newStatus === "pm_review" ? moduleFeedbackDraft : { text: "", files: [] },
+        updateStatus: () =>
+          supabase
+            .from("project_modules")
+            .update(payload)
+            .eq("id", mod.id),
+      });
 
-      if (error) {
-        if (error.code === "42703" && String(error.message).toLowerCase().includes("developer_feedback")) {
-          throw new Error(
-            "The database rejected the update: the developer_feedback column is missing from project_modules. Ask an admin to run the schema change, then retry."
-          );
-        }
-        throw error;
-      }
+      setModuleFeedbackDraft({ text: "", files: [] });
 
       if (newStatus === "pm_review") {
         setModules((prev) => prev.filter((m) => m.id !== mod.id));
@@ -141,12 +146,10 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
       }
 
       setStatusChangeTarget(null);
-      setFeedbackDraft("");
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || `Failed to ${actionLabel.toLowerCase()}.`);
-      setStatusChangeTarget(null);
-      setFeedbackDraft("");
+    } catch (err: unknown) {
+      console.error("Error changing module status:", err);
+      toast.error(`Could not ${actionLabel.toLowerCase()}. Your feedback draft was kept so you can retry.`);
     } finally {
       setSubmittingId(null);
     }
@@ -154,7 +157,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
 
   const openStatusModal = (mod: DevModule) => {
     const act = nextAction(mod);
-    setFeedbackDraft(act.newStatus === "pm_review" ? mod.developer_feedback ?? "" : "");
+    setModuleFeedbackDraft({ text: "", files: [] });
     setStatusChangeTarget({ module: mod, newStatus: act.newStatus, actionLabel: act.actionLabel });
   };
 
@@ -207,16 +210,19 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const filtered = modules.filter((m) => {
-    const term = searchTerm.toLowerCase();
-    const matchSearch = m.name.toLowerCase().includes(term) ||
-      m.project.name.toLowerCase().includes(term) ||
-      (m.assigned_developer_name?.toLowerCase().includes(term) ?? false);
-    const matchStatus = statusFilter === "all" || m.status === statusFilter;
-    const matchPriority = priorityFilter === "all" || m.priority === priorityFilter;
-    const matchProject = projectFilter === "all" || m.project.id === projectFilter;
-    return matchSearch && matchStatus && matchPriority && matchProject;
-  });
+  const filtered = sortModuleList(
+    modules.filter((m) => {
+      const term = searchTerm.toLowerCase();
+      const matchSearch = m.name.toLowerCase().includes(term) ||
+        m.project.name.toLowerCase().includes(term) ||
+        (m.assigned_developer_name?.toLowerCase().includes(term) ?? false);
+      const matchStatus = statusFilter === "all" || m.status === statusFilter;
+      const matchPriority = priorityFilter === "all" || m.priority === priorityFilter;
+      const matchProject = projectFilter === "all" || m.project.id === projectFilter;
+      return matchSearch && matchStatus && matchPriority && matchProject;
+    }),
+    sortOrder,
+  );
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -371,6 +377,15 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+
+          <ModuleSortSelect
+            value={sortOrder}
+            onChange={(value) => {
+              setSortOrder(value);
+              setCurrentPage(1);
+            }}
+            accentClass="focus:ring-blue-500"
+          />
         </div>
       </div>
 
@@ -532,7 +547,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
       {selectedModule && mounted && createPortal(
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-          onClick={() => setSelectedModule(null)}
+          onClick={closeModuleDetails}
         >
           <div
             className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl sm:max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 dark:border-slate-800"
@@ -545,7 +560,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
                 <p className="text-sm font-semibold text-gray-500 dark:text-slate-400 mt-1">{selectedModule.project.name}</p>
               </div>
               <button
-                onClick={() => setSelectedModule(null)}
+                onClick={closeModuleDetails}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -718,11 +733,19 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
                 canPreview={false}
               />
 
-              {/* QA Result: document + remarks */}
-              <QaResultCard
-                documentUrl={selectedModule.qa_result_document_url}
-                remarks={selectedModule.qa_remarks}
-              />
+              <QaResultCard documentUrl={selectedModule.qa_result_document_url} />
+
+              {/* Module Feedback */}
+              <div className="mt-6">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white mb-4">
+                  Module Feedback
+                </h3>
+                <ModuleFeedbackList
+                  key={`${selectedModule.id}:${selectedModule.status}`}
+                  moduleId={selectedModule.id}
+                  limit={1}
+                />
+              </div>
 
               {/* QA Document History */}
               <DocumentHistorySection moduleId={selectedModule.id} />
@@ -732,7 +755,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
             {/* Modal Footer */}
             <div className="p-6 border-t border-gray-100 dark:border-slate-800 bg-gray-50/30 dark:bg-slate-900 flex justify-end gap-3">
               <button
-                onClick={() => setSelectedModule(null)}
+                onClick={closeModuleDetails}
                 className="px-5 py-2.5 text-sm font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-xl transition-colors"
               >
                 Close
@@ -758,7 +781,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
       {/* Confirmation Modal */}
       <ConfirmStatusModal
         isOpen={!!statusChangeTarget}
-        onClose={() => { setStatusChangeTarget(null); setFeedbackDraft(""); }}
+        onClose={() => setStatusChangeTarget(null)}
         onConfirm={handleConfirmStatusChange}
         isLoading={!!submittingId}
         title={statusChangeTarget?.actionLabel ?? "Confirm"}
@@ -795,21 +818,14 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
             : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20"
         }
       >
-        {statusChangeTarget?.newStatus === "pm_review" && canSubmitFeedback && (
+        {statusChangeTarget?.newStatus === "pm_review" && (
           <div className="mb-6 text-left">
-            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Feedback for PM <span className="normal-case font-medium">(optional)</span>
-            </label>
-            <textarea
-              rows={4}
-              value={feedbackDraft}
-              onChange={(e) => setFeedbackDraft(e.target.value)}
-              placeholder="Notes for the project manager about this module..."
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            <ModuleFeedbackForm
+              key={statusChangeTarget.module.id}
+              draft={moduleFeedbackDraft}
+              onDraftChange={setModuleFeedbackDraft}
+              busy={!!submittingId}
             />
-            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
-              Saved with this submission only. Leave empty to clear.
-            </p>
           </div>
         )}
       </ConfirmStatusModal>

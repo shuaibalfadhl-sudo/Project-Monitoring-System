@@ -12,10 +12,11 @@ interface PendingFile {
 
 interface FeedbackFilePickerProps {
   busy?: boolean;
+  embedded?: boolean;
   onChange: (files: File[]) => void;
 }
 
-export default function FeedbackFilePicker({ busy = false, onChange }: FeedbackFilePickerProps) {
+export default function FeedbackFilePicker({ busy = false, embedded = false, onChange }: FeedbackFilePickerProps) {
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [viewer, setViewer] = useState<{ src: string; name: string } | null>(null);
   const pendingRef = useRef<PendingFile[]>([]);
@@ -78,11 +79,15 @@ export default function FeedbackFilePicker({ busy = false, onChange }: FeedbackF
   };
 
   return (
-    <div>
-      <div className="flex flex-wrap items-start gap-2.5 mt-3">
+    <div className={embedded ? "px-3 pb-3" : undefined}>
+      <div className={`flex flex-wrap items-start gap-2.5 ${embedded ? "pt-3" : "mt-3"}`}>
         <label
           title="Attach files"
-          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 cursor-pointer transition-colors hover:border-[var(--sys-primary)] hover:text-[var(--sys-primary-text)] ${
+          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border text-slate-400 cursor-pointer transition-colors hover:border-[var(--sys-primary)] hover:text-[var(--sys-primary-text)] ${
+            embedded
+              ? "border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+              : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+          } ${
             busy ? "opacity-50 pointer-events-none" : ""
           }`}
         >
@@ -159,14 +164,16 @@ export default function FeedbackFilePicker({ busy = false, onChange }: FeedbackF
           );
         })}
       </div>
-      <p className="text-[11px] font-medium text-slate-400 mt-2.5">
-        {pending.length > 0 && (
-          <span className="font-bold text-slate-500 dark:text-slate-300">
-            {pending.length} {pending.length === 1 ? "file" : "files"} attached ·{" "}
-          </span>
-        )}
-        Images and documents, up to 20 MB each. Click a file to view it, × to remove.
-      </p>
+      {!embedded && (
+        <p className="text-[11px] font-medium text-slate-400 mt-2.5">
+          {pending.length > 0 && (
+            <span className="font-bold text-slate-500 dark:text-slate-300">
+              {pending.length} {pending.length === 1 ? "file" : "files"} attached ·{" "}
+            </span>
+          )}
+          Images and documents, up to 20 MB each. Click a file to view it, × to remove.
+        </p>
+      )}
       {viewer && (
         <AvatarViewer
           src={viewer.src}

@@ -27,9 +27,10 @@ export default async function ModuleReviewPage() {
         description,
         priority,
         status,
+        created_at,
+        updated_at,
         module_document_url,
         qa_result_document_url,
-        qa_remarks,
         qa_acknowledged_at,
         qa_acknowledged_by,
         qa_result_acknowledged_at,
@@ -40,8 +41,7 @@ export default async function ModuleReviewPage() {
         category,
         platform,
         workstream,
-        on_hold_remarks,
-        developer_feedback
+        on_hold_remarks
       )
     `)
 

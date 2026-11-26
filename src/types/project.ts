@@ -29,7 +29,6 @@ export interface ProjectModule {
   qa_result_acknowledged_by_name?: string | null
   module_document_url?: string | null
   qa_result_document_url?: string | null
-  qa_remarks?: string | null
   assigned_developer_id?: string | null
   assigned_developer_name?: string | null
   category?: string | null
@@ -39,7 +38,6 @@ export interface ProjectModule {
   deadline?: string | null
   development_date?: string | null
   website_link?: string | null
-  developer_feedback?: string | null
   on_hold_remarks?: string | null
   prototype?: string | null
 }

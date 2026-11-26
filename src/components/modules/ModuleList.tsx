@@ -1255,11 +1255,7 @@ export default function ModuleList({
                 canPreview={false}
               />
 
-              {/* QA Result: document + remarks */}
-              <QaResultCard
-                documentUrl={selectedModule.qa_result_document_url}
-                remarks={selectedModule.qa_remarks}
-              />
+              <QaResultCard documentUrl={selectedModule.qa_result_document_url} />
 
               {(selectedModule.qa_acknowledged_at ||
                 selectedModule.qa_result_acknowledged_at) && (

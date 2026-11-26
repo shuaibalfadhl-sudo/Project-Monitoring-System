@@ -9,17 +9,16 @@ import { toast } from "sonner";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import StatusHistorySection from "@/components/modules/StatusHistorySection";
+import ModuleFeedbackList from "@/components/weekly-plans/ModuleFeedbackList";
+import ModuleFeedbackForm from "@/components/modules/ModuleFeedbackForm";
+import { submitModuleStatusWithFeedback } from "@/lib/moduleFeedback";
+import type { ModuleFeedbackDraft } from "@/types/moduleFeedback";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import PrototypeSection from "@/components/modules/PrototypeSection";
 import { STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
-
-const PRIORITY_RANK: Record<string, number> = {
-  critical: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
-};
+import ModuleSortSelect from "@/components/ui/ModuleSortSelect";
+import { sortModuleList, type ModuleSortOrder } from "@/lib/moduleSorting";
 
 interface QaModule {
   id: string;
@@ -29,14 +28,12 @@ interface QaModule {
   status: string;
   module_document_url?: string | null;
   qa_result_document_url?: string | null;
-  qa_remarks?: string | null;
   website_link?: string | null;
   prototype?: string | null;
   qa_acknowledged_by?: string | null;
   auditor_name?: string | null;
   assigned_developer_id?: string | null;
   assigned_developer_name?: string | null;
-  developer_feedback?: string | null;
   platform?: string | null;
   workstream?: string | null;
   on_hold_remarks?: string | null;
@@ -51,12 +48,10 @@ interface QaModule {
 
 interface QaMonitoringClientProps {
   initialModules: QaModule[];
-  projects?: { id: string; name: string }[];
 }
 
 export default function QaMonitoringClient({
   initialModules,
-  projects = [],
 }: QaMonitoringClientProps) {
   const [modules, setModules] = useState<QaModule[]>(initialModules);
   const [mounted, setMounted] = useState(false);
@@ -73,7 +68,7 @@ export default function QaMonitoringClient({
   const [copiedLink, setCopiedLink] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState("default");
+  const [sortOrder, setSortOrder] = useState<ModuleSortOrder>("default");
   const [projectFilter, setProjectFilter] = useState("all");
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
@@ -132,12 +127,12 @@ export default function QaMonitoringClient({
 
   const [newStatus, setNewStatus] = useState<string>("");
   const [reworkLink, setReworkLink] = useState<string>("");
-  const [qaRemarks, setQaRemarks] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showAckConfirm, setShowAckConfirm] = useState(false);
   const [ackTarget, setAckTarget] = useState<QaModule | null>(null);
   const [error, setError] = useState("");
+  const [feedbackDraft, setFeedbackDraft] = useState<ModuleFeedbackDraft>({ text: "", files: [] });
 
   const router = useRouter();
   const supabase = createClient();
@@ -159,8 +154,8 @@ export default function QaMonitoringClient({
     setSelectedModule(mod);
     setNewStatus("");
     setReworkLink("");
-    setQaRemarks("");
     setError("");
+    setFeedbackDraft({ text: "", files: [] });
   };
 
   const closeModal = () => {
@@ -168,8 +163,8 @@ export default function QaMonitoringClient({
     setCopiedLink(false);
     setNewStatus("");
     setReworkLink("");
-    setQaRemarks("");
     setError("");
+    setFeedbackDraft({ text: "", files: [] });
     setShowConfirmModal(false);
   };
 
@@ -243,17 +238,19 @@ export default function QaMonitoringClient({
       const isForRevision = newStatus === "for revision" || newStatus === "for_revision";
       const trimmedLink = reworkLink.trim();
 
-      const { error: updateError } = await supabase
-        .from("project_modules")
-        .update({
-          status: newStatus,
-          qa_result_document_url:
-            isForRevision && trimmedLink ? trimmedLink : null,
-          qa_remarks: qaRemarks.trim() || null,
-        })
-        .eq("id", selectedModule.id);
-
-      if (updateError) throw updateError;
+      await submitModuleStatusWithFeedback(supabase, {
+        moduleId: selectedModule.id,
+        draft: feedbackDraft,
+        updateStatus: () =>
+          supabase
+            .from("project_modules")
+            .update({
+              status: newStatus,
+              qa_result_document_url:
+                isForRevision && trimmedLink ? trimmedLink : null,
+            })
+            .eq("id", selectedModule.id),
+      });
 
       // When marking for revision, record the document URL in qa_document_history
       if (isForRevision && trimmedLink) {
@@ -282,8 +279,9 @@ export default function QaMonitoringClient({
       setShowConfirmModal(false);
       closeModal();
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || "An error occurred while updating the module.");
+    } catch (err: unknown) {
+      console.error("Error saving QA decision:", err);
+      setError("Could not save the decision. Your feedback draft was kept so you can retry.");
       setShowConfirmModal(false);
     } finally {
       setIsSubmitting(false);
@@ -319,31 +317,29 @@ export default function QaMonitoringClient({
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const filteredModules = modules.filter((m) => {
-    const matchesSearch =
-      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || m.status === statusFilter;
-    const matchesProject =
-      projectFilter === "all" || m.project.id === projectFilter;
-    const matchesAcknowledger =
-      ackFilter === "all" || m.qa_acknowledged_by === ackFilter;
-    return matchesSearch && matchesStatus && matchesProject && matchesAcknowledger;
-  });
+  const projectOptions = Array.from(
+    new Map(
+      modules.map((module) => [module.project.id, module.project.name] as [string, string]),
+    ).entries(),
+  )
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
-  // "Default" preserves the server queue order: auditing first, then priority, then recency.
-  if (sortOrder !== "default") {
-    filteredModules.sort((a, b) => {
-      if (sortOrder === "priority_high" || sortOrder === "priority_low") {
-        const diff = (PRIORITY_RANK[a.priority] ?? 4) - (PRIORITY_RANK[b.priority] ?? 4);
-        return sortOrder === "priority_high" ? diff : -diff;
-      }
-      const diff =
-        (Date.parse(a.updated_at ?? "") || 0) - (Date.parse(b.updated_at ?? "") || 0);
-      return sortOrder === "newest" ? -diff : diff;
-    });
-  }
+  const filteredModules = sortModuleList(
+    modules.filter((m) => {
+      const matchesSearch =
+        m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.project.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus =
+        statusFilter === "all" || m.status === statusFilter;
+      const matchesProject =
+        projectFilter === "all" || m.project.id === projectFilter;
+      const matchesAcknowledger =
+        ackFilter === "all" || m.qa_acknowledged_by === ackFilter;
+      return matchesSearch && matchesStatus && matchesProject && matchesAcknowledger;
+    }),
+    sortOrder,
+  );
 
   return (
     <div className="w-full bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
@@ -436,7 +432,7 @@ export default function QaMonitoringClient({
               <span className="truncate">
                 {projectFilter === "all"
                   ? "All Projects"
-                  : projects.find((p) => p.id === projectFilter)?.name || "All Projects"}
+                  : projectOptions.find((p) => p.id === projectFilter)?.name || "All Projects"}
               </span>
               <svg
                 className={`w-4 h-4 shrink-0 text-gray-500 dark:text-slate-400 transition-transform ${isProjectDropdownOpen ? "rotate-180" : ""}`}
@@ -472,7 +468,7 @@ export default function QaMonitoringClient({
                   >
                     All Projects
                   </button>
-                  {projects
+                  {projectOptions
                     .filter((p) => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
                     .map((p) => (
                       <button
@@ -489,7 +485,7 @@ export default function QaMonitoringClient({
                         {p.name}
                       </button>
                     ))}
-                  {projects.filter((p) => p.name.toLowerCase().includes(projectSearch.toLowerCase())).length === 0 && (
+                  {projectOptions.filter((p) => p.name.toLowerCase().includes(projectSearch.toLowerCase())).length === 0 && (
                     <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-slate-400 font-medium">
                       No projects found.
                     </div>
@@ -586,20 +582,14 @@ export default function QaMonitoringClient({
             ))}
           </select>
 
-          <select
-            className="w-full sm:w-48 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
+          <ModuleSortSelect
             value={sortOrder}
-            onChange={(e) => {
-              setSortOrder(e.target.value);
+            onChange={(value) => {
+              setSortOrder(value);
               setCurrentPage(1);
             }}
-          >
-            <option value="default">Default order</option>
-            <option value="newest">Newest to oldest</option>
-            <option value="oldest">Oldest to newest</option>
-            <option value="priority_high">Priority: High to Low</option>
-            <option value="priority_low">Priority: Low to High</option>
-          </select>
+            accentClass="focus:ring-amber-500"
+          />
         </div>
       </div>
 
@@ -1020,28 +1010,6 @@ export default function QaMonitoringClient({
                 canManage={false}
               />
 
-              {/* Developer Feedback (read-only) */}
-              <div>
-                <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                  Developer Feedback
-                </h3>
-                {selectedModule.developer_feedback ? (
-                  <div className="bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-900/30 space-y-2">
-                    {String(selectedModule.developer_feedback).split("\n").map((line: string, i: number) =>
-                      line.trim() === "" ? (
-                        <div key={i} className="h-2" />
-                      ) : (
-                        <p key={i} className="text-sm text-slate-700 dark:text-slate-300 leading-7">{line}</p>
-                      )
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm font-medium text-gray-400 dark:text-slate-500 italic">
-                    No developer feedback provided.
-                  </p>
-                )}
-              </div>
-
               {selectedModule.status === "for_qa" ? (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
                   <h3 className="text-amber-800 font-bold mb-2">
@@ -1156,21 +1124,14 @@ export default function QaMonitoringClient({
                     </div>
                   )}
 
-                  {newStatus && (
-                    <div className="pt-2">
-                      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                        QA Remarks
-                      </h3>
-                      <textarea
-                        value={qaRemarks}
-                        onChange={(e) => setQaRemarks(e.target.value)}
-                        rows={3}
-                        maxLength={2000}
-                        placeholder="Notes from this QA review, saved with the audit result"
-                        className="w-full p-4 rounded-xl border-2 border-gray-200 bg-gray-50/50 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium text-slate-800 resize-y"
-                      />
-                    </div>
-                  )}
+                  <div className="pt-2">
+                    <ModuleFeedbackForm
+                      draft={feedbackDraft}
+                      onDraftChange={setFeedbackDraft}
+                      busy={isSubmitting}
+                    />
+                  </div>
+
                 </>
               )}
 
@@ -1195,6 +1156,15 @@ export default function QaMonitoringClient({
 
               {/* QA Document History */}
               <DocumentHistorySection moduleId={selectedModule.id} />
+
+              {/* Module Feedback */}
+              <div className="mt-6">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white mb-3">
+                  Module Feedback
+                </h3>
+                <ModuleFeedbackList moduleId={selectedModule.id} limit={1} />
+              </div>
+
               <StatusHistorySection moduleId={selectedModule.id} />
             </div>
 
