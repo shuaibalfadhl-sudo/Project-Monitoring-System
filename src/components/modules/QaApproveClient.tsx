@@ -7,6 +7,9 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
+import ModuleFeedbackList from "@/components/weekly-plans/ModuleFeedbackList";
+import ModuleSortSelect from "@/components/ui/ModuleSortSelect";
+import { sortModuleList, type ModuleSortOrder } from "@/lib/moduleSorting";
 
 export default function QaApproveClient({
   initialModules,
@@ -16,6 +19,7 @@ export default function QaApproveClient({
   const [modules, setModules] = useState(initialModules);
   const [searchTerm, setSearchTerm] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<ModuleSortOrder>("default");
   const [projectFilter, setProjectFilter] = useState("all");
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
@@ -84,9 +88,9 @@ export default function QaApproveClient({
       setConfirmTarget(null);
       toast.success("Module moved to Deployment");
       router.refresh();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to start deployment");
-      setConfirmTarget(null);
+    } catch (error) {
+      console.error("Error starting deployment:", error);
+      toast.error("Could not start deployment. Please try again.");
     } finally {
       setLoadingId(null);
     }
@@ -113,15 +117,18 @@ export default function QaApproveClient({
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const filteredModules = modules.filter((m: any) => {
-    const matchesSearch =
-      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (m.auditor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-    const matchesPriority = priorityFilter === "all" || m.priority === priorityFilter;
-    const matchesProject = projectFilter === "all" || m.project.id === projectFilter;
-    return matchesSearch && matchesPriority && matchesProject;
-  });
+  const filteredModules = sortModuleList(
+    modules.filter((m: any) => {
+      const matchesSearch =
+        m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.auditor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+      const matchesPriority = priorityFilter === "all" || m.priority === priorityFilter;
+      const matchesProject = projectFilter === "all" || m.project.id === projectFilter;
+      return matchesSearch && matchesPriority && matchesProject;
+    }),
+    sortOrder,
+  );
 
   const totalPages = Math.ceil(filteredModules.length / itemsPerPage);
   const paginatedModules = filteredModules.slice(
@@ -277,6 +284,15 @@ export default function QaApproveClient({
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+
+          <ModuleSortSelect
+            value={sortOrder}
+            onChange={(value) => {
+              setSortOrder(value);
+              setCurrentPage(1);
+            }}
+            accentClass="focus:ring-emerald-500"
+          />
         </div>
       </div>
 
@@ -499,7 +515,16 @@ export default function QaApproveClient({
         }
         confirmText="Start Deployment"
         confirmButtonClass="bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20"
-      />
+      >
+        {confirmTarget && (
+          <div className="mt-4">
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white mb-3">
+              Module Feedback
+            </h3>
+            <ModuleFeedbackList moduleId={confirmTarget.id} limit={1} />
+          </div>
+        )}
+      </ConfirmStatusModal>
     </div>
   );
 }

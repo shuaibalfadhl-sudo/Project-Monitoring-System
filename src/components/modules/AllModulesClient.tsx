@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import StatusHistorySection from "@/components/modules/StatusHistorySection";
+import ModuleFeedbackList from "@/components/weekly-plans/ModuleFeedbackList";
 import EditModuleModal from "@/components/modules/EditModuleModal";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonModal from "@/components/modules/OnHoldReasonModal";
@@ -15,6 +16,8 @@ import QaResultCard from "@/components/modules/QaResultCard";
 import PrototypeSection from "@/components/modules/PrototypeSection";
 import ExcelJS from "exceljs";
 import SearchableSelect from "@/components/ui/SearchableSelect";
+import ModuleSortSelect from "@/components/ui/ModuleSortSelect";
+import { sortModuleList, type ModuleSortOrder } from "@/lib/moduleSorting";
 import {
   STATUS_GROUPS,
   statusesIn,
@@ -41,6 +44,7 @@ export default function AllModulesClient({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<ModuleSortOrder>("default");
   const [projectFilter, setProjectFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -128,18 +132,21 @@ export default function AllModulesClient({
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [initialModules]);
 
-  const filteredModules = initialModules.filter((m: any) => {
-    const matchesSearch =
-      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (m.assigned_developer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-    const matchesStatus = statusFilter === "all" || m.status === statusFilter;
-    const matchesPriority =
-      priorityFilter === "all" || m.priority === priorityFilter;
-    const matchesProject =
-      projectFilter === "all" || m.project?.id === projectFilter;
-    return matchesSearch && matchesStatus && matchesPriority && matchesProject;
-  });
+  const filteredModules = sortModuleList(
+    initialModules.filter((m: any) => {
+      const matchesSearch =
+        m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.assigned_developer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+      const matchesStatus = statusFilter === "all" || m.status === statusFilter;
+      const matchesPriority =
+        priorityFilter === "all" || m.priority === priorityFilter;
+      const matchesProject =
+        projectFilter === "all" || m.project?.id === projectFilter;
+      return matchesSearch && matchesStatus && matchesPriority && matchesProject;
+    }),
+    sortOrder,
+  );
 
   const totalPages = Math.ceil(filteredModules.length / itemsPerPage);
   const paginatedModules = filteredModules.slice(
@@ -516,6 +523,14 @@ export default function AllModulesClient({
           <option value="medium">Medium</option>
           <option value="low">Low</option>
         </select>
+
+        <ModuleSortSelect
+          value={sortOrder}
+          onChange={(value) => {
+            setSortOrder(value);
+            setCurrentPage(1);
+          }}
+        />
 
         <SearchableSelect
           className="w-full sm:w-52"
@@ -1045,11 +1060,7 @@ export default function AllModulesClient({
                 canPreview={false}
               />
 
-              {/* QA Result: document + remarks */}
-              <QaResultCard
-                documentUrl={selectedModule.qa_result_document_url}
-                remarks={selectedModule.qa_remarks}
-              />
+              <QaResultCard documentUrl={selectedModule.qa_result_document_url} />
 
               {/* Workflow Acknowledgements - always visible */}
               <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
@@ -1122,6 +1133,13 @@ export default function AllModulesClient({
               {/* Document History */}
               <DocumentHistorySection moduleId={selectedModule.id} />
               <StatusHistorySection moduleId={selectedModule.id} />
+              {/* Module Feedback */}
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
+                  Module Feedback
+                </h3>
+                <ModuleFeedbackList moduleId={selectedModule.id} hideWhenEmpty={true} limit={1} />
+              </div>
             </div>
 
             <div className="p-6 border-t border-slate-100 dark:border-slate-700 flex justify-end">

@@ -26,6 +26,8 @@ export default async function QaApprovePage() {
         description,
         priority,
         status,
+        created_at,
+        updated_at,
         module_document_url,
         qa_result_document_url,
         qa_acknowledged_at,

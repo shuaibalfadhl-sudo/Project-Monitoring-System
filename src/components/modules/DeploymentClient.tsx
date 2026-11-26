@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
+import ModuleSortSelect from "@/components/ui/ModuleSortSelect";
+import { sortModuleList, type ModuleSortOrder } from "@/lib/moduleSorting";
 
 export default function DeploymentClient({
   initialModules,
@@ -16,6 +18,7 @@ export default function DeploymentClient({
   const [modules, setModules] = useState(initialModules);
   const [searchTerm, setSearchTerm] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<ModuleSortOrder>("default");
   const [projectFilter, setProjectFilter] = useState("all");
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
@@ -128,17 +131,20 @@ export default function DeploymentClient({
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const filteredModules = modules.filter((m: any) => {
-    const matchesSearch =
-      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (m.auditor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-    const matchesPriority =
-      priorityFilter === "all" || m.priority === priorityFilter;
-    const matchesProject =
-      projectFilter === "all" || m.project.id === projectFilter;
-    return matchesSearch && matchesPriority && matchesProject;
-  });
+  const filteredModules = sortModuleList(
+    modules.filter((m: any) => {
+      const matchesSearch =
+        m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.auditor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+      const matchesPriority =
+        priorityFilter === "all" || m.priority === priorityFilter;
+      const matchesProject =
+        projectFilter === "all" || m.project.id === projectFilter;
+      return matchesSearch && matchesPriority && matchesProject;
+    }),
+    sortOrder,
+  );
 
   const totalPages = Math.ceil(filteredModules.length / itemsPerPage);
   const paginatedModules = filteredModules.slice(
@@ -297,6 +303,15 @@ export default function DeploymentClient({
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+
+          <ModuleSortSelect
+            value={sortOrder}
+            onChange={(value) => {
+              setSortOrder(value);
+              setCurrentPage(1);
+            }}
+            accentClass="focus:ring-purple-500"
+          />
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-transparent dark:border-slate-700 overflow-hidden">

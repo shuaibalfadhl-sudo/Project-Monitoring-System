@@ -8,10 +8,16 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import DocumentHistorySection from "@/components/modules/DocumentHistorySection";
 import StatusHistorySection from "@/components/modules/StatusHistorySection";
+import ModuleFeedbackList from "@/components/weekly-plans/ModuleFeedbackList";
+import ModuleFeedbackForm from "@/components/modules/ModuleFeedbackForm";
+import { submitModuleStatusWithFeedback } from "@/lib/moduleFeedback";
+import type { ModuleFeedbackDraft } from "@/types/moduleFeedback";
 import ConfirmStatusModal from "@/components/modules/ConfirmStatusModal";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import QaResultCard from "@/components/modules/QaResultCard";
+import ModuleSortSelect from "@/components/ui/ModuleSortSelect";
+import { sortModuleList, type ModuleSortOrder } from "@/lib/moduleSorting";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -36,6 +42,7 @@ export default function ModuleReviewClient({
 
   const [searchTerm, setSearchTerm] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<ModuleSortOrder>("default");
   const [projectFilter, setProjectFilter] = useState("all");
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
@@ -55,6 +62,7 @@ export default function ModuleReviewClient({
   const [moduleDocDraft, setModuleDocDraft] = useState<string>("");
   const [projectDevs, setProjectDevs] = useState<{ id: string; full_name: string }[]>([]);
   const [loadingDevs, setLoadingDevs] = useState(false);
+  const [feedbackDraft, setFeedbackDraft] = useState<ModuleFeedbackDraft>({ text: "", files: [] });
 
   const supabase = createClient();
   const router = useRouter();
@@ -88,8 +96,15 @@ export default function ModuleReviewClient({
     };
   }, [supabase, router]);
 
+  const closeReviewModal = () => {
+    setSelectedModule(null);
+    setShowConfirmModal(false);
+    setFeedbackDraft({ text: "", files: [] });
+  };
+
   const handleOpenReview = async (mod: any) => {
     setSelectedModule(mod);
+    setFeedbackDraft({ text: "", files: [] });
     setReviewStatus("for_qa");
     setAssignedDevId(mod.assigned_developer_id || "");
     const deadlineVal = mod.deadline
@@ -178,12 +193,15 @@ export default function ModuleReviewClient({
         updates.module_document_url = trimmedDoc || null;
       }
 
-      const { error } = await supabase
-        .from("project_modules")
-        .update(updates)
-        .eq("id", selectedModule.id);
-
-      if (error) throw error;
+      await submitModuleStatusWithFeedback(supabase, {
+        moduleId: selectedModule.id,
+        draft: feedbackDraft,
+        updateStatus: () =>
+          supabase
+            .from("project_modules")
+            .update(updates)
+            .eq("id", selectedModule.id),
+      });
 
       toast.success(
         `Review submitted: Module status updated to "${reviewStatus === "for_qa" ? "For QA" : "Revision"}"`
@@ -191,12 +209,15 @@ export default function ModuleReviewClient({
 
       // Remove from list since it left pm_review status
       setModules((prev) => prev.filter((m) => m.id !== selectedModule.id));
-      setShowConfirmModal(false);
-      setSelectedModule(null);
+      closeReviewModal();
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to submit review.");
-      setShowConfirmModal(false);
+    } catch (err: unknown) {
+      console.error("Error submitting module review:", err);
+      const message =
+        err instanceof Error && err.message.includes("must start with")
+          ? err.message
+          : "Could not submit the review. Your feedback draft was kept so you can retry.";
+      toast.error(message);
     } finally {
       setIsSubmittingReview(false);
     }
@@ -233,18 +254,21 @@ export default function ModuleReviewClient({
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const filteredModules = modules.filter((m: any) => {
-    const matchesSearch =
-      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (m.assigned_developer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
-      (m.auditor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-    const matchesPriority =
-      priorityFilter === "all" || m.priority === priorityFilter;
-    const matchesProject =
-      projectFilter === "all" || m.project.id === projectFilter;
-    return matchesSearch && matchesPriority && matchesProject;
-  });
+  const filteredModules = sortModuleList(
+    modules.filter((m: any) => {
+      const matchesSearch =
+        m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.assigned_developer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+        (m.auditor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+      const matchesPriority =
+        priorityFilter === "all" || m.priority === priorityFilter;
+      const matchesProject =
+        projectFilter === "all" || m.project.id === projectFilter;
+      return matchesSearch && matchesPriority && matchesProject;
+    }),
+    sortOrder,
+  );
 
   const totalPages = Math.ceil(filteredModules.length / itemsPerPage);
   const paginatedModules = filteredModules.slice(
@@ -400,6 +424,15 @@ export default function ModuleReviewClient({
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+
+          <ModuleSortSelect
+            value={sortOrder}
+            onChange={(value) => {
+              setSortOrder(value);
+              setCurrentPage(1);
+            }}
+            accentClass="focus:ring-purple-500"
+          />
         </div>
       </div>
 
@@ -663,7 +696,7 @@ export default function ModuleReviewClient({
       {selectedModule && mounted && createPortal(
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-          onClick={() => setSelectedModule(null)}
+          onClick={closeReviewModal}
         >
           <div
             className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl sm:max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 dark:border-slate-800"
@@ -683,7 +716,7 @@ export default function ModuleReviewClient({
                 </p>
               </div>
               <button
-                onClick={() => setSelectedModule(null)}
+                onClick={closeReviewModal}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -848,32 +881,14 @@ export default function ModuleReviewClient({
                 </div>
               </div>
 
-              {/* QA Result: document + remarks */}
-              <QaResultCard
-                documentUrl={selectedModule.qa_result_document_url}
-                remarks={selectedModule.qa_remarks}
-              />
+              <QaResultCard documentUrl={selectedModule.qa_result_document_url} />
 
-              {/* Developer Feedback (read-only) */}
+              {/* Module Feedback */}
               <div>
-                <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                  Developer Feedback
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white mb-3">
+                  Module Feedback
                 </h3>
-                {selectedModule.developer_feedback ? (
-                  <div className="bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-900/30 space-y-2">
-                    {String(selectedModule.developer_feedback).split("\n").map((line: string, i: number) =>
-                      line.trim() === "" ? (
-                        <div key={i} className="h-2" />
-                      ) : (
-                        <p key={i} className="text-sm text-slate-700 dark:text-slate-300 leading-7">{line}</p>
-                      )
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm font-medium text-gray-400 dark:text-slate-500 italic">
-                    No developer feedback provided.
-                  </p>
-                )}
+                <ModuleFeedbackList moduleId={selectedModule.id} limit={1} />
               </div>
 
               {/* Workflow Acknowledgements */}
@@ -1009,6 +1024,14 @@ export default function ModuleReviewClient({
                   </div>
                 </div>
 
+                <div className="pt-3">
+                  <ModuleFeedbackForm
+                    draft={feedbackDraft}
+                    onDraftChange={setFeedbackDraft}
+                    busy={isSubmittingReview}
+                  />
+                </div>
+
                 {/* Additional parameters when Revising */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-indigo-100 dark:border-indigo-900/30">
                   <div>
@@ -1075,7 +1098,7 @@ export default function ModuleReviewClient({
             {/* Modal Footer */}
             <div className="p-6 border-t border-gray-100 dark:border-slate-800 bg-gray-50/30 dark:bg-slate-900 flex justify-end gap-3">
               <button
-                onClick={() => setSelectedModule(null)}
+                onClick={closeReviewModal}
                 className="px-5 py-2.5 text-sm font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-xl transition-colors"
               >
                 Cancel

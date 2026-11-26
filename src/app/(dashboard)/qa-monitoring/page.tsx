@@ -42,7 +42,6 @@ export default async function QaMonitoringPage() {
           on_hold_remarks,
           qa_acknowledged_by,
           assigned_developer_id,
-          developer_feedback,
           updated_at
         )
       `)
@@ -78,7 +77,6 @@ export default async function QaMonitoringPage() {
             on_hold_remarks,
             qa_acknowledged_by,
             assigned_developer_id,
-            developer_feedback,
             updated_at
           )
         )
@@ -118,7 +116,6 @@ export default async function QaMonitoringPage() {
             on_hold_remarks: m.on_hold_remarks,
             qa_acknowledged_by: m.qa_acknowledged_by,
             assigned_developer_id: m.assigned_developer_id,
-            developer_feedback: m.developer_feedback,
             updated_at: m.updated_at,
             project: {
               id: p.id,
@@ -170,11 +167,5 @@ export default async function QaMonitoringPage() {
     }
   })
 
-  // Build the project filter options scoped to the user's role:
-  // super_admin -> all projects (in active company); system_auditor -> only projects they belong to.
-  const projectOptions = saProjects
-    .map((p: any) => ({ id: p.id, name: p.name }))
-    .filter((p: any) => p.id);
-
-  return <QaMonitoringClient initialModules={allQaModules} projects={projectOptions} />
+  return <QaMonitoringClient initialModules={allQaModules} />
 }

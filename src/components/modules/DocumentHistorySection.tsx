@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { QaDocumentHistory } from "@/types/qa";
 
 interface DocumentHistorySectionProps {
   moduleId: string;
 }
+
+const EMBEDDED_LIMIT = 3;
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -26,6 +29,16 @@ export default function DocumentHistorySection({
   const [history, setHistory] = useState<QaDocumentHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    if (!showAll) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowAll(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showAll]);
 
   // ── Fetch history ─────────────────────────────────────────────────────────
   const fetchHistory = useCallback(async () => {
@@ -83,6 +96,94 @@ export default function DocumentHistorySection({
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
+
+  const renderTimeline = (records: QaDocumentHistory[]) => (
+    <ol className="relative border-l-2 border-gray-100 dark:border-slate-800 space-y-0 ml-3">
+      {records.map((record, idx) => (
+        <li key={record.id} className="relative pl-6 pb-4 last:pb-0">
+          {/* Timeline dot */}
+          <span
+            className={`absolute -left-[9px] top-3 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center shadow-sm ${
+              idx === 0
+                ? "bg-rose-500"
+                : "bg-gray-300 dark:bg-slate-600"
+            }`}
+          >
+            {idx === 0 && (
+              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+            )}
+          </span>
+
+          {/* Record card */}
+          <div
+            className={`p-3.5 rounded-2xl border transition-all ${
+              idx === 0
+                ? "bg-rose-50/40 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/30 shadow-sm"
+                : "bg-gray-50/60 dark:bg-slate-800/40 border-gray-100 dark:border-slate-800"
+            }`}
+          >
+            {/* Header: uploader + timestamp */}
+            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-full bg-[var(--sys-primary)] text-white text-[11px] font-black flex items-center justify-center shrink-0">
+                  {(record.uploader_name ?? "U").charAt(0).toUpperCase()}
+                </div>
+                <span className="text-xs font-bold text-[var(--sys-primary-text)] truncate">
+                  {record.uploader_name ?? "System Auditor"}
+                </span>
+                {idx === 0 && (
+                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 shrink-0">
+                    Latest
+                  </span>
+                )}
+              </div>
+
+              <time
+                dateTime={record.created_at}
+                className="text-[11px] font-semibold text-gray-600 dark:text-slate-300 shrink-0"
+              >
+                {(() => {
+                  try {
+                    return DATE_FMT.format(new Date(record.created_at));
+                  } catch {
+                    return record.created_at;
+                  }
+                })()}
+              </time>
+            </div>
+
+            {/* Clickable document URL */}
+            <a
+              href={record.document_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:border-rose-400 dark:hover:border-rose-500 transition-all text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-rose-600 dark:hover:text-rose-400 shadow-sm"
+            >
+              <svg
+                className="w-4 h-4 shrink-0 text-gray-400 group-hover:text-rose-500 transition-colors"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
+              <span className="truncate flex-1">
+                {record.document_url}
+              </span>
+              <span className="text-[11px] font-bold text-gray-600 dark:text-slate-300 shrink-0 group-hover:translate-x-0.5 transition-transform">
+                Open ↗
+              </span>
+            </a>
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
 
   return (
     <div className="border-t border-gray-100 dark:border-slate-800 pt-6 mt-6">
@@ -202,70 +303,54 @@ export default function DocumentHistorySection({
           </p>
         </div>
       ) : (
-        /* Records list — newest first */
-        <ol className="relative border-l-2 border-gray-100 dark:border-slate-800 space-y-0 ml-3">
-          {history.map((record, idx) => (
-            <li key={record.id} className="relative pl-6 pb-4 last:pb-0">
-              {/* Timeline dot */}
-              <span
-                className={`absolute -left-[9px] top-3 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center shadow-sm ${
-                  idx === 0
-                    ? "bg-rose-500"
-                    : "bg-gray-300 dark:bg-slate-600"
-                }`}
+        <>
+          {renderTimeline(history.slice(0, EMBEDDED_LIMIT))}
+
+          {history.length > EMBEDDED_LIMIT && (
+            <div className="flex justify-center mt-4">
+              <button
+                type="button"
+                onClick={() => setShowAll(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[var(--sys-primary-text)] bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-100 dark:border-rose-900/40 transition-colors"
               >
-                {idx === 0 && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                )}
-              </span>
+                View All QA Documents
+                <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-white dark:bg-slate-800 text-[10px] font-black">
+                  {history.length}
+                </span>
+              </button>
+            </div>
+          )}
+        </>
+      )}
 
-              {/* Record card */}
-              <div
-                className={`p-3.5 rounded-2xl border transition-all ${
-                  idx === 0
-                    ? "bg-rose-50/40 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/30 shadow-sm"
-                    : "bg-gray-50/60 dark:bg-slate-800/40 border-gray-100 dark:border-slate-800"
-                }`}
-              >
-                {/* Header: uploader + timestamp */}
-                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-[var(--sys-primary)] text-white text-[11px] font-black flex items-center justify-center shrink-0">
-                      {(record.uploader_name ?? "U").charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-xs font-bold text-[var(--sys-primary-text)] truncate">
-                      {record.uploader_name ?? "System Auditor"}
-                    </span>
-                    {idx === 0 && (
-                      <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 shrink-0">
-                        Latest
-                      </span>
-                    )}
-                  </div>
-
-                  <time
-                    dateTime={record.created_at}
-                    className="text-[11px] font-semibold text-gray-600 dark:text-slate-300 shrink-0"
-                  >
-                    {(() => {
-                      try {
-                        return DATE_FMT.format(new Date(record.created_at));
-                      } catch {
-                        return record.created_at;
-                      }
-                    })()}
-                  </time>
-                </div>
-
-                {/* Clickable document URL */}
-                <a
-                  href={record.document_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:border-rose-400 dark:hover:border-rose-500 transition-all text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-rose-600 dark:hover:text-rose-400 shadow-sm"
+      {showAll &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[120] flex items-center justify-center p-4 animate-in fade-in duration-200"
+            onClick={() => setShowAll(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="All QA documents"
+              className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden border border-gray-100 dark:border-slate-800 animate-in zoom-in-95 duration-200"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 shrink-0">
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  QA Document History
+                  <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 text-[10px] font-black">
+                    {history.length}
+                  </span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAll(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
+                  aria-label="Close"
                 >
                   <svg
-                    className="w-4 h-4 shrink-0 text-gray-400 group-hover:text-rose-500 transition-colors"
+                    className="w-5 h-5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -274,21 +359,27 @@ export default function DocumentHistorySection({
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
-                  <span className="truncate flex-1">
-                    {record.document_url}
-                  </span>
-                  <span className="text-[11px] font-bold text-gray-600 dark:text-slate-300 shrink-0 group-hover:translate-x-0.5 transition-transform">
-                    Open ↗
-                  </span>
-                </a>
+                </button>
               </div>
-            </li>
-          ))}
-        </ol>
-      )}
+              <div className="no-scrollbar px-6 py-5 overflow-y-auto">
+                {renderTimeline(history)}
+              </div>
+              <div className="flex justify-end px-6 py-4 border-t border-gray-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900">
+                <button
+                  type="button"
+                  onClick={() => setShowAll(false)}
+                  className="px-5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
