@@ -51,7 +51,8 @@ export default function ModuleReviewClient({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedModule, setSelectedModule] = useState<any | null>(null);
-  const [reviewStatus, setReviewStatus] = useState<"revision" | "for_qa">("for_qa");
+  const [reviewStatus, setReviewStatus] = useState<"" | "revision" | "for_qa">("");
+  const [showReviewStatusError, setShowReviewStatusError] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -100,12 +101,15 @@ export default function ModuleReviewClient({
     setSelectedModule(null);
     setShowConfirmModal(false);
     setFeedbackDraft({ text: "", files: [] });
+    setReviewStatus("");
+    setShowReviewStatusError(false);
   };
 
   const handleOpenReview = async (mod: any) => {
     setSelectedModule(mod);
     setFeedbackDraft({ text: "", files: [] });
-    setReviewStatus("for_qa");
+    setReviewStatus("");
+    setShowReviewStatusError(false);
     setAssignedDevId(mod.assigned_developer_id || "");
     const deadlineVal = mod.deadline
       ? mod.deadline.includes("T")
@@ -140,8 +144,15 @@ export default function ModuleReviewClient({
     }
   };
 
+  const validateReviewStatus = () => {
+    if (reviewStatus) return true;
+    setShowReviewStatusError(true);
+    toast.error("Select whether to send the module to the developer or for QA.");
+    return false;
+  };
+
   const handleSubmitReview = async () => {
-    if (!selectedModule) return;
+    if (!selectedModule || !validateReviewStatus()) return;
     setIsSubmittingReview(true);
 
     try {
@@ -960,26 +971,42 @@ export default function ModuleReviewClient({
               {/* Status Decision (Revising vs For QA only) */}
               <div className="p-4 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
                 <h3 className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider mb-1">
-                  Review Decision: Set Next Status
+                  Review Decision: Set Next Status <span className="text-red-500">*</span>
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
                   Select whether to return this module to the developer for fixes or proceed directly to QA testing:
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <div
+                  role="radiogroup"
+                  aria-required="true"
+                  aria-invalid={showReviewStatusError && !reviewStatus}
+                  className={`grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 rounded-xl border-2 p-2 transition-colors ${showReviewStatusError && !reviewStatus
+                      ? "border-red-500 bg-red-50/40 dark:bg-red-950/20"
+                      : "border-transparent"
+                    }`}
+                >
                   {/* Option 1: Revision */}
                   <div
-                    onClick={() => setReviewStatus("revision")}
+                    onClick={() => {
+                      setReviewStatus("revision");
+                      setShowReviewStatusError(false);
+                    }}
                     className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${reviewStatus === "revision"
                         ? "border-blue-500 bg-white dark:bg-slate-800 shadow-sm ring-2 ring-blue-500/20"
-                        : "border-gray-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 hover:border-blue-300"
+                        : showReviewStatusError && !reviewStatus
+                          ? "border-red-400 bg-white dark:bg-slate-800"
+                          : "border-gray-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 hover:border-blue-300"
                       }`}
                   >
                     <input
                       type="radio"
                       name="reviewStatus"
                       checked={reviewStatus === "revision"}
-                      onChange={() => setReviewStatus("revision")}
+                      onChange={() => {
+                        setReviewStatus("revision");
+                        setShowReviewStatusError(false);
+                      }}
                       className="mt-1 text-blue-600 focus:ring-blue-500 cursor-pointer"
                     />
                     <div className="flex-1">
@@ -997,17 +1024,25 @@ export default function ModuleReviewClient({
 
                   {/* Option 2: For QA */}
                   <div
-                    onClick={() => setReviewStatus("for_qa")}
+                    onClick={() => {
+                      setReviewStatus("for_qa");
+                      setShowReviewStatusError(false);
+                    }}
                     className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${reviewStatus === "for_qa"
                         ? "border-emerald-500 bg-white dark:bg-slate-800 shadow-sm ring-2 ring-emerald-500/20"
-                        : "border-gray-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 hover:border-emerald-300"
+                        : showReviewStatusError && !reviewStatus
+                          ? "border-red-400 bg-white dark:bg-slate-800"
+                          : "border-gray-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 hover:border-emerald-300"
                       }`}
                   >
                     <input
                       type="radio"
                       name="reviewStatus"
                       checked={reviewStatus === "for_qa"}
-                      onChange={() => setReviewStatus("for_qa")}
+                      onChange={() => {
+                        setReviewStatus("for_qa");
+                        setShowReviewStatusError(false);
+                      }}
                       className="mt-1 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                     />
                     <div className="flex-1">
@@ -1023,6 +1058,12 @@ export default function ModuleReviewClient({
                     </div>
                   </div>
                 </div>
+
+                {showReviewStatusError && !reviewStatus && (
+                  <p className="mb-4 text-xs font-bold text-red-600 dark:text-red-400" role="alert">
+                    Please select Developer or For QA before submitting.
+                  </p>
+                )}
 
                 <div className="pt-3">
                   <ModuleFeedbackForm
@@ -1104,7 +1145,9 @@ export default function ModuleReviewClient({
                 Cancel
               </button>
               <button
-                onClick={() => setShowConfirmModal(true)}
+                onClick={() => {
+                  if (validateReviewStatus()) setShowConfirmModal(true);
+                }}
                 disabled={isSubmittingReview}
                 className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-2"
               >
@@ -1115,8 +1158,10 @@ export default function ModuleReviewClient({
                     </svg>
                     Saving...
                   </>
-                ) : (
+                ) : reviewStatus ? (
                   `Submit as ${reviewStatus === "for_qa" ? "For QA" : "Revision"}`
+                ) : (
+                  "Select Next Status"
                 )}
               </button>
             </div>
