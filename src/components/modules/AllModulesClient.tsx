@@ -46,9 +46,9 @@ export default function AllModulesClient({
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState<ModuleSortOrder>("default");
   const [projectFilter, setProjectFilter] = useState("all");
+  const [developerFilter, setDeveloperFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "gantt">("table");
 
   const [selectedModule, setSelectedModule] = useState<any | null>(null);
@@ -132,6 +132,21 @@ export default function AllModulesClient({
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [initialModules]);
 
+  const developerOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    initialModules.forEach((m: any) => {
+      if (m.assigned_developer_id) {
+        map.set(
+          m.assigned_developer_id,
+          m.assigned_developer_name || "Unnamed Developer",
+        );
+      }
+    });
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [initialModules]);
+
   const filteredModules = sortModuleList(
     initialModules.filter((m: any) => {
       const matchesSearch =
@@ -143,7 +158,9 @@ export default function AllModulesClient({
         priorityFilter === "all" || m.priority === priorityFilter;
       const matchesProject =
         projectFilter === "all" || m.project?.id === projectFilter;
-      return matchesSearch && matchesStatus && matchesPriority && matchesProject;
+      const matchesDeveloper =
+        developerFilter === "all" || m.assigned_developer_id === developerFilter;
+      return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesDeveloper;
     }),
     sortOrder,
   );
@@ -441,32 +458,6 @@ export default function AllModulesClient({
             Gantt
           </button>
         </div>
-        {/* Refresh Button */}
-        <button
-          onClick={() => {
-            setIsRefreshing(true);
-            router.refresh();
-            setTimeout(() => setIsRefreshing(false), 1000);
-          }}
-          disabled={isRefreshing}
-          title="Refresh table"
-          className="flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-medium bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-60"
-        >
-          <svg
-            className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          {isRefreshing ? "Refreshing..." : "Refresh"}
-        </button>
         <div className="relative w-full sm:w-96">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg
@@ -524,14 +515,6 @@ export default function AllModulesClient({
           <option value="low">Low</option>
         </select>
 
-        <ModuleSortSelect
-          value={sortOrder}
-          onChange={(value) => {
-            setSortOrder(value);
-            setCurrentPage(1);
-          }}
-        />
-
         <SearchableSelect
           className="w-full sm:w-52"
           value={projectFilter}
@@ -544,6 +527,28 @@ export default function AllModulesClient({
           allLabel="All Projects"
           placeholder="All Projects"
           searchPlaceholder="Search projects..."
+        />
+
+        <SearchableSelect
+          className="w-full sm:w-52"
+          value={developerFilter}
+          onChange={(value) => {
+            setDeveloperFilter(value);
+            setCurrentPage(1);
+          }}
+          options={developerOptions}
+          allValue="all"
+          allLabel="All Developers"
+          placeholder="All Developers"
+          searchPlaceholder="Search developers..."
+        />
+
+        <ModuleSortSelect
+          value={sortOrder}
+          onChange={(value) => {
+            setSortOrder(value);
+            setCurrentPage(1);
+          }}
         />
 
         <button
