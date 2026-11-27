@@ -7,7 +7,7 @@ import ProjectPieChart from '@/components/dashboard/ProjectPieChart'
 import StatusFilter from '@/components/dashboard/StatusFilter'
 import { statusChartColor } from '@/lib/moduleStatuses'
 
-export default function ProjectsClient({ initialProjects, isManager, isAuditor, isSuperAdmin, isDeveloper, currentStatus }: any) {
+export default function ProjectsClient({ initialProjects, isManager, isAuditor, isSuperAdmin, isDeveloper, isTrainee, currentStatus }: any) {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
@@ -25,7 +25,7 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
     <div className="w-full">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
-          {isAuditor ? 'Assigned Projects' : isSuperAdmin ? 'All Projects' : 'Projects'}
+          {isAuditor ? 'Assigned Projects' : isSuperAdmin || isTrainee ? 'All Projects' : 'Projects'}
         </h1>
       </div>
 
@@ -78,7 +78,7 @@ export default function ProjectsClient({ initialProjects, isManager, isAuditor, 
           <div className="text-center py-12">
             <p className="text-slate-500 dark:text-slate-400 font-medium">
               {initialProjects.length === 0 
-                ? ((isAuditor || isDeveloper) ? 'You have no assigned projects.' : isSuperAdmin ? 'There are no projects in the system.' : 'No projects found. Create your first project to get started.')
+                ? ((isAuditor || isDeveloper || isTrainee) ? 'You have no assigned projects.' : isSuperAdmin ? 'There are no projects in the system.' : 'No projects found. Create your first project to get started.')
                 : "No projects match your filters."
               }
             </p>

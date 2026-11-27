@@ -11,7 +11,7 @@ export interface Project {
   created_at: string
 }
 
-export type ModuleStatus = 'pending' | 'for data gathering' | 'for_data_gathering' | 'development' | 'pm_review' | 'for_qa' | 'auditing' | 'for revision' | 'for_revision' | 'revision' | 'revising' | 'qa_approved' | 'deployment' | 'deployed' | 'on_hold'
+export type ModuleStatus = 'pending' | 'for data gathering' | 'for_data_gathering' | 'development' | 'pm_review' | 'for_qa' | 'auditing' | 'trainee_approve' | 'for revision' | 'for_revision' | 'revision' | 'revising' | 'qa_approved' | 'deployment' | 'deployed' | 'on_hold'
 
 export interface ProjectModule {
   id: string
@@ -31,6 +31,8 @@ export interface ProjectModule {
   qa_result_document_url?: string | null
   assigned_developer_id?: string | null
   assigned_developer_name?: string | null
+  assigned_auditor?: string | null
+  assigned_auditor_name?: string | null
   category?: string | null
   platform?: string | null
   workstream?: string | null

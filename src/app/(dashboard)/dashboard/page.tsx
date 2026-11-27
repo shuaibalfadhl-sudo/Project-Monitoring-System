@@ -16,21 +16,21 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-
-
   let title = "Dashboard"
   if (profile.role === 'project_manager') title = "Project Manager Dashboard"
   if (profile.role === 'system_auditor') title = "System Auditor Dashboard"
   if (profile.role === 'super_admin') title = "Super Admin Dashboard"
   if (profile.role === 'developer') title = "Developer Dashboard"
   if (profile.role === 'devops') title = "DevOps Dashboard"
+  if (profile.role === 'trainee') title = "Trainee Dashboard"
 
   const hasDashboard =
     profile.role === 'system_auditor' ||
     profile.role === 'project_manager' ||
     profile.role === 'super_admin' ||
     profile.role === 'developer' ||
-    profile.role === 'devops'
+    profile.role === 'devops' ||
+    profile.role === 'trainee'
 
   // Fetch data
   let displayProjects: any[] = []
@@ -134,6 +134,47 @@ export default async function DashboardPage() {
             ...project,
             project_modules: (project.project_modules ?? []).filter(
               (m) => m.assigned_developer_id === profile.id
+            ),
+          }
+        })
+        .filter((project) => !!project && project.project_modules.length > 0)
+    }
+  } else if (profile.role === 'trainee') {
+    let query = supabaseServer
+      .from('project_members')
+      .select(`
+        projects!inner (
+          id,
+          name,
+          status,
+          target_date,
+          company_id,
+          project_members ( user_id ),
+          project_modules (
+            id,
+            status,
+            assigned_developer_id,
+            assigned_auditor
+          )
+        )
+      `)
+      .eq('user_id', profile.id)
+
+    if (activeCompanyId) {
+      query = query.eq('projects.company_id', activeCompanyId)
+    }
+
+    const { data } = await query
+
+    if (data) {
+      displayProjects = data
+        .map((d) => {
+          const project = Array.isArray(d.projects) ? d.projects[0] : d.projects
+          if (!project) return null
+          return {
+            ...project,
+            project_modules: (project.project_modules ?? []).filter(
+              (m) => m.assigned_developer_id === profile.id || m.assigned_auditor === profile.id
             ),
           }
         })

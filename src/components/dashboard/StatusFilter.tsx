@@ -8,6 +8,7 @@ const STATUSES = [
   { value: "deployment", label: "Deployment" },
   { value: "for_qa", label: "For QA" },
   { value: "auditing", label: "Auditing" },
+  { value: "trainee_approve", label: "Trainee Approve" },
   { value: "revising", label: "Revising" },
   { value: "for revision", label: "For Revision" },
   { value: "revision", label: "Revision" },

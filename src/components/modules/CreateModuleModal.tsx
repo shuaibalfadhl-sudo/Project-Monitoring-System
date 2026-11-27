@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { STATUS_GROUPS, statusesIn } from '@/lib/moduleStatuses'
 import { PLATFORM_OPTIONS, WORKSTREAM_OPTIONS } from '@/lib/moduleClassifications'
 import { buildPrototypePath, deletePrototypeObject, uploadPrototypeWithProgress, validatePrototypeFile } from '@/lib/prototypes'
+import SearchableSelect from '@/components/ui/SearchableSelect'
 
 export default function CreateModuleModal({ projectId, isManager, canUploadPrototype }: { projectId: string, isManager?: boolean, canUploadPrototype?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -19,6 +20,7 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
   const [prototypeFile, setPrototypeFile] = useState<File | null>(null)
   const prototypeInputRef = useRef<HTMLInputElement>(null)
   const [developers, setDevelopers] = useState<{ id: string, full_name: string }[]>([])
+  const [auditors, setAuditors] = useState<{ id: string, full_name: string }[]>([])
   const [isDevDropdownOpen, setIsDevDropdownOpen] = useState(false)
   const [devSearch, setDevSearch] = useState('')
   const [formData, setFormData] = useState({
@@ -28,6 +30,7 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
     status: 'pending',
     module_document_url: '',
     assigned_developer_id: '',
+    assigned_auditor: '',
     category: 'new_module',
     platform: '',
     workstream: '',
@@ -42,12 +45,12 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
 
   useEffect(() => {
     if (!isOpen) return
-    const fetchDevelopers = async () => {
+    const fetchAssignments = async () => {
       const { data, error } = await supabase
         .from('project_members')
         .select('user_id, profiles!inner(id, full_name, role)')
         .eq('project_id', projectId)
-        .in('profiles.role', ['developer', 'devops'])
+        .in('profiles.role', ['developer', 'devops', 'trainee'])
 
       if (!error && data) {
         setDevelopers(data.map((d: any) => ({
@@ -55,8 +58,23 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
           full_name: d.profiles.full_name || 'Unnamed Developer'
         })))
       }
+
+      const { data: auditorProfiles, error: auditorError } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .in('role', ['system_auditor', 'trainee'])
+        .order('full_name', { ascending: true })
+
+      if (auditorError) {
+        console.error('Error fetching auditors:', auditorError)
+      } else {
+        setAuditors((auditorProfiles || []).map((auditor: any) => ({
+          id: auditor.id,
+          full_name: auditor.full_name || 'Unnamed Auditor'
+        })))
+      }
     }
-    fetchDevelopers()
+    fetchAssignments()
   }, [isOpen, projectId, supabase])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -80,6 +98,7 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
     if (payload.platform === '') payload.platform = null
     if (payload.workstream === '') payload.workstream = null
     if (payload.assigned_developer_id === '') payload.assigned_developer_id = null
+    if (payload.assigned_auditor === '') payload.assigned_auditor = null
 
     const { data: created, error } = await supabase
       .from('project_modules')
@@ -154,6 +173,7 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
       status: 'pending',
       module_document_url: '',
       assigned_developer_id: '',
+      assigned_auditor: '',
       category: 'new_module',
       platform: '',
       workstream: '',
@@ -317,8 +337,9 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Assign Developer</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Assign Developer</label>
                   <div className="relative">
                     <button
                       type="button"
@@ -371,6 +392,23 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
                   {developers.length === 0 && (
                     <p className="text-xs text-orange-500 mt-2 font-medium">No developers are assigned to this project yet.</p>
                   )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Assigned Auditor</label>
+                    <SearchableSelect
+                      value={formData.assigned_auditor}
+                      onChange={(assigned_auditor) => setFormData({ ...formData, assigned_auditor })}
+                      options={auditors.map(auditor => ({ value: auditor.id, label: auditor.full_name }))}
+                      allValue=""
+                      allLabel="Unassigned"
+                      placeholder="Select auditor..."
+                      searchPlaceholder="Search auditor..."
+                      className="w-full"
+                    />
+                    {auditors.length === 0 && (
+                      <p className="text-xs text-orange-500 mt-2 font-medium">No eligible auditors found.</p>
+                    )}
+                  </div>
                 </div>
 
                 <div>

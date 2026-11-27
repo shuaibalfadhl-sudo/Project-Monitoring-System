@@ -83,6 +83,7 @@ export default function SidebarNav({
   const navCounts = useNavCounts();
   const pathname = usePathname();
   const currentForQaCount = navCounts?.forQaCount ?? 0;
+  const currentTraineeApproveCount = navCounts?.traineeApproveCount ?? 0;
   const currentQaRevisionCount = navCounts?.qaRevisionCount ?? 0;
   const currentPmReviewCount = navCounts?.pmReviewCount ?? 0;
   const currentQaApproveCount = navCounts?.qaApproveCount ?? 0;
@@ -94,12 +95,18 @@ export default function SidebarNav({
   const isDeveloper = role === 'developer';
   const isSuperAdmin = role === 'super_admin';
   const isDevOps = role === 'devops';
+  const isTrainee = role === 'trainee';
 
-  const pipelineLinks = (isManager || isSuperAdmin) ? [
-    ...(isSuperAdmin ? [{ href: '/qa-monitoring', label: 'For QA Modules', count: currentForQaCount, badge: 'bg-orange-500' }] : []),
-    { href: '/module-review', label: 'Module Review', count: currentPmReviewCount, badge: 'bg-purple-600' },
-    { href: '/qa-revision', label: 'QA Revision', count: currentQaRevisionCount, badge: 'bg-red-500' },
-    { href: '/qa-approve', label: 'QA Approved', count: currentQaApproveCount, badge: 'bg-emerald-500' },
+  const pipelineLinks = (isManager || isSuperAdmin || isAuditor) ? [
+    { href: '/qa-monitoring', label: 'For QA Modules', count: currentForQaCount, badge: 'bg-orange-500' },
+    ...(isSuperAdmin || isAuditor ? [
+      { href: '/trainee-approve', label: 'Trainee Approve', count: currentTraineeApproveCount, badge: 'bg-lime-500' },
+    ] : []),
+    ...(isManager || isSuperAdmin ? [
+      { href: '/module-review', label: 'Module Review', count: currentPmReviewCount, badge: 'bg-purple-600' },
+      { href: '/qa-revision', label: 'QA Revision', count: currentQaRevisionCount, badge: 'bg-red-500' },
+      { href: '/qa-approve', label: 'QA Approved', count: currentQaApproveCount, badge: 'bg-emerald-500' },
+    ] : []),
     ...(isSuperAdmin ? [
       { href: '/dev-workspace', label: 'Dev Workspace', count: currentDevWorkspaceCount, badge: 'bg-indigo-500' },
       { href: '/deployment', label: 'For Deployment', count: currentDeploymentCount, badge: 'bg-purple-600' },
@@ -136,14 +143,12 @@ export default function SidebarNav({
   const weeklyVisible = groupVisible('Weekly Pipeline', weeklyLinks);
   const pipelineVisible = groupVisible('Module Pipeline', pipelineLinks);
   const anyVisible =
-    show('Dashboard') ||
-    show('Hall of Fame') ||
-    weeklyVisible ||
-    show('All Modules') ||
+    (show('Dashboard') || show('Hall of Fame') || weeklyVisible || show('All Modules')) ||
     (isManager && (show('Projects') || pipelineVisible)) ||
-    (isAuditor && (show('Assigned Projects') || show('QA Monitoring'))) ||
+    (isAuditor && (show('Assigned Projects') || pipelineVisible)) ||
     (isDeveloper && (show('Assigned Projects') || show('Dev Workspace'))) ||
     (isDevOps && (show('Dev Workspace') || show('For Deployment'))) ||
+    (isTrainee && (show('All Projects') || show('Dev Workspace') || show('QA Modules'))) ||
     (isSuperAdmin && (show('All Projects') || pipelineVisible || show('Users') || show('System Settings')));
 
   const getLinkClasses = (path: string) => {
@@ -231,15 +236,14 @@ export default function SidebarNav({
                 Assigned Projects
               </Link>
             )}
-            {show('QA Monitoring') && (
-              <Link href="/qa-monitoring" className={getLinkClasses('/qa-monitoring')}>
-                <span className="flex items-center justify-between">
-                  <span>QA Monitoring</span>
-                  {currentForQaCount > 0 && (
-                    <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentForQaCount}</span>
-                  )}
-                </span>
-              </Link>
+            {pipelineVisible && (
+              <NavGroup
+                label="Module Pipeline"
+                links={pipelineShown}
+                open={pipelineOpen || searching}
+                onToggle={() => setPipelineOpen((open) => !open)}
+                getLinkClasses={getLinkClasses}
+              />
             )}
           </>
         )}
@@ -257,6 +261,36 @@ export default function SidebarNav({
                   <span>Dev Workspace</span>
                   {currentDevWorkspaceCount > 0 && (
                     <span className="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDevWorkspaceCount}</span>
+                  )}
+                </span>
+              </Link>
+            )}
+          </>
+        )}
+
+        {isTrainee && (
+          <>
+            {show('All Projects') && (
+              <Link href="/projects" className={getLinkClasses('/projects')}>
+                All Projects
+              </Link>
+            )}
+            {show('Dev Workspace') && (
+              <Link href="/dev-workspace" className={getLinkClasses('/dev-workspace')}>
+                <span className="flex items-center justify-between">
+                  <span>Dev Workspace</span>
+                  {currentDevWorkspaceCount > 0 && (
+                    <span className="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentDevWorkspaceCount}</span>
+                  )}
+                </span>
+              </Link>
+            )}
+            {show('QA Modules') && (
+              <Link href="/qa-monitoring" className={getLinkClasses('/qa-monitoring')}>
+                <span className="flex items-center justify-between">
+                  <span>QA Modules</span>
+                  {currentForQaCount > 0 && (
+                    <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm transition-all duration-300 animate-in fade-in">{currentForQaCount}</span>
                   )}
                 </span>
               </Link>

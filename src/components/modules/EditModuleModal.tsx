@@ -95,23 +95,22 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
       fetchLatestModuleData()
 
       // Fetch developers assigned to this project
-      const fetchDevelopers = async () => {
+      const fetchAssignments = async () => {
         const { data, error } = await supabase
           .from('project_members')
           .select('user_id, profiles!inner(id, full_name, role)')
           .eq('project_id', module.project_id)
-          .in('profiles.role', ['developer', 'devops']);
+          .in('profiles.role', ['developer', 'devops', 'trainee']);
 
         if (!error && data) {
-          const devs = data.map((d: any) => ({
+          setDevelopers(data.map((d: any) => ({
             id: d.profiles.id,
             full_name: d.profiles.full_name || 'Unnamed Developer'
-          }));
-          setDevelopers(devs);
+          })));
         }
       };
 
-      fetchDevelopers();
+      fetchAssignments();
     }
   }, [isOpen, module, supabase])
 
@@ -356,8 +355,9 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Assign Developer</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Assign Developer</label>
                   <div className="relative">
                     <button
                       type="button"
@@ -410,6 +410,7 @@ export default function EditModuleModal({ module, isManager, isQaRevisionMode, i
                   {developers.length === 0 && (
                     <p className="text-xs text-orange-500 mt-2 font-medium">No developers are assigned to this project yet.</p>
                   )}
+                  </div>
                 </div>
 
                 <div>

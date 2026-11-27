@@ -36,6 +36,7 @@ export default async function ModuleReviewPage() {
         qa_result_acknowledged_at,
         qa_result_acknowledged_by,
         assigned_developer_id,
+        assigned_auditor,
         website_link,
         deadline,
         category,
@@ -79,7 +80,7 @@ export default async function ModuleReviewPage() {
     const userIds = [
       ...new Set(
         reviewModules
-          .flatMap((m) => [m.qa_acknowledged_by, m.qa_result_acknowledged_by, m.assigned_developer_id])
+          .flatMap((m) => [m.qa_acknowledged_by, m.qa_result_acknowledged_by, m.assigned_developer_id, m.assigned_auditor])
           .filter(Boolean)
       ),
     ]
@@ -100,6 +101,9 @@ export default async function ModuleReviewPage() {
         }
         if (m.assigned_developer_id) {
           m.assigned_developer_name = userMap.get(m.assigned_developer_id) || null
+        }
+        if (m.assigned_auditor) {
+          m.assigned_auditor_name = userMap.get(m.assigned_auditor) || null
         }
       })
     }

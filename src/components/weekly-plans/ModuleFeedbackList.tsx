@@ -35,6 +35,7 @@ const ROLE_LABELS: Record<string, string> = {
   project_manager: "Project Manager",
   system_auditor: "System Auditor",
   developer: "Developer",
+  trainee: "Trainee",
   devops: "DevOps",
   pending: "Pending",
   qa_auditor: "QA Auditor",
@@ -60,6 +61,8 @@ function roleBadgeClass(role: string | null | undefined) {
       return "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300";
     case "devops":
       return "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300";
+    case "trainee":
+      return "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300";
     default:
       return "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300";
   }

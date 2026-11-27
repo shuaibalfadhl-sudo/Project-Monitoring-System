@@ -70,6 +70,14 @@ export const MODULE_STATUSES: StatusMeta[] = [
     excel: { fill: "FFFEF3C7", font: "FFB45309" },
   },
   {
+    value: "trainee_approve",
+    label: "Trainee Approve",
+    badge: "bg-lime-100 text-lime-700 dark:bg-lime-900/40 dark:text-lime-300",
+    gantt: "bg-lime-500",
+    chart: "#84CC16",
+    excel: { fill: "FFECFCCB", font: "FF4D7C0F" },
+  },
+  {
     value: "for revision",
     label: "For Revision",
     badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
@@ -163,19 +171,19 @@ export const STATUS_GROUPS = {
   qaMonitoring: ["for_qa", "auditing"],
 
   // Add-module modal.
-  createManager: ["pending", "for data gathering", "development", "developing", "pm_review", "for_qa", "deployed"],
+  createManager: ["pending", "for data gathering", "development", "developing", "pm_review", "for_qa", "trainee_approve", "deployed"],
   createAll: [
     "pending", "for data gathering", "development", "developing", "pm_review", "for_qa",
-    "auditing", "for revision", "revision", "revising", "qa_approved", "deployment", "deployed",
+    "auditing", "trainee_approve", "for revision", "revision", "revising", "qa_approved", "deployment", "deployed",
   ],
 
   // Edit-module modal (normal mode). Super/non-manager extras are appended at runtime.
-  editBase: ["pending", "for data gathering", "development", "developing", "pm_review", "for_qa", "for revision", "revision", "revising", "on_hold"],
+  editBase: ["pending", "for data gathering", "development", "developing", "pm_review", "for_qa", "trainee_approve", "for revision", "revision", "revising", "on_hold"],
   editExtra: ["auditing", "qa_approved", "deployment", "deployed"],
   // Edit-module modal (QA revision mode).
   editQaRevision: ["revising", "pm_review", "for_qa"],
 
   // Quick-status dropdown in the module lists. Super-admin extras appended at runtime.
-  quickBase: ["pending", "for data gathering", "development", "developing", "pm_review", "for_qa", "for revision", "revision", "revising", "on_hold"],
+  quickBase: ["pending", "for data gathering", "development", "developing", "pm_review", "for_qa", "trainee_approve", "for revision", "revision", "revising", "on_hold"],
   quickSuperExtra: ["auditing", "qa_approved", "deployment", "deployed"],
 } as const;
