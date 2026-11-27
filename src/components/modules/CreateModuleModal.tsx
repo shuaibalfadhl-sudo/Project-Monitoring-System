@@ -8,7 +8,9 @@ import { toast } from 'sonner'
 import { STATUS_GROUPS, statusesIn } from '@/lib/moduleStatuses'
 import { PLATFORM_OPTIONS, WORKSTREAM_OPTIONS } from '@/lib/moduleClassifications'
 import { buildPrototypePath, deletePrototypeObject, uploadPrototypeWithProgress, validatePrototypeFile } from '@/lib/prototypes'
-import SearchableSelect from '@/components/ui/SearchableSelect'
+
+const inputClass = 'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[var(--sys-primary)] focus:ring-4 focus:ring-[var(--sys-primary)]/10 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
+const labelClass = 'mb-2 block text-xs font-extrabold uppercase tracking-wide text-slate-600 dark:text-slate-300'
 
 export default function CreateModuleModal({ projectId, isManager, canUploadPrototype }: { projectId: string, isManager?: boolean, canUploadPrototype?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -20,7 +22,6 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
   const [prototypeFile, setPrototypeFile] = useState<File | null>(null)
   const prototypeInputRef = useRef<HTMLInputElement>(null)
   const [developers, setDevelopers] = useState<{ id: string, full_name: string }[]>([])
-  const [auditors, setAuditors] = useState<{ id: string, full_name: string }[]>([])
   const [isDevDropdownOpen, setIsDevDropdownOpen] = useState(false)
   const [devSearch, setDevSearch] = useState('')
   const [formData, setFormData] = useState({
@@ -30,7 +31,6 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
     status: 'pending',
     module_document_url: '',
     assigned_developer_id: '',
-    assigned_auditor: '',
     category: 'new_module',
     platform: '',
     workstream: '',
@@ -58,21 +58,6 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
           full_name: d.profiles.full_name || 'Unnamed Developer'
         })))
       }
-
-      const { data: auditorProfiles, error: auditorError } = await supabase
-        .from('profiles')
-        .select('id, full_name, role')
-        .in('role', ['system_auditor', 'trainee'])
-        .order('full_name', { ascending: true })
-
-      if (auditorError) {
-        console.error('Error fetching auditors:', auditorError)
-      } else {
-        setAuditors((auditorProfiles || []).map((auditor: any) => ({
-          id: auditor.id,
-          full_name: auditor.full_name || 'Unnamed Auditor'
-        })))
-      }
     }
     fetchAssignments()
   }, [isOpen, projectId, supabase])
@@ -98,7 +83,6 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
     if (payload.platform === '') payload.platform = null
     if (payload.workstream === '') payload.workstream = null
     if (payload.assigned_developer_id === '') payload.assigned_developer_id = null
-    if (payload.assigned_auditor === '') payload.assigned_auditor = null
 
     const { data: created, error } = await supabase
       .from('project_modules')
@@ -173,7 +157,6 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
       status: 'pending',
       module_document_url: '',
       assigned_developer_id: '',
-      assigned_auditor: '',
       category: 'new_module',
       platform: '',
       workstream: '',
@@ -202,303 +185,380 @@ export default function CreateModuleModal({ projectId, isManager, canUploadProto
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="w-full sm:w-auto py-2 px-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-[var(--sys-primary-text)] hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-300 dark:hover:border-slate-600 rounded-xl font-bold transition-all shadow-sm text-sm text-center"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-bold text-[var(--sys-primary-text)] shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 sm:w-auto"
       >
-        + Add
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14M5 12h14" />
+        </svg>
+        Add Module
       </button>
 
       {isOpen && mounted && createPortal(
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900">
-              <h2 className="text-xl font-extrabold text-[var(--sys-primary-text)]">Add Module</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:p-6">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-module-title"
+            className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+          >
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 bg-gray-50/70 px-5 py-5 dark:border-slate-800 dark:bg-slate-900 sm:px-8">
+              <div className="flex items-center gap-3.5">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--sys-primary)]/10 text-[var(--sys-primary-text)]">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m4 7.5 8 4.5 8-4.5M12 12v9M8 5.25l8 4.5" />
+                  </svg>
+                </span>
+                <div>
+                  <h2 id="create-module-title" className="text-xl font-extrabold tracking-tight text-[var(--sys-primary-text)]">Add Module</h2>
+                  <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">Create a module and set its initial workflow details.</p>
+                </div>
+              </div>
               <button
+                type="button"
                 onClick={() => setIsOpen(false)}
-                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"
+                aria-label="Close add module dialog"
+                className="shrink-0 rounded-full p-2 text-slate-400 transition-colors hover:bg-gray-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1">
+            <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-slate-50/60 px-5 py-6 dark:bg-slate-950/30 sm:px-8 sm:py-8">
               <form id="create-module-form" onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Module Name <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
+                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800/60 sm:p-6">
+                  <div className="mb-5">
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">Module Details</h3>
+                    <p className="mt-1 text-xs font-medium text-slate-400">Give the module a clear name and describe its scope.</p>
+                  </div>
+                  <div className="grid gap-5 lg:grid-cols-12">
+                    <div className="lg:col-span-8">
+                      <label htmlFor="create-module-name" className={labelClass}>Module Name <span className="text-red-500">*</span></label>
+                      <input
+                        id="create-module-name"
+                        type="text"
+                        required
+                        autoFocus
+                        className={inputClass}
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="e.g. Customer Portal Dashboard"
+                      />
+                    </div>
+                    <div className="lg:col-span-4">
+                      <label htmlFor="create-module-category" className={labelClass}>Category</label>
+                      <select
+                        id="create-module-category"
+                        className={inputClass}
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      >
+                        <option value="new_module">New Module</option>
+                        <option value="revise_module">Revise Module</option>
+                      </select>
+                    </div>
+                    <div className="lg:col-span-12">
+                      <label htmlFor="create-module-description" className={labelClass}>Description</label>
+                      <textarea
+                        id="create-module-description"
+                        rows={4}
+                        className={`${inputClass} resize-none leading-6`}
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        placeholder="Summarize the module requirements, expected outcome, and important notes..."
+                      />
+                    </div>
+                  </div>
+                </section>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Description</label>
-                  <textarea
-                    rows={3}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  />
-                </div>
+                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800/60 sm:p-6">
+                  <div className="mb-5">
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">Classification & Schedule</h3>
+                    <p className="mt-1 text-xs font-medium text-slate-400">Set the module’s priority, workflow status, and target dates.</p>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    <div>
+                      <label htmlFor="create-module-priority" className={labelClass}>Priority</label>
+                      <select
+                        id="create-module-priority"
+                        className={inputClass}
+                        value={formData.priority}
+                        onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="create-module-platform" className={labelClass}>Platform</label>
+                      <select
+                        id="create-module-platform"
+                        className={inputClass}
+                        value={formData.platform}
+                        onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
+                      >
+                        <option value="">Not set</option>
+                        {PLATFORM_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="create-module-workstream" className={labelClass}>Workstream</label>
+                      <select
+                        id="create-module-workstream"
+                        className={inputClass}
+                        value={formData.workstream}
+                        onChange={(e) => setFormData({ ...formData, workstream: e.target.value })}
+                      >
+                        <option value="">Not set</option>
+                        {WORKSTREAM_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Priority</label>
-                    <select
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                      value={formData.priority}
-                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="critical">Critical</option>
-                    </select>
+                    <div>
+                      <label htmlFor="create-module-status" className={labelClass}>Status</label>
+                      <select
+                        id="create-module-status"
+                        className={inputClass}
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      >
+                        {statusesIn(isManager ? STATUS_GROUPS.createManager : STATUS_GROUPS.createAll).map((s) => (
+                          <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="create-module-deadline" className={labelClass}>Deadline <span className="text-red-500">*</span></label>
+                      <input
+                        id="create-module-deadline"
+                        type="date"
+                        required
+                        className={inputClass}
+                        value={formData.deadline}
+                        onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="create-module-development-date" className={labelClass}>Development Date</label>
+                      <input
+                        id="create-module-development-date"
+                        type="date"
+                        className={inputClass}
+                        value={formData.development_date}
+                        onChange={(e) => setFormData({ ...formData, development_date: e.target.value })}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Category</label>
-                    <select
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    >
-                      <option value="new_module">New Module</option>
-                      <option value="revise_module">Revise Module</option>
-                    </select>
-                  </div>
-                </div>
+                </section>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Platform</label>
-                    <select
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                      value={formData.platform}
-                      onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-                    >
-                      <option value="">Not set</option>
-                      {PLATFORM_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
+                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800/60 sm:p-6">
+                  <div className="mb-5">
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">Assignment & Resources</h3>
+                    <p className="mt-1 text-xs font-medium text-slate-400">Assign the developer and attach the links or prototype needed to start.</p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Workstream</label>
-                    <select
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                      value={formData.workstream}
-                      onChange={(e) => setFormData({ ...formData, workstream: e.target.value })}
-                    >
-                      <option value="">Not set</option>
-                      {WORKSTREAM_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    <div>
+                      <label htmlFor="create-module-developer" className={labelClass}>Assign Developer</label>
+                      <div className="relative">
+                        <button
+                          id="create-module-developer"
+                          type="button"
+                          aria-haspopup="listbox"
+                          aria-expanded={isDevDropdownOpen}
+                          aria-controls="create-module-developer-options"
+                          onClick={() => setIsDevDropdownOpen(!isDevDropdownOpen)}
+                          className={`${inputClass} flex items-center justify-between gap-3 text-left`}
+                        >
+                          <span className="flex min-w-0 items-center gap-2.5">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21a8 8 0 0 1 16 0" />
+                              </svg>
+                            </span>
+                            <span className="truncate">
+                              {formData.assigned_developer_id
+                                ? developers.find(d => d.id === formData.assigned_developer_id)?.full_name || 'Unknown'
+                                : 'Unassigned'}
+                            </span>
+                          </span>
+                          <svg className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${isDevDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {isDevDropdownOpen && (
+                          <div className="absolute z-30 mt-2 flex max-h-64 w-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                            <div className="border-b border-gray-100 bg-gray-50/70 p-2 dark:border-slate-800 dark:bg-slate-800/70">
+                              <input
+                                type="text"
+                                aria-label="Search developers"
+                                placeholder="Search developer..."
+                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[var(--sys-primary)] focus:ring-2 focus:ring-[var(--sys-primary)]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                value={devSearch}
+                                onChange={(e) => setDevSearch(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                              />
+                            </div>
+                            <div id="create-module-developer-options" role="listbox" className="no-scrollbar flex-1 overflow-y-auto p-1">
+                              <button
+                                type="button"
+                                role="option"
+                                aria-selected={!formData.assigned_developer_id}
+                                onClick={() => { setFormData({ ...formData, assigned_developer_id: '' }); setIsDevDropdownOpen(false); setDevSearch(''); }}
+                                className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-colors ${!formData.assigned_developer_id ? 'bg-[var(--sys-primary)]/10 text-[var(--sys-primary-text)]' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                              >
+                                Unassigned
+                              </button>
+                              {developers.filter(d => d.full_name.toLowerCase().includes(devSearch.toLowerCase())).map(dev => (
+                                <button
+                                  key={dev.id}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={formData.assigned_developer_id === dev.id}
+                                  onClick={() => { setFormData({ ...formData, assigned_developer_id: dev.id }); setIsDevDropdownOpen(false); setDevSearch(''); }}
+                                  className={`w-full truncate rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-colors ${formData.assigned_developer_id === dev.id ? 'bg-[var(--sys-primary)]/10 text-[var(--sys-primary-text)]' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                                >
+                                  {dev.full_name}
+                                </button>
+                              ))}
+                              {developers.length > 0 && developers.filter(d => d.full_name.toLowerCase().includes(devSearch.toLowerCase())).length === 0 && (
+                                <div className="px-3 py-4 text-center text-sm font-medium italic text-slate-400">No developers found.</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {developers.length === 0 && (
+                        <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">No developers are assigned to this project yet.</p>
+                      )}
+                    </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Status</label>
-                    <select
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    >
-                      {statusesIn(isManager ? STATUS_GROUPS.createManager : STATUS_GROUPS.createAll).map((s) => (
-                        <option key={s.value} value={s.value}>{s.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Deadline <span className="text-red-500">*</span></label>
-                    <input
-                      type="date"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                      value={formData.deadline}
-                      onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                    />
-                  </div>
-                </div>
+                    <div>
+                      <label htmlFor="create-module-document" className={labelClass}>Module Document Link <span className="font-medium normal-case tracking-normal text-slate-400">(optional)</span></label>
+                      <input
+                        id="create-module-document"
+                        type="url"
+                        placeholder="https://..."
+                        className={inputClass}
+                        value={formData.module_document_url}
+                        onChange={(e) => setFormData({ ...formData, module_document_url: e.target.value })}
+                      />
+                      <p className="mt-2 text-xs font-medium text-slate-400">Google Drive, SharePoint, or another shared document.</p>
+                    </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Development Date</label>
-                    <input
-                      type="date"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                      value={formData.development_date}
-                      onChange={(e) => setFormData({ ...formData, development_date: e.target.value })}
-                    />
-                  </div>
-                </div>
+                    <div className="lg:col-span-2">
+                      <label htmlFor="create-module-website" className={labelClass}>Website Link <span className="font-medium normal-case tracking-normal text-slate-400">(testing)</span></label>
+                      <input
+                        id="create-module-website"
+                        type="url"
+                        placeholder="https://..."
+                        className={inputClass}
+                        value={formData.website_link}
+                        onChange={(e) => setFormData({ ...formData, website_link: e.target.value })}
+                      />
+                      <p className="mt-2 text-xs font-medium text-slate-400">Staging or local URL used to test the module.</p>
+                    </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Assign Developer</label>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsDevDropdownOpen(!isDevDropdownOpen)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium text-left flex justify-between items-center dark:text-white"
-                    >
-                      {formData.assigned_developer_id
-                        ? developers.find(d => d.id === formData.assigned_developer_id)?.full_name || 'Unknown'
-                        : 'Unassigned'}
-                      <svg className={`w-4 h-4 text-gray-500 transition-transform ${isDevDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    {isDevDropdownOpen && (
-                      <div className="absolute z-10 w-full mt-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 flex flex-col overflow-hidden">
-                        <div className="p-2 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50">
-                          <input
-                            type="text"
-                            placeholder="Search developer..."
-                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] dark:text-white"
-                            value={devSearch}
-                            onChange={(e) => setDevSearch(e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            autoFocus
-                          />
-                        </div>
-                        <div className="overflow-y-auto flex-1 p-1">
+                    {canUploadPrototype && (
+                      <div className="rounded-2xl border border-dashed border-gray-300 bg-slate-50/80 p-4 dark:border-slate-600 dark:bg-slate-900/50 lg:col-span-2">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--sys-primary)]/10 text-[var(--sys-primary-text)]">
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 3h6l4 4v14H5V3h4Z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 3v5h6V3M8 14l2.5 2.5L16 11" />
+                            </svg>
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-extrabold uppercase tracking-wide text-slate-600 dark:text-slate-300">Prototype <span className="font-medium normal-case tracking-normal text-slate-400">(HTML, optional)</span></p>
+                            {prototypeFile ? (
+                              <div className="mt-2 flex min-w-0 items-center gap-2">
+                                <span className="truncate text-sm font-semibold text-slate-700 dark:text-slate-200" title={prototypeFile.name}>{prototypeFile.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPrototypeFile(null)
+                                    if (prototypeInputRef.current) prototypeInputRef.current.value = ''
+                                  }}
+                                  disabled={isLoading}
+                                  className="shrink-0 text-xs font-bold text-red-500 hover:text-red-700 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="mt-1 text-xs font-medium text-slate-400">HTML only, up to 10 MB. The assigned developer can preview it in Dev Workspace.</p>
+                            )}
+                          </div>
                           <button
                             type="button"
-                            onClick={() => { setFormData({ ...formData, assigned_developer_id: '' }); setIsDevDropdownOpen(false); setDevSearch(''); }}
-                            className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors ${!formData.assigned_developer_id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
+                            onClick={() => prototypeInputRef.current?.click()}
+                            disabled={isLoading}
+                            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-bold text-[var(--sys-primary-text)] transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                           >
-                            Unassigned
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16V4m-4 4 4-4 4 4M4 16v4h16v-4" />
+                            </svg>
+                            {prototypeFile ? 'Replace file' : 'Choose HTML file'}
                           </button>
-                          {developers.filter(d => d.full_name.toLowerCase().includes(devSearch.toLowerCase())).map(dev => (
-                            <button
-                              key={dev.id}
-                              type="button"
-                              onClick={() => { setFormData({ ...formData, assigned_developer_id: dev.id }); setIsDevDropdownOpen(false); setDevSearch(''); }}
-                              className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors ${formData.assigned_developer_id === dev.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
-                            >
-                              {dev.full_name}
-                            </button>
-                          ))}
-                          {developers.length > 0 && developers.filter(d => d.full_name.toLowerCase().includes(devSearch.toLowerCase())).length === 0 && (
-                            <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-slate-400 italic">No developers found.</div>
-                          )}
+                          <input
+                            ref={prototypeInputRef}
+                            type="file"
+                            accept=".html,.htm,text/html"
+                            className="hidden"
+                            onChange={handlePrototypeFile}
+                            disabled={isLoading}
+                          />
                         </div>
                       </div>
                     )}
                   </div>
-                  {developers.length === 0 && (
-                    <p className="text-xs text-orange-500 mt-2 font-medium">No developers are assigned to this project yet.</p>
-                  )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Assigned Auditor</label>
-                    <SearchableSelect
-                      value={formData.assigned_auditor}
-                      onChange={(assigned_auditor) => setFormData({ ...formData, assigned_auditor })}
-                      options={auditors.map(auditor => ({ value: auditor.id, label: auditor.full_name }))}
-                      allValue=""
-                      allLabel="Unassigned"
-                      placeholder="Select auditor..."
-                      searchPlaceholder="Search auditor..."
-                      className="w-full"
-                    />
-                    {auditors.length === 0 && (
-                      <p className="text-xs text-orange-500 mt-2 font-medium">No eligible auditors found.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Module Document Link (Optional)</label>
-                  <input
-                    type="url"
-                    placeholder="https://..."
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                    value={formData.module_document_url}
-                    onChange={(e) => setFormData({ ...formData, module_document_url: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">Provide a link to Google Drive, SharePoint, etc.</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Website Link (Testing)</label>
-                  <input
-                    type="url"
-                    placeholder="https://..."
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sys-primary)] font-medium dark:text-white"
-                    value={formData.website_link}
-                    onChange={(e) => setFormData({ ...formData, website_link: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">Link for testing the module (e.g., staging or local URL).</p>
-                </div>
-
-                {canUploadPrototype && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Prototype (HTML)</label>
-                    <input
-                      ref={prototypeInputRef}
-                      type="file"
-                      accept=".html,.htm,text/html"
-                      className="hidden"
-                      onChange={handlePrototypeFile}
-                      disabled={isLoading}
-                    />
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => prototypeInputRef.current?.click()}
-                        disabled={isLoading}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-[var(--sys-primary-text)] border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all disabled:opacity-60"
-                      >
-                        {prototypeFile ? 'Choose a different file' : 'Choose file'}
-                      </button>
-                      {prototypeFile ? (
-                        <>
-                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[220px]" title={prototypeFile.name}>
-                            {prototypeFile.name}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPrototypeFile(null)
-                              if (prototypeInputRef.current) prototypeInputRef.current.value = ''
-                            }}
-                            disabled={isLoading}
-                            className="text-xs font-bold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-60"
-                          >
-                            Remove
-                          </button>
-                        </>
-                      ) : (
-                        <span className="text-sm font-semibold text-gray-400 dark:text-slate-500 italic">No file selected</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">HTML only, up to 10 MB. The assigned developer can preview it in Dev Workspace.</p>
-                  </div>
-                )}
+                </section>
               </form>
             </div>
 
-            <div className="p-6 border-t border-gray-100 dark:border-slate-800 flex justify-end gap-3 bg-white dark:bg-slate-900">
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="px-6 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-xl font-bold transition-colors"
-                disabled={isLoading}
-              >
-                Cancel
-              </button>
-              <button
-                form="create-module-form"
-                type="submit"
-                disabled={isLoading}
-                className="px-6 py-2.5 text-white bg-[var(--sys-primary)] hover:bg-[#1a2333] rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50"
-              >
-                {isLoading ? 'Adding...' : 'Add Module'}
-              </button>
+            <div className="flex shrink-0 flex-col-reverse gap-4 border-t border-gray-100 bg-white px-5 py-5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+              <p className="text-center text-xs font-medium text-slate-400 sm:text-left">Fields marked with <span className="font-bold text-red-500">*</span> are required.</p>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="flex-1 rounded-xl bg-gray-100 px-6 py-3 text-sm font-bold text-slate-600 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 sm:flex-none"
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  form="create-module-form"
+                  type="submit"
+                  disabled={isLoading}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--sys-primary)] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-[var(--sys-primary)]/15 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                >
+                  {isLoading ? (
+                    <>
+                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle className="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z" />
+                      </svg>
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14M5 12h14" />
+                      </svg>
+                      Add Module
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

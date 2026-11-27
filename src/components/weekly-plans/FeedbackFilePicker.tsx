@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { toast } from "sonner";
 import AvatarViewer from "@/components/users/AvatarViewer";
 import { isImageWeeklyPlanFile, WEEKLY_PLAN_ACCEPT, weeklyPlanFileError } from "@/lib/weeklyPlans";
@@ -10,13 +10,45 @@ interface PendingFile {
   url: string;
 }
 
+const CLIPBOARD_EXTENSIONS: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+  "application/pdf": "pdf",
+  "text/plain": "txt",
+  "text/csv": "csv",
+};
+
+function clipboardFiles(data: DataTransfer | null): File[] {
+  const itemFiles = Array.from(data?.items || [])
+    .filter((item) => item.kind === "file")
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => file !== null);
+  const files = itemFiles.length > 0 ? itemFiles : Array.from(data?.files || []);
+
+  return files.map((file) => {
+    if (/\.[a-z0-9]+$/i.test(file.name)) return file;
+    const extension = CLIPBOARD_EXTENSIONS[file.type] || file.type.split("/")[1]?.split("+")[0] || "bin";
+    const name = `pasted-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+    return new File([file], name, { type: file.type, lastModified: file.lastModified });
+  });
+}
+
 interface FeedbackFilePickerProps {
   busy?: boolean;
   embedded?: boolean;
   onChange: (files: File[]) => void;
+  pasteTargetRef?: RefObject<HTMLTextAreaElement | null>;
 }
 
-export default function FeedbackFilePicker({ busy = false, embedded = false, onChange }: FeedbackFilePickerProps) {
+export default function FeedbackFilePicker({
+  busy = false,
+  embedded = false,
+  onChange,
+  pasteTargetRef,
+}: FeedbackFilePickerProps) {
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [viewer, setViewer] = useState<{ src: string; name: string } | null>(null);
   const pendingRef = useRef<PendingFile[]>([]);
@@ -32,8 +64,8 @@ export default function FeedbackFilePicker({ busy = false, embedded = false, onC
     [],
   );
 
-  const handleFiles = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+  const handleFiles = useCallback((files: FileList | File[] | null) => {
+    if (busy || !files || files.length === 0) return;
     const accepted: File[] = [];
     const rejected: string[] = [];
     for (const file of Array.from(files)) {
@@ -58,7 +90,22 @@ export default function FeedbackFilePicker({ busy = false, embedded = false, onC
     const next = [...pending, ...additions];
     setPending(next);
     onChange(next.map((item) => item.file));
-  };
+  }, [busy, onChange, pending]);
+
+  useEffect(() => {
+    const target = pasteTargetRef?.current;
+    if (!target) return;
+
+    const handlePaste = (event: ClipboardEvent) => {
+      const files = clipboardFiles(event.clipboardData);
+      if (files.length === 0) return;
+      event.preventDefault();
+      handleFiles(files);
+    };
+
+    target.addEventListener("paste", handlePaste);
+    return () => target.removeEventListener("paste", handlePaste);
+  }, [handleFiles, pasteTargetRef]);
 
   const handleRemove = (index: number) => {
     const target = pending[index];

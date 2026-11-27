@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useRef } from "react";
 import FeedbackFilePicker from "@/components/weekly-plans/FeedbackFilePicker";
 import type { ModuleFeedbackDraft } from "@/types/moduleFeedback";
 
@@ -16,6 +16,7 @@ export default function ModuleFeedbackForm({
   busy = false,
 }: ModuleFeedbackFormProps) {
   const textareaId = useId();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-4 space-y-4">
@@ -29,6 +30,7 @@ export default function ModuleFeedbackForm({
       <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden transition-colors focus-within:border-[var(--sys-primary)] focus-within:ring-2 focus-within:ring-[var(--sys-primary)]/30">
         <textarea
           id={textareaId}
+          ref={textareaRef}
           value={draft.text}
           onChange={(e) => onDraftChange({ ...draft, text: e.target.value })}
           rows={3}
@@ -39,13 +41,14 @@ export default function ModuleFeedbackForm({
         <FeedbackFilePicker
           embedded
           busy={busy}
+          pasteTargetRef={textareaRef}
           onChange={(files) => onDraftChange({ ...draft, files })}
         />
       </div>
       </div>
 
       <p className="text-[11px] font-medium text-slate-400">
-        Saved with the next module status change.
+        Paste images or files into the feedback box. Saved with the next module status change.
       </p>
     </div>
   );
