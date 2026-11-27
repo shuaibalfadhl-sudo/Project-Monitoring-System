@@ -9,6 +9,7 @@ interface ModuleRow {
   id: string
   name: string
   assigned_developer_id: string | null
+  assigned_auditor: string | null
   projects: { id: string; name: string; created_by: string; company_id: string } | null
 }
 
@@ -23,7 +24,7 @@ export default async function WeeklyPlansPage() {
 
   let modulesQuery = supabase
     .from('project_modules')
-    .select('id, name, assigned_developer_id, projects!inner(id, name, created_by, company_id)')
+    .select('id, name, assigned_developer_id, assigned_auditor, projects!inner(id, name, created_by, company_id)')
   if (activeCompanyId) {
     modulesQuery = modulesQuery.eq('projects.company_id', activeCompanyId)
   }
@@ -59,6 +60,7 @@ export default async function WeeklyPlansPage() {
       if (isSuperAdmin) return true
       return (
         row.assigned_developer_id === profile.id ||
+        row.assigned_auditor === profile.id ||
         row.projects.created_by === profile.id ||
         ownedProjectIds.has(row.projects.id)
       )

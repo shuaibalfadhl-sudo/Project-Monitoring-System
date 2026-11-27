@@ -49,6 +49,7 @@ export default async function DashboardLayout({
   let notificationCount = 0
   let notifications: { label: string, count: number, href: string }[] = []
   let forQaCount = 0
+  let traineeApproveCount = 0
   let qaRevisionCount = 0
   let pmReviewCount = 0
   let qaApprovedCount = 0
@@ -76,25 +77,15 @@ export default async function DashboardLayout({
   const doneTasksCount = doneTasksCountResult ?? 0
 
   if (profile.role === 'system_auditor' || profile.role === 'super_admin') {
+    const statuses: string[] = []
+
     if (profile.role === 'super_admin') {
-      let query = supabaseServer
+      const { data } = await supabaseServer
         .from('projects')
         .select('project_modules(id, status)')
-      if (activeCompanyId) {
-        query = query.eq('company_id', activeCompanyId)
-      }
-      const { data } = await query
-      let count = 0
-      data?.forEach((p: any) => {
-        p.project_modules?.forEach((m: any) => {
-          if (m.status === 'for_qa') count++
-        })
+      data?.forEach((project: any) => {
+        project.project_modules?.forEach((module: any) => statuses.push(module.status))
       })
-      if (count > 0) {
-        notificationCount += count
-        forQaCount = count
-        notifications.push({ label: 'For QA', count, href: '/qa-monitoring' })
-      }
     } else {
       let query = supabaseServer
         .from('project_members')
@@ -104,17 +95,76 @@ export default async function DashboardLayout({
         query = query.eq('projects.company_id', activeCompanyId)
       }
       const { data } = await query
-      let count = 0
-      data?.forEach((d: any) => {
-        d.projects?.project_modules?.forEach((m: any) => {
-          if (m.status === 'for_qa') count++
-        })
+      data?.forEach((membership: any) => {
+        membership.projects?.project_modules?.forEach((module: any) => statuses.push(module.status))
       })
-      if (count > 0) {
-        notificationCount += count
-        forQaCount = count
-        notifications.push({ label: 'For QA', count, href: '/qa-monitoring' })
-      }
+    }
+
+    forQaCount = statuses.filter((status) => status === 'for_qa' || status === 'auditing').length
+    traineeApproveCount = statuses.filter((status) => status === 'trainee_approve').length
+
+    if (forQaCount > 0) {
+      notificationCount += forQaCount
+      notifications.push({ label: 'For QA', count: forQaCount, href: '/qa-monitoring' })
+    }
+    if (traineeApproveCount > 0) {
+      notificationCount += traineeApproveCount
+      notifications.push({ label: 'Trainee Approve', count: traineeApproveCount, href: '/trainee-approve' })
+    }
+  }
+
+  if (profile.role === 'trainee') {
+    let qaQuery = supabaseServer
+      .from('project_modules')
+      .select('id, status, projects!inner(company_id)')
+      .eq('assigned_auditor', profile.id)
+      .in('status', ['for_qa', 'auditing'])
+    if (activeCompanyId) {
+      qaQuery = qaQuery.eq('projects.company_id', activeCompanyId)
+    }
+    const { data: qaModules } = await qaQuery
+    let qaCount = 0
+
+    if (qaModules && qaModules.length > 0) {
+      const { data: approvedHistory } = await supabaseServer
+        .from('project_module_status_history')
+        .select('module_id')
+        .in('module_id', qaModules.map((module) => module.id))
+        .eq('status', 'trainee_approve')
+
+      const approvedModuleIds = new Set(approvedHistory?.map((entry) => entry.module_id) || [])
+      qaCount = qaModules.filter((module) => !approvedModuleIds.has(module.id)).length
+    }
+
+    forQaCount = qaCount
+    if (qaCount > 0) {
+      notificationCount += qaCount
+      notifications.push({ label: 'QA Modules', count: qaCount, href: '/qa-monitoring' })
+    }
+
+    let devQuery = supabaseServer
+      .from('project_members')
+      .select('projects!inner(id, company_id, project_modules(id, status, assigned_developer_id))')
+      .eq('user_id', profile.id)
+    if (activeCompanyId) {
+      devQuery = devQuery.eq('projects.company_id', activeCompanyId)
+    }
+    const { data: devMemberships } = await devQuery
+    const devModules: any[] = []
+    devMemberships?.forEach((d: any) => {
+      d.projects?.project_modules?.forEach((m: any) => {
+        if (m.assigned_developer_id === profile.id && ['development', 'developing', 'revision', 'revising'].includes(m.status)) {
+          devModules.push(m)
+        }
+      })
+    })
+    developmentCount = devModules.filter(m => m.status === 'development' || m.status === 'developing').length
+    revisionCount = devModules.filter(m => m.status === 'revision').length
+    revisingCount = devModules.filter(m => m.status === 'revising').length
+    const devWorkspaceCount = developmentCount + revisionCount + revisingCount
+    if (devWorkspaceCount > 0) {
+      notificationCount += devWorkspaceCount
+      notifications.push({ label: 'Dev Workspace', count: devWorkspaceCount, href: '/dev-workspace' })
     }
   }
 
@@ -289,6 +339,7 @@ export default async function DashboardLayout({
       profile={profile}
       activeCompanyId={activeCompanyId}
       initialForQaCount={forQaCount}
+      initialTraineeApproveCount={traineeApproveCount}
       initialQaRevisionCount={qaRevisionCount}
       initialPmReviewCount={pmReviewCount}
       initialQaApproveCount={qaApprovedCount}

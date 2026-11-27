@@ -14,8 +14,9 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const isAuditor = await hasRole('system_auditor')
   const isSuperAdmin = await hasRole('super_admin')
   const isDeveloper = await hasRole('developer')
+  const isTrainee = await hasRole('trainee')
   
-  if (!isManager && !isAuditor && !isSuperAdmin && !isDeveloper) {
+  if (!isManager && !isAuditor && !isSuperAdmin && !isDeveloper && !isTrainee) {
     redirect('/dashboard')
   }
 
@@ -79,8 +80,8 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
     projects = [...byId.values()].sort((a, b) =>
       (b.created_at || '').localeCompare(a.created_at || '')
     )
-  } else if (isAuditor || isDeveloper) {
-    // Auditors/devs see projects they are a member of. Developers can also create their
+  } else if (isAuditor || isDeveloper || isTrainee) {
+    // Auditors, developers, and trainees see projects they are a member of. Developers can also create their
     // own projects, so include those even if the owner membership row is delayed/missing.
     const baseSelect = '*, project_modules(id, status), project_members(user_id)'
 
@@ -135,6 +136,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
       isAuditor={isAuditor} 
       isSuperAdmin={isSuperAdmin} 
       isDeveloper={isDeveloper}
+      isTrainee={isTrainee}
       currentStatus={currentStatus}
     />
   )

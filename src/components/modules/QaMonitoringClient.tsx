@@ -16,8 +16,9 @@ import type { ModuleFeedbackDraft } from "@/types/moduleFeedback";
 import ModuleClassChips from "@/components/modules/ModuleClassChips";
 import OnHoldReasonNote from "@/components/modules/OnHoldReasonNote";
 import PrototypeSection from "@/components/modules/PrototypeSection";
-import { STATUS_GROUPS, statusesIn } from "@/lib/moduleStatuses";
+import { STATUS_GROUPS, statusBadgeClass, statusLabel, statusesIn } from "@/lib/moduleStatuses";
 import ModuleSortSelect from "@/components/ui/ModuleSortSelect";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 import { sortModuleList, type ModuleSortOrder } from "@/lib/moduleSorting";
 
 interface QaModule {
@@ -34,6 +35,8 @@ interface QaModule {
   auditor_name?: string | null;
   assigned_developer_id?: string | null;
   assigned_developer_name?: string | null;
+  assigned_auditor?: string | null;
+  assigned_auditor_name?: string | null;
   platform?: string | null;
   workstream?: string | null;
   on_hold_remarks?: string | null;
@@ -48,10 +51,24 @@ interface QaModule {
 
 interface QaMonitoringClientProps {
   initialModules: QaModule[];
+  isTrainee?: boolean;
+  canAssignAuditor?: boolean;
+  canReview?: boolean;
+  title?: string;
+  countLabel?: string;
+  showStatusFilter?: boolean;
+  emptyMessage?: string;
 }
 
 export default function QaMonitoringClient({
   initialModules,
+  isTrainee = false,
+  canAssignAuditor = false,
+  canReview = true,
+  title,
+  countLabel = "Total Modules Pending QA",
+  showStatusFilter = true,
+  emptyMessage = "No modules match your filters.",
 }: QaMonitoringClientProps) {
   const [modules, setModules] = useState<QaModule[]>(initialModules);
   const [mounted, setMounted] = useState(false);
@@ -133,6 +150,10 @@ export default function QaMonitoringClient({
   const [ackTarget, setAckTarget] = useState<QaModule | null>(null);
   const [error, setError] = useState("");
   const [feedbackDraft, setFeedbackDraft] = useState<ModuleFeedbackDraft>({ text: "", files: [] });
+  const [auditorDraft, setAuditorDraft] = useState<string>("");
+  const [auditorOptions, setAuditorOptions] = useState<{ id: string; full_name: string }[]>([]);
+  const [loadingAuditors, setLoadingAuditors] = useState(false);
+  const [savingAuditor, setSavingAuditor] = useState(false);
 
   const router = useRouter();
   const supabase = createClient();
@@ -150,12 +171,48 @@ export default function QaMonitoringClient({
     };
   }, [supabase, router]);
 
-  const handleRowClick = (mod: QaModule) => {
+  const handleRowClick = async (mod: QaModule) => {
     setSelectedModule(mod);
     setNewStatus("");
     setReworkLink("");
     setError("");
     setFeedbackDraft({ text: "", files: [] });
+    setAuditorDraft(mod.assigned_auditor || "");
+    setAuditorOptions(
+      mod.assigned_auditor && mod.assigned_auditor_name
+        ? [{ id: mod.assigned_auditor, full_name: mod.assigned_auditor_name }]
+        : [],
+    );
+
+    if (canAssignAuditor) {
+      setLoadingAuditors(true);
+      try {
+        const { data, error: auditorError } = await supabase
+          .from("profiles")
+          .select("id, full_name, role")
+          .in("role", ["system_auditor", "trainee"])
+          .order("full_name", { ascending: true });
+        if (auditorError) throw auditorError;
+
+        const options = (data || []).map((auditor: any) => ({
+          id: auditor.id,
+          full_name: auditor.full_name || "Unnamed Auditor",
+        }));
+        if (
+          mod.assigned_auditor &&
+          mod.assigned_auditor_name &&
+          !options.some((option) => option.id === mod.assigned_auditor)
+        ) {
+          options.push({ id: mod.assigned_auditor, full_name: mod.assigned_auditor_name });
+        }
+        setAuditorOptions(options);
+      } catch (err) {
+        console.error("Error fetching auditors:", err);
+        toast.error("Could not load auditors. Please try again.");
+      } finally {
+        setLoadingAuditors(false);
+      }
+    }
   };
 
   const closeModal = () => {
@@ -165,7 +222,39 @@ export default function QaMonitoringClient({
     setReworkLink("");
     setError("");
     setFeedbackDraft({ text: "", files: [] });
+    setAuditorDraft("");
+    setAuditorOptions([]);
     setShowConfirmModal(false);
+  };
+
+  const handleSaveAuditor = async () => {
+    if (!selectedModule || savingAuditor) return;
+
+    setSavingAuditor(true);
+    setError("");
+    try {
+      const { error: updateError } = await supabase
+        .from("project_modules")
+        .update({ assigned_auditor: auditorDraft || null })
+        .eq("id", selectedModule.id);
+      if (updateError) throw updateError;
+
+      const auditorName = auditorOptions.find((option) => option.id === auditorDraft)?.full_name || null;
+      const updatedModule = {
+        ...selectedModule,
+        assigned_auditor: auditorDraft || null,
+        assigned_auditor_name: auditorName,
+      };
+      setSelectedModule(updatedModule);
+      setModules((prev) => prev.map((mod) => (mod.id === updatedModule.id ? updatedModule : mod)));
+      toast.success(auditorName ? `Auditor assigned to ${auditorName}.` : "Auditor unassigned.");
+      router.refresh();
+    } catch (err) {
+      console.error("Error saving assigned auditor:", err);
+      toast.error("Could not update the assigned auditor. Please try again.");
+    } finally {
+      setSavingAuditor(false);
+    }
   };
 
   const handleAcknowledge = async (moduleId: string) => {
@@ -190,8 +279,9 @@ export default function QaMonitoringClient({
       toast.success(`"${ackedName || "Module"}" acknowledged — status set to Auditing.`);
       router.refresh();
     } catch (err: any) {
-      toast.error(err.message || "Failed to acknowledge module.");
-      setError(err.message || "Failed to acknowledge module.");
+      console.error("Error acknowledging module:", err);
+      toast.error("Could not acknowledge the module. Please try again.");
+      setError("Could not acknowledge the module. Please try again.");
     } finally {
       setIsSubmitting(false);
       setShowAckConfirm(false);
@@ -270,11 +360,12 @@ export default function QaMonitoringClient({
         }
       } else if (isForRevision) {
         toast.success("Module marked For Revision.");
+      } else if (newStatus === "trainee_approve") {
+        toast.success("Module marked Trainee Approve.");
       } else {
         toast.success("Module marked as QA Approved.");
       }
 
-      // Remove module from list if it's no longer 'for_qa' or 'auditing'
       setModules((prev) => prev.filter((m) => m.id !== selectedModule.id));
       setShowConfirmModal(false);
       closeModal();
@@ -341,16 +432,20 @@ export default function QaMonitoringClient({
     sortOrder,
   );
 
+  const approvalStatus = isTrainee ? "trainee_approve" : "qa_approved";
+  const isApprovalDecision = newStatus === "qa_approved" || newStatus === "trainee_approve";
+  const pageTitle = title ?? (isTrainee ? "QA Modules" : canReview ? "QA Monitoring" : "For QA Modules");
+
   return (
     <div className="w-full bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
       <h1 className="text-3xl font-extrabold text-[var(--sys-primary-text)] mb-6">
-        QA Monitoring
+        {pageTitle}
       </h1>
 
       <div className="mb-8 flex flex-col items-start gap-4">
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 p-6 rounded-2xl shadow-sm inline-block min-w-64">
           <h3 className="text-sm font-bold text-amber-700 dark:text-amber-500 uppercase tracking-wider mb-2">
-            Total Modules Pending QA
+            {countLabel}
           </h3>
           <div className="flex items-center gap-3">
             <p className="text-5xl font-black text-amber-600 dark:text-amber-400">
@@ -568,19 +663,21 @@ export default function QaMonitoringClient({
             )}
           </div>
 
-          <select
-            className="w-full sm:w-40 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-          >
-            <option value="all">All Statuses</option>
-            {statusesIn(STATUS_GROUPS.qaMonitoring).map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
+          {showStatusFilter && (
+            <select
+              className="w-full sm:w-40 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium bg-white dark:bg-slate-800 dark:text-white transition-colors"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+            >
+              <option value="all">All Statuses</option>
+              {statusesIn(STATUS_GROUPS.qaMonitoring).map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          )}
 
           <ModuleSortSelect
             value={sortOrder}
@@ -604,7 +701,7 @@ export default function QaMonitoringClient({
           return filteredModules.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 dark:bg-slate-800/50 border-t border-dashed border-gray-200 dark:border-slate-700">
               <p className="text-gray-500 dark:text-slate-400 font-medium">
-                No modules match your filters.
+                {emptyMessage}
               </p>
             </div>
           ) : (
@@ -671,8 +768,8 @@ export default function QaMonitoringClient({
                         )}
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 ${mod.status === 'qa_approved' || mod.status === 'for_qa' ? '' : 'capitalize'}`}>
-                          {mod.status === 'qa_approved' ? 'QA Approved' : mod.status === 'for_qa' ? 'For QA' : mod.status.replace("_", " ")}
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border border-transparent ${statusBadgeClass(mod.status)}`}>
+                          {statusLabel(mod.status)}
                         </span>
                       </td>
                       <td className="py-4 px-6">
@@ -685,7 +782,7 @@ export default function QaMonitoringClient({
                         )}
                       </td>
                       <td className="py-4 px-6 text-right">
-                        {mod.status === "for_qa" ? (
+                        {mod.status === "for_qa" && canReview && !isTrainee ? (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -704,7 +801,7 @@ export default function QaMonitoringClient({
                             }}
                             className="py-2 px-4 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold rounded-xl transition-colors shadow-md whitespace-nowrap"
                           >
-                            QA Result
+                            {canAssignAuditor && !canReview ? "View / Assign" : "QA Result"}
                           </button>
                         )}
                       </td>
@@ -906,24 +1003,80 @@ export default function QaMonitoringClient({
                 )}
               </div>
 
-              <div>
-                <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                  Assigned Developer
-                </h3>
-                {selectedModule.assigned_developer_name ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 text-xs font-black flex items-center justify-center uppercase">
-                      {selectedModule.assigned_developer_name.charAt(0)}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Assigned Developer
+                  </h3>
+                  {selectedModule.assigned_developer_name ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 text-xs font-black flex items-center justify-center uppercase">
+                        {selectedModule.assigned_developer_name.charAt(0)}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        {selectedModule.assigned_developer_name}
+                      </span>
                     </span>
-                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                      {selectedModule.assigned_developer_name}
+                  ) : (
+                    <span className="text-sm font-medium text-gray-400 dark:text-slate-500 italic">
+                      Unassigned
                     </span>
-                  </span>
-                ) : (
-                  <span className="text-sm font-medium text-gray-400 dark:text-slate-500 italic">
-                    Unassigned
-                  </span>
-                )}
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Assigned Auditor
+                  </h3>
+                  {canAssignAuditor ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <SearchableSelect
+                          value={auditorDraft}
+                          onChange={setAuditorDraft}
+                          options={auditorOptions.map((auditor) => ({
+                            value: auditor.id,
+                            label: auditor.full_name,
+                          }))}
+                          allValue=""
+                          allLabel="Unassigned"
+                          placeholder={loadingAuditors ? "Loading auditors..." : "Select auditor..."}
+                          searchPlaceholder="Search auditor..."
+                          className="flex-1 min-w-0"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSaveAuditor}
+                          disabled={
+                            loadingAuditors ||
+                            savingAuditor ||
+                            auditorDraft === (selectedModule.assigned_auditor || "")
+                          }
+                          className="shrink-0 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold transition-colors disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed"
+                        >
+                          {savingAuditor ? "Saving..." : "Save"}
+                        </button>
+                      </div>
+                      {!loadingAuditors && auditorOptions.length === 0 && (
+                        <p className="text-xs font-medium text-orange-500">
+                          No eligible auditors found.
+                        </p>
+                      )}
+                    </div>
+                  ) : selectedModule.assigned_auditor_name ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-lime-100 dark:bg-lime-900/40 text-lime-700 dark:text-lime-300 text-xs font-black flex items-center justify-center uppercase">
+                        {selectedModule.assigned_auditor_name.charAt(0)}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        {selectedModule.assigned_auditor_name}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-sm font-medium text-gray-400 dark:text-slate-500 italic">
+                      Unassigned
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Document and Testing Links */}
@@ -1010,7 +1163,8 @@ export default function QaMonitoringClient({
                 canManage={false}
               />
 
-              {selectedModule.status === "for_qa" ? (
+              {canReview ? (
+                selectedModule.status === "for_qa" && !isTrainee ? (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
                   <h3 className="text-amber-800 font-bold mb-2">
                     Acknowledgement Required
@@ -1035,18 +1189,18 @@ export default function QaMonitoringClient({
                     </h3>
                     <div className="flex gap-4">
                       <label
-                        className={`flex-1 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${newStatus === "qa_approved" ? "border-green-500 bg-green-50 text-green-700 shadow-[0_4px_12px_rgba(34,197,94,0.15)]" : "border-gray-200 hover:border-green-200 text-gray-500 hover:bg-green-50/50"}`}
+                        className={`flex-1 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${newStatus === approvalStatus ? (isTrainee ? "border-lime-500 bg-lime-50 text-lime-700 shadow-[0_4px_12px_rgba(132,204,22,0.15)]" : "border-green-500 bg-green-50 text-green-700 shadow-[0_4px_12px_rgba(34,197,94,0.15)]") : isTrainee ? "border-gray-200 hover:border-lime-200 text-gray-500 hover:bg-lime-50/50" : "border-gray-200 hover:border-green-200 text-gray-500 hover:bg-green-50/50"}`}
                       >
                         <input
                           type="radio"
                           name="status"
-                          value="qa_approved"
+                          value={approvalStatus}
                           className="hidden"
-                          checked={newStatus === "qa_approved"}
+                          checked={newStatus === approvalStatus}
                           onChange={(e) => setNewStatus(e.target.value)}
                         />
                         <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center ${newStatus === "qa_approved" ? "bg-green-100" : "bg-gray-100"}`}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center ${newStatus === approvalStatus ? (isTrainee ? "bg-lime-100" : "bg-green-100") : "bg-gray-100"}`}
                         >
                           <svg
                             className="w-5 h-5"
@@ -1062,7 +1216,7 @@ export default function QaMonitoringClient({
                             />
                           </svg>
                         </div>
-                        <span className="font-bold">QA Passed</span>
+                        <span className="font-bold">{isTrainee ? "Trainee Approve" : "QA Passed"}</span>
                       </label>
 
                       <label
@@ -1133,7 +1287,8 @@ export default function QaMonitoringClient({
                   </div>
 
                 </>
-              )}
+              )
+              ) : null}
 
               {error && (
                 <div className="p-4 bg-red-50 border border-red-100 text-red-700 rounded-xl font-medium text-sm flex items-start gap-3">
@@ -1176,14 +1331,16 @@ export default function QaMonitoringClient({
               >
                 Close
               </button>
-              {selectedModule.status === "auditing" && (
+              {canReview && (selectedModule.status === "auditing" || (!isTrainee && selectedModule.status === "trainee_approve") || (isTrainee && selectedModule.status === "for_qa")) && (
                 <button
                   onClick={validateAndPromptConfirm}
                   disabled={!newStatus || isSubmitting}
                   className={`px-8 py-2.5 rounded-xl font-bold text-white transition-all shadow-lg ${!newStatus
                       ? "bg-gray-300 dark:bg-slate-700 cursor-not-allowed shadow-none"
-                      : newStatus === "qa_approved"
-                        ? "bg-green-500 hover:bg-green-600 hover:-translate-y-0.5 shadow-green-500/20"
+                      : isApprovalDecision
+                        ? isTrainee
+                          ? "bg-lime-500 hover:bg-lime-600 hover:-translate-y-0.5 shadow-lime-500/20"
+                          : "bg-green-500 hover:bg-green-600 hover:-translate-y-0.5 shadow-green-500/20"
                         : "bg-red-500 hover:bg-red-600 hover:-translate-y-0.5 shadow-red-500/20"
                     }`}
                 >
@@ -1208,15 +1365,17 @@ export default function QaMonitoringClient({
             Are you sure you want to mark{" "}
             <span className="font-bold text-slate-800 dark:text-white">"{selectedModule?.name}"</span> as{" "}
             <span className="font-bold text-indigo-600 dark:text-indigo-400">
-              {newStatus === "qa_approved" ? "QA Passed" : "For Revision"}
+              {newStatus === "trainee_approve" ? "Trainee Approve" : newStatus === "qa_approved" ? "QA Passed" : "For Revision"}
             </span>?
           </>
         }
         confirmText="Confirm Decision"
         confirmButtonClass={
-          newStatus === "qa_approved"
-            ? "bg-green-500 hover:bg-green-600 text-white shadow-green-500/20"
-            : "bg-red-500 hover:bg-red-600 text-white shadow-red-500/20"
+          newStatus === "trainee_approve"
+            ? "bg-lime-500 hover:bg-lime-600 text-white shadow-lime-500/20"
+            : newStatus === "qa_approved"
+              ? "bg-green-500 hover:bg-green-600 text-white shadow-green-500/20"
+              : "bg-red-500 hover:bg-red-600 text-white shadow-red-500/20"
         }
       />
 

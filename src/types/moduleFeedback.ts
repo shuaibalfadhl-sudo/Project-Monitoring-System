@@ -9,7 +9,7 @@ export interface ModuleFeedback {
   created_by: string
 }
 
-export type ModuleFeedbackRole = 'developer' | 'system_auditor' | 'project_manager' | 'super_admin' | 'devops' | 'pending' | 'other'
+export type ModuleFeedbackRole = 'developer' | 'system_auditor' | 'project_manager' | 'super_admin' | 'devops' | 'trainee' | 'pending' | 'other'
 
 export interface ModuleFeedbackDraft {
   text: string

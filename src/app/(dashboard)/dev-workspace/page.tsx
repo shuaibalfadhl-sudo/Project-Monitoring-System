@@ -12,7 +12,7 @@ export default async function DevWorkspacePage() {
   }
 
   const isPrivilegedViewer = profile.role === "super_admin" || profile.role === "devops";
-  if (!isPrivilegedViewer && profile.role !== "developer") {
+  if (!isPrivilegedViewer && profile.role !== "developer" && profile.role !== "trainee") {
     redirect("/dashboard");
   }
 

@@ -27,8 +27,9 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const isManager = (await hasRole('project_manager')) || isSuperAdmin
   const isAuditor = await hasRole('system_auditor')
   const isDeveloper = await hasRole('developer')
+  const isTrainee = await hasRole('trainee')
 
-  if (!isManager && !isAuditor && !isDeveloper) redirect('/dashboard')
+  if (!isManager && !isAuditor && !isDeveloper && !isTrainee) redirect('/dashboard')
 
   // RLS ensures only the creator (manager) or assigned member (auditor) can fetch this project
   const { data: project, error: projectError } = await supabase
@@ -80,6 +81,7 @@ export default async function ProjectDetailsPage({ params, searchParams }: { par
   const mappedModules = modules?.map(m => ({
     ...m,
     assigned_developer_name: m.assigned_developer_id ? profilesMap.get(m.assigned_developer_id) : null,
+    assigned_auditor_name: m.assigned_auditor ? profilesMap.get(m.assigned_auditor) : null,
     qa_acknowledged_by_name: m.qa_acknowledged_by ? profilesMap.get(m.qa_acknowledged_by) : null,
     qa_result_acknowledged_by_name: m.qa_result_acknowledged_by ? profilesMap.get(m.qa_result_acknowledged_by) : null
   })) || []

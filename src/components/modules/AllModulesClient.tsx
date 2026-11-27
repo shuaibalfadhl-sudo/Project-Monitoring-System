@@ -152,7 +152,8 @@ export default function AllModulesClient({
       const matchesSearch =
         m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (m.assigned_developer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+        (m.assigned_developer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+        (m.assigned_auditor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
       const matchesStatus = statusFilter === "all" || m.status === statusFilter;
       const matchesPriority =
         priorityFilter === "all" || m.priority === priorityFilter;
@@ -1008,6 +1009,21 @@ export default function AllModulesClient({
                   ) : (
                     <span className="inline-flex items-center text-sm font-semibold text-slate-400 dark:text-slate-500 italic">
                       No developer assigned
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                    Assigned Auditor
+                  </h3>
+                  {selectedModule.assigned_auditor_name ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-lime-50 dark:bg-lime-900/30 text-lime-700 dark:text-lime-300 text-sm font-bold border border-lime-100 dark:border-lime-800">
+                      <span className="w-2 h-2 rounded-full bg-lime-500"></span>
+                      {selectedModule.assigned_auditor_name}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center text-sm font-semibold text-slate-400 dark:text-slate-500 italic">
+                      No auditor assigned
                     </span>
                   )}
                 </div>

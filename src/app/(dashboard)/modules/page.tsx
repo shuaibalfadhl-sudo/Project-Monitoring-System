@@ -89,7 +89,7 @@ export default async function AllModulesPage() {
         });
       }
     }
-  } else if (profile.role === "system_auditor" || profile.role === "developer") {
+  } else if (profile.role === "system_auditor" || profile.role === "developer" || profile.role === "trainee") {
     let query = supabase
       .from("project_members")
       .select(
@@ -156,6 +156,7 @@ export default async function AllModulesPage() {
           .map((m) => m.qa_acknowledged_by)
           .concat(allModules.map((m) => m.qa_result_acknowledged_by))
           .concat(allModules.map((m) => m.assigned_developer_id))
+          .concat(allModules.map((m) => m.assigned_auditor))
           .filter(Boolean),
       ),
     ];
@@ -169,6 +170,9 @@ export default async function AllModulesPage() {
       allModules.forEach((m) => {
         if (m.assigned_developer_id) {
           m.assigned_developer_name = userMap.get(m.assigned_developer_id);
+        }
+        if (m.assigned_auditor) {
+          m.assigned_auditor_name = userMap.get(m.assigned_auditor);
         }
         if (m.qa_acknowledged_by) {
           m.qa_acknowledged_by_name = userMap.get(m.qa_acknowledged_by);

@@ -14,6 +14,7 @@ interface NotificationItem {
 
 interface NavCountsContextType {
   forQaCount: number
+  traineeApproveCount: number
   qaRevisionCount: number
   pmReviewCount: number
   qaApproveCount: number
@@ -30,6 +31,7 @@ interface NavCountsContextType {
 
 const NavCountsContext = createContext<NavCountsContextType>({
   forQaCount: 0,
+  traineeApproveCount: 0,
   qaRevisionCount: 0,
   pmReviewCount: 0,
   qaApproveCount: 0,
@@ -66,6 +68,7 @@ export const broadcastDataChanged = async () => {
 interface NavCountsProviderProps {
   children: React.ReactNode
   initialForQaCount: number
+  initialTraineeApproveCount?: number
   initialQaRevisionCount: number
   initialPmReviewCount?: number
   initialQaApproveCount?: number
@@ -87,6 +90,7 @@ interface NavCountsProviderProps {
 export function NavCountsProvider({
   children,
   initialForQaCount,
+  initialTraineeApproveCount = 0,
   initialQaRevisionCount,
   initialPmReviewCount = 0,
   initialQaApproveCount = 0,
@@ -102,6 +106,7 @@ export function NavCountsProvider({
   activeCompanyId,
 }: NavCountsProviderProps) {
   const [forQaCount, setForQaCount] = useState(initialForQaCount);
+  const [traineeApproveCount, setTraineeApproveCount] = useState(initialTraineeApproveCount);
   const [qaRevisionCount, setQaRevisionCount] = useState(initialQaRevisionCount);
   const [pmReviewCount, setPmReviewCount] = useState(initialPmReviewCount);
   const [qaApproveCount, setQaApproveCount] = useState(initialQaApproveCount);
@@ -122,6 +127,7 @@ export function NavCountsProvider({
   // Sync state if initial props change
   useEffect(() => {
     setForQaCount(initialForQaCount)
+    setTraineeApproveCount(initialTraineeApproveCount)
     setQaRevisionCount(initialQaRevisionCount)
     setPmReviewCount(initialPmReviewCount)
     setQaApproveCount(initialQaApproveCount)
@@ -135,6 +141,7 @@ export function NavCountsProvider({
     setNotifications(initialNotifications)
   }, [
     initialForQaCount,
+    initialTraineeApproveCount,
     initialQaRevisionCount,
     initialPmReviewCount,
     initialQaApproveCount,
@@ -156,30 +163,23 @@ export function NavCountsProvider({
       let notifCount = 0
       let notifs: NotificationItem[] = []
       let fQaCount = 0
+      let traineeApprCount = 0
       let qRevCount = 0
       let pmRevCount = 0
       let qaApprCount = 0
       let depCount = 0
 
-      // System auditor or Super Admin QA count
+      // System auditor or Super Admin QA counts
       if (profile.role === 'system_auditor' || profile.role === 'super_admin') {
+        const statuses: string[] = []
+
         if (profile.role === 'super_admin') {
-          let query = supabase.from('projects').select('project_modules(id, status)')
-          if (activeCompanyId) {
-            query = query.eq('company_id', activeCompanyId)
-          }
-          const { data } = await query
-          let count = 0
-          data?.forEach((p: any) => {
-            p.project_modules?.forEach((m: any) => {
-              if (m.status === 'for_qa') count++
-            })
+          const { data } = await supabase
+            .from('projects')
+            .select('project_modules(id, status)')
+          data?.forEach((project: any) => {
+            project.project_modules?.forEach((module: any) => statuses.push(module.status))
           })
-          if (count > 0) {
-            notifCount += count
-            fQaCount = count
-            notifs.push({ label: 'For QA', count, href: '/qa-monitoring' })
-          }
         } else {
           let query = supabase
             .from('project_members')
@@ -189,17 +189,80 @@ export function NavCountsProvider({
             query = query.eq('projects.company_id', activeCompanyId)
           }
           const { data } = await query
-          let count = 0
-          data?.forEach((d: any) => {
-            d.projects?.project_modules?.forEach((m: any) => {
-              if (m.status === 'for_qa' || m.status === 'auditing') count++
-            })
+          data?.forEach((membership: any) => {
+            membership.projects?.project_modules?.forEach((module: any) => statuses.push(module.status))
           })
-          if (count > 0) {
-            notifCount += count
-            fQaCount = count
-            notifs.push({ label: 'For QA', count, href: '/qa-monitoring' })
-          }
+        }
+
+        fQaCount = statuses.filter((status) => status === 'for_qa' || status === 'auditing').length
+        traineeApprCount = statuses.filter((status) => status === 'trainee_approve').length
+
+        if (fQaCount > 0) {
+          notifCount += fQaCount
+          notifs.push({ label: 'For QA', count: fQaCount, href: '/qa-monitoring' })
+        }
+        if (traineeApprCount > 0) {
+          notifCount += traineeApprCount
+          notifs.push({ label: 'Trainee Approve', count: traineeApprCount, href: '/trainee-approve' })
+        }
+      }
+
+      // Trainee QA and Dev Workspace counts — only modules assigned to them.
+      if (profile.role === 'trainee') {
+        let qaQuery = supabase
+          .from('project_modules')
+          .select('id, status, projects!inner(company_id)')
+          .eq('assigned_auditor', profile.id)
+          .in('status', ['for_qa', 'auditing'])
+        if (activeCompanyId) {
+          qaQuery = qaQuery.eq('projects.company_id', activeCompanyId)
+        }
+        const { data: qaModules } = await qaQuery
+        let qaCount = 0
+
+        if (qaModules && qaModules.length > 0) {
+          const { data: approvedHistory } = await supabase
+            .from('project_module_status_history')
+            .select('module_id')
+            .in('module_id', qaModules.map((module) => module.id))
+            .eq('status', 'trainee_approve')
+
+          const approvedModuleIds = new Set(approvedHistory?.map((entry) => entry.module_id) || [])
+          qaCount = qaModules.filter((module) => !approvedModuleIds.has(module.id)).length
+        }
+
+        fQaCount = qaCount
+        if (qaCount > 0) {
+          notifCount += qaCount
+          notifs.push({ label: 'QA Modules', count: qaCount, href: '/qa-monitoring' })
+        }
+
+        let devQuery = supabase
+          .from('project_members')
+          .select('projects!inner(id, company_id, project_modules(id, status, assigned_developer_id))')
+          .eq('user_id', profile.id)
+        if (activeCompanyId) {
+          devQuery = devQuery.eq('projects.company_id', activeCompanyId)
+        }
+        const { data: devMemberships } = await devQuery
+        const devModules: any[] = []
+        devMemberships?.forEach((d: any) => {
+          d.projects?.project_modules?.forEach((m: any) => {
+            if (m.assigned_developer_id === profile.id && ['development', 'developing', 'revision', 'revising'].includes(m.status)) {
+              devModules.push(m)
+            }
+          })
+        })
+        const devCount = devModules.filter(m => m.status === 'development' || m.status === 'developing').length
+        const revCount = devModules.filter(m => m.status === 'revision').length
+        const revisingCnt = devModules.filter(m => m.status === 'revising').length
+        setDevelopmentCount(devCount)
+        setRevisionCount(revCount)
+        setRevisingCount(revisingCnt)
+        const devWorkspaceCount = devCount + revCount + revisingCnt
+        if (devWorkspaceCount > 0) {
+          notifCount += devWorkspaceCount
+          notifs.push({ label: 'Dev Workspace', count: devWorkspaceCount, href: '/dev-workspace' })
         }
       }
 
@@ -400,6 +463,7 @@ export function NavCountsProvider({
 
       // Update state
       setForQaCount(fQaCount)
+      setTraineeApproveCount(traineeApprCount)
       setQaRevisionCount(qRevCount)
       setPmReviewCount(pmRevCount)
       setQaApproveCount(qaApprCount)
@@ -495,6 +559,7 @@ export function NavCountsProvider({
     <NavCountsContext.Provider
       value={{
         forQaCount,
+        traineeApproveCount,
         qaRevisionCount,
         pmReviewCount,
         qaApproveCount,

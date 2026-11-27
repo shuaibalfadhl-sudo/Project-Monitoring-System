@@ -129,6 +129,7 @@ export default function CreateModulePage({
               <option value="pm_review">PM Review</option>
               <option value="for_qa">For QA</option>
               <option value="auditing">Auditing</option>
+              <option value="trainee_approve">Trainee Approve</option>
               <option value="revision">Revision</option>
               <option value="revising">Revising</option>
               <option value="qa_approved">QA Approved</option>
