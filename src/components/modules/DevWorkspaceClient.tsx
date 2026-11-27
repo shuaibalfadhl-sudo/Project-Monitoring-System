@@ -73,6 +73,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
   const [copiedLink, setCopiedLink] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [moduleFeedbackDraft, setModuleFeedbackDraft] = useState<ModuleFeedbackDraft>({ text: "", files: [] });
+  const [websiteLinkDraft, setWebsiteLinkDraft] = useState("");
 
   const router = useRouter();
   const supabase = createClient();
@@ -114,9 +115,15 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
   const handleConfirmStatusChange = async () => {
     if (!statusChangeTarget) return;
     const { module: mod, newStatus, actionLabel } = statusChangeTarget;
+    const websiteLink = websiteLinkDraft.trim();
+    if (newStatus === "pm_review" && !websiteLink) {
+      toast.error("Please enter the website link before submitting for PM Review.");
+      return;
+    }
     setSubmittingId(mod.id);
     try {
-      const payload = { status: newStatus };
+      const payload: Record<string, string> = { status: newStatus };
+      if (newStatus === "pm_review") payload.website_link = websiteLink;
 
       await submitModuleStatusWithFeedback(supabase, {
         moduleId: mod.id,
@@ -158,6 +165,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
   const openStatusModal = (mod: DevModule) => {
     const act = nextAction(mod);
     setModuleFeedbackDraft({ text: "", files: [] });
+    setWebsiteLinkDraft(act.newStatus === "pm_review" ? mod.website_link?.trim() || "" : "");
     setStatusChangeTarget({ module: mod, newStatus: act.newStatus, actionLabel: act.actionLabel });
   };
 
@@ -784,6 +792,7 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
         onClose={() => setStatusChangeTarget(null)}
         onConfirm={handleConfirmStatusChange}
         isLoading={!!submittingId}
+        maxWidthClass={statusChangeTarget?.newStatus === "pm_review" ? "max-w-2xl" : "max-w-xl"}
         title={statusChangeTarget?.actionLabel ?? "Confirm"}
         message={
           <>
@@ -819,7 +828,33 @@ export default function DevWorkspaceClient({ initialModules, isSuperAdmin = fals
         }
       >
         {statusChangeTarget?.newStatus === "pm_review" && (
-          <div className="mb-6 text-left">
+          <div className="mb-6 space-y-5 text-left">
+            <div>
+              <label
+                htmlFor="pm-review-website-link"
+                className="mb-2 block text-xs font-extrabold uppercase tracking-wide text-slate-600 dark:text-slate-300"
+              >
+                Website Link <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="pm-review-website-link"
+                type="url"
+                required
+                aria-required="true"
+                placeholder="https://..."
+                value={websiteLinkDraft}
+                onChange={(event) => setWebsiteLinkDraft(event.target.value)}
+                disabled={!!submittingId}
+                className={`w-full rounded-xl border bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-slate-100 ${
+                  websiteLinkDraft.trim()
+                    ? "border-gray-200 focus:border-[var(--sys-primary)] focus:ring-[var(--sys-primary)]/10 dark:border-slate-700"
+                    : "border-red-500 focus:border-red-500 focus:ring-red-500/10 dark:border-red-500"
+                }`}
+              />
+              <p className="mt-2 text-xs font-medium text-slate-400">
+                Required before submitting this module for PM Review.
+              </p>
+            </div>
             <ModuleFeedbackForm
               key={statusChangeTarget.module.id}
               draft={moduleFeedbackDraft}

@@ -13,6 +13,7 @@ interface ConfirmStatusModalProps {
   confirmButtonClass?: string
   isLoading?: boolean
   children?: React.ReactNode
+  maxWidthClass?: string
 }
 
 export default function ConfirmStatusModal({
@@ -24,7 +25,8 @@ export default function ConfirmStatusModal({
   confirmText = "Confirm",
   confirmButtonClass = "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20",
   isLoading = false,
-  children
+  children,
+  maxWidthClass = "max-w-md",
 }: ConfirmStatusModalProps) {
   const [mounted, setMounted] = useState(false)
 
@@ -40,7 +42,7 @@ export default function ConfirmStatusModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-gray-100 dark:border-slate-800 scale-100 animate-in zoom-in-95 duration-200"
+        className={`bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full ${maxWidthClass} overflow-hidden flex flex-col border border-gray-100 dark:border-slate-800 scale-100 animate-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 text-center">
