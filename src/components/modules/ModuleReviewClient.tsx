@@ -58,12 +58,10 @@ export default function ModuleReviewClient({
   const [copiedLink, setCopiedLink] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [assignedDevId, setAssignedDevId] = useState<string>("");
-  const [assignedAuditorId, setAssignedAuditorId] = useState<string>("");
   const [newDeadline, setNewDeadline] = useState<string>("");
   const [websiteLinkDraft, setWebsiteLinkDraft] = useState<string>("");
   const [moduleDocDraft, setModuleDocDraft] = useState<string>("");
   const [projectDevs, setProjectDevs] = useState<{ id: string; full_name: string }[]>([]);
-  const [auditors, setProjectAuditors] = useState<{ id: string; full_name: string }[]>([]);
   const [loadingDevs, setLoadingDevs] = useState(false);
   const [feedbackDraft, setFeedbackDraft] = useState<ModuleFeedbackDraft>({ text: "", files: [] });
 
@@ -113,9 +111,7 @@ export default function ModuleReviewClient({
     setReviewStatus("");
     setShowReviewStatusError(false);
     setAssignedDevId(mod.assigned_developer_id || "");
-    setAssignedAuditorId(mod.assigned_auditor || "");
     setProjectDevs([]);
-    setProjectAuditors([]);
     const deadlineVal = mod.deadline
       ? mod.deadline.includes("T")
         ? mod.deadline.split("T")[0]
@@ -141,26 +137,6 @@ export default function ModuleReviewClient({
           }));
           setProjectDevs(devs);
         }
-
-        const { data: auditorProfiles, error: auditorError } = await supabase
-          .from("profiles")
-          .select("id, full_name, role")
-          .in("role", ["system_auditor", "trainee"])
-          .order("full_name", { ascending: true });
-        if (auditorError) throw auditorError;
-
-        const auditors = (auditorProfiles || []).map((auditor: any) => ({
-          id: auditor.id,
-          full_name: auditor.full_name || "Unnamed Auditor",
-        }));
-        if (
-          mod.assigned_auditor &&
-          mod.assigned_auditor_name &&
-          !auditors.some((auditor) => auditor.id === mod.assigned_auditor)
-        ) {
-          auditors.push({ id: mod.assigned_auditor, full_name: mod.assigned_auditor_name });
-        }
-        setProjectAuditors(auditors);
       } catch (err) {
         console.error("Error fetching project developers:", err);
       } finally {
@@ -199,7 +175,6 @@ export default function ModuleReviewClient({
       if (assignedDevId !== undefined) {
         updates.assigned_developer_id = assignedDevId ? assignedDevId : null;
       }
-      updates.assigned_auditor = assignedAuditorId ? assignedAuditorId : null;
 
       if (newDeadline) {
         updates.deadline = newDeadline;
@@ -1115,7 +1090,7 @@ export default function ModuleReviewClient({
                   />
                 </div>
 
-                {/* Additional parameters when Revising */}
+                {/* Additional parameters when Reviewing */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-indigo-100 dark:border-indigo-900/30">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">
@@ -1131,24 +1106,6 @@ export default function ModuleReviewClient({
                       {projectDevs.map((dev) => (
                         <option key={dev.id} value={dev.id}>
                           {dev.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                      Assigned Auditor
-                    </label>
-                    <select
-                      value={assignedAuditorId}
-                      onChange={(e) => setAssignedAuditorId(e.target.value)}
-                      disabled={loadingDevs}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                    >
-                      <option value="">Unassigned</option>
-                      {auditors.map((auditor) => (
-                        <option key={auditor.id} value={auditor.id}>
-                          {auditor.full_name}
                         </option>
                       ))}
                     </select>

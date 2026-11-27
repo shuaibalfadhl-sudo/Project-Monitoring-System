@@ -16,6 +16,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   className?: string;
   searchPlaceholder?: string;
+  alwaysShowSearch?: boolean;
 }
 
 export default function SearchableSelect({
@@ -27,6 +28,7 @@ export default function SearchableSelect({
   placeholder,
   className = "w-full sm:w-44",
   searchPlaceholder = "Search...",
+  alwaysShowSearch = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -66,7 +68,7 @@ export default function SearchableSelect({
 
       {open && (
         <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 flex flex-col overflow-hidden">
-          {options.length > 6 && (
+          {(alwaysShowSearch || options.length > 5) && (
             <div className="p-2 border-b border-gray-100 dark:border-slate-700">
               <input
                 type="text"

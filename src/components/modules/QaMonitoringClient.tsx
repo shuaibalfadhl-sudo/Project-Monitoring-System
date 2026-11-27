@@ -1041,6 +1041,7 @@ export default function QaMonitoringClient({
                           allLabel="Unassigned"
                           placeholder={loadingAuditors ? "Loading auditors..." : "Select auditor..."}
                           searchPlaceholder="Search auditor..."
+                          alwaysShowSearch={true}
                           className="flex-1 min-w-0"
                         />
                         <button
